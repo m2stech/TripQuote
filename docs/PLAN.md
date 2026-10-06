@@ -33,15 +33,15 @@ Baseado em [CLAUDE.md](../CLAUDE.md) e [PRD.md](PRD.md). Ordem: **setup → inte
 **Branch:** `chore/m0-setup`
 **Objetivo:** repositório e tooling prontos para desenvolver.
 
-- [ ] `git init`, branch `main`, `.gitignore` (inclui `.env*`, `node_modules`, `.next`)
-- [ ] Mover o protótipo `Prompt_orcamento_SNOW.html` para `docs/reference/` (referência visual)
-- [ ] Criar app Next.js (App Router) + TypeScript strict + Tailwind
-- [ ] Estrutura de pastas conforme CLAUDE.md (`src/features`, `src/lib`, `tests/`)
-- [ ] ESLint + Prettier + script `typecheck`
-- [ ] Vitest configurado com um teste de fumaça
-- [ ] `.env.example` com as variáveis do CLAUDE.md (sem valores)
-- [ ] Preencher a seção "Comandos" do CLAUDE.md
-- [ ] GitHub Actions: lint, typecheck, test em PR
+- [x] `git init`, branch `main`, `.gitignore` (inclui `.env*`, `node_modules`, `.next`)
+- [x] Mover o protótipo `Prompt_orcamento_SNOW.html` para `docs/reference/` (referência visual)
+- [x] Criar app Next.js (App Router) + TypeScript strict + Tailwind
+- [x] Estrutura de pastas conforme CLAUDE.md (`src/features`, `src/lib`, `tests/`)
+- [x] ESLint + Prettier + script `typecheck`
+- [x] Vitest configurado com um teste de fumaça
+- [x] `.env.example` com as variáveis do CLAUDE.md (sem valores)
+- [x] Preencher a seção "Comandos" do CLAUDE.md
+- [x] GitHub Actions: lint, typecheck, test em PR
 
 **Aceite:** `dev`, `build`, `lint`, `typecheck`, `test` rodam limpos.
 **Commit final:** `chore: bootstrap Next.js project with tooling and CI`
