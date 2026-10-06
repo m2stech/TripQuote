@@ -1,19 +1,173 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #f3f7fa;
-  --foreground: #122b45;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --font-heading: var(--font-sans);
+  --font-sans: system-ui, Arial, sans-serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Tokens de identidade visual SNOW — ver CLAUDE.md > Identidade visual */
+  --color-snow-navy: var(--snow-navy);
+  --color-snow-blue: var(--snow-blue);
+  --color-snow-orange: var(--snow-orange);
+  --color-snow-bg: var(--snow-bg);
+  --color-snow-line: var(--snow-line);
+  --color-snow-muted: var(--snow-muted);
+  --color-snow-hero-start: var(--snow-hero-start);
+  --color-snow-hero-end: var(--snow-hero-end);
+  --color-snow-secondary-bg: var(--snow-secondary-bg);
+  --color-snow-secondary-fg: var(--snow-secondary-fg);
+  --color-snow-remove-bg: var(--snow-remove-bg);
+  --color-snow-remove-fg: var(--snow-remove-fg);
+  --color-snow-warning-bg: var(--snow-warning-bg);
+  --color-snow-warning-border: var(--snow-warning-border);
+  --color-snow-info-bg: var(--snow-info-bg);
+  --color-snow-input-border: var(--snow-input-border);
+
+  --radius-snow-input: var(--snow-radius-input);
+  --radius-snow-card: var(--snow-radius-card);
+  --radius-snow-hero: var(--snow-radius-hero);
+  --shadow-snow-card: var(--snow-shadow-card);
+  --container-snow: var(--snow-container-max);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
   font-family: system-ui, Arial, sans-serif;
   font-size: 15px;
   line-height: 1.5;
+}
+
+:root {
+  /* Tokens brutos SNOW (hex, fonte da verdade do CLAUDE.md) convertidos para oklch
+     para alimentar o tema shadcn abaixo. */
+  --snow-navy: oklch(0.2835 0.0573 251.32); /* #122b45 */
+  --snow-blue: oklch(0.6087 0.1212 229.96); /* #008fbd */
+  --snow-orange: oklch(0.6759 0.1886 42.04); /* #f26522 */
+  --snow-bg: oklch(0.974 0.0059 239.82); /* #f3f7fa */
+  --snow-line: oklch(0.9126 0.0152 235.39); /* #d9e4eb */
+  --snow-muted: oklch(0.5372 0.0343 239.36); /* #5c7180 */
+  --snow-hero-start: oklch(0.2813 0.0553 247.98); /* #102b43 */
+  --snow-hero-end: oklch(0.4141 0.0789 237.67); /* #175171 */
+  --snow-secondary-bg: oklch(0.9545 0.0173 219.65); /* #e4f3f8 */
+  --snow-secondary-fg: oklch(0.429 0.084 231.14); /* #075775 */
+  --snow-remove-bg: oklch(0.9651 0.0188 46.81); /* #fff0e9 */
+  --snow-remove-fg: oklch(0.5226 0.1372 42.92); /* #a8491c */
+  --snow-warning-bg: oklch(0.9747 0.0192 72.58); /* #fff5e9 */
+  --snow-warning-border: oklch(0.8994 0.0529 67.99); /* #f6d8b9 */
+  --snow-info-bg: oklch(0.9717 0.0085 225.08); /* #f0f7fa */
+  --snow-input-border: oklch(0.8725 0.023 233.4); /* #c7d8e2 */
+
+  --snow-radius-input: 9px;
+  --snow-radius-card: 15px;
+  --snow-radius-hero: 10px;
+  --snow-shadow-card: 0 7px 24px #102b4310;
+  --snow-container-max: 1050px;
+
+  --background: var(--snow-bg);
+  --foreground: var(--snow-navy);
+  --card: oklch(1 0 0);
+  --card-foreground: var(--snow-navy);
+  --popover: oklch(1 0 0);
+  --popover-foreground: var(--snow-navy);
+  --primary: var(--snow-blue);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: var(--snow-secondary-bg);
+  --secondary-foreground: var(--snow-secondary-fg);
+  --muted: var(--snow-bg);
+  --muted-foreground: var(--snow-muted);
+  --accent: var(--snow-secondary-bg);
+  --accent-foreground: var(--snow-secondary-fg);
+  --destructive: var(--snow-remove-fg);
+  --border: var(--snow-line);
+  --input: var(--snow-input-border);
+  --ring: var(--snow-blue);
+  --chart-1: var(--snow-blue);
+  --chart-2: var(--snow-orange);
+  --chart-3: var(--snow-navy);
+  --chart-4: var(--snow-muted);
+  --chart-5: var(--snow-secondary-fg);
+  --radius: 0.625rem;
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: var(--snow-navy);
+  --sidebar-primary: var(--snow-blue);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: var(--snow-secondary-bg);
+  --sidebar-accent-foreground: var(--snow-secondary-fg);
+  --sidebar-border: var(--snow-line);
+  --sidebar-ring: var(--snow-blue);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+@layer components {
+  /* Container padrão SNOW: largura máxima de 1050px, centralizado. */
+  .snow-container {
+    width: 100%;
+    max-width: var(--snow-container-max);
+    margin-inline: auto;
+  }
+
+  /* Grid de 2 colunas que colapsa para 1 coluna em telas de até 650px,
+     conforme a identidade visual SNOW (ver CLAUDE.md > Identidade visual). */
+  .snow-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem;
+  }
+
+  @media (max-width: 650px) {
+    .snow-grid-2 {
+      grid-template-columns: 1fr;
+    }
+  }
 }
