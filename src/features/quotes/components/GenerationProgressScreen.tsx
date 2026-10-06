@@ -7,7 +7,7 @@ import { ErrorState } from "@/components/error-state";
 import { Hero } from "@/components/hero";
 import { SectionCard } from "@/components/section-card";
 import { Button } from "@/components/ui/button";
-import { getQuoteRepository } from "@/features/quotes/repository";
+import { regenerateQuoteAction } from "@/features/quotes/actions/quote-actions";
 import { QuoteStatusBadge } from "@/features/quotes/components/QuoteStatusBadge";
 import type { QuoteStatus } from "@/features/quotes/schemas/quote.schema";
 
@@ -16,10 +16,10 @@ interface GenerationProgressScreenProps {
 }
 
 /**
- * Tela de progresso da geração (M3): simula o ciclo `processing` → `done` |
- * `error` usando o repositório mock. No M6, o status virá do backend via
- * polling/Realtime, mas os três estados visuais (carregando, erro, sucesso)
- * já ficam definidos aqui.
+ * Tela de progresso da geração: simula o ciclo `processing` → `done` | `error`
+ * via `regenerateQuoteAction` (Server Action). No M6, o status virá do
+ * backend via polling/Realtime, mas os três estados visuais (carregando,
+ * erro, sucesso) já ficam definidos aqui.
  */
 export function GenerationProgressScreen({ quoteId }: GenerationProgressScreenProps) {
   const [status, setStatus] = useState<QuoteStatus>("processing");
@@ -29,8 +29,7 @@ export function GenerationProgressScreen({ quoteId }: GenerationProgressScreenPr
     setStatus("processing");
     setErrorMessage(null);
     try {
-      const repository = getQuoteRepository();
-      const result = await repository.regenerate(quoteId);
+      const result = await regenerateQuoteAction(quoteId);
       setStatus(result.status);
       setErrorMessage(result.errorMessage ?? null);
     } catch {

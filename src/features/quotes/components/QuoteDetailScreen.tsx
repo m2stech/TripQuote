@@ -11,7 +11,11 @@ import { Hero } from "@/components/hero";
 import { LoadingState } from "@/components/loading-state";
 import { SectionCard } from "@/components/section-card";
 import { Button } from "@/components/ui/button";
-import { getQuoteRepository } from "@/features/quotes/repository";
+import {
+  duplicateQuoteAction,
+  getQuoteAction,
+  regenerateQuoteAction,
+} from "@/features/quotes/actions/quote-actions";
 import { QuoteStatusBadge } from "@/features/quotes/components/QuoteStatusBadge";
 import type { QuoteRecord } from "@/features/quotes/schemas/quote.schema";
 
@@ -20,9 +24,8 @@ interface QuoteDetailScreenProps {
 }
 
 /**
- * Tela de detalhe de um orçamento (M3): dados principais e ações Duplicar,
- * Editar e Regenerar. As ações usam o repositório mock; a geração real por
- * IA chega no M6.
+ * Tela de detalhe de um orçamento: dados principais e ações Duplicar, Editar
+ * e Regenerar, via Server Actions (M5). A geração real por IA chega no M6.
  */
 export function QuoteDetailScreen({ quoteId }: QuoteDetailScreenProps) {
   const router = useRouter();
@@ -36,8 +39,7 @@ export function QuoteDetailScreen({ quoteId }: QuoteDetailScreenProps) {
     setIsLoading(true);
     setError(null);
     try {
-      const repository = getQuoteRepository();
-      const record = await repository.getById(quoteId);
+      const record = await getQuoteAction(quoteId);
       setQuote(record);
     } catch {
       setError("Não foi possível carregar os dados deste orçamento.");
@@ -56,8 +58,7 @@ export function QuoteDetailScreen({ quoteId }: QuoteDetailScreenProps) {
   async function handleDuplicate() {
     setIsDuplicating(true);
     try {
-      const repository = getQuoteRepository();
-      const copy = await repository.duplicate(quoteId);
+      const copy = await duplicateQuoteAction(quoteId);
       toast.success("Orçamento duplicado com sucesso.");
       router.push(`/orcamentos/${copy.id}`);
     } catch {
@@ -70,10 +71,9 @@ export function QuoteDetailScreen({ quoteId }: QuoteDetailScreenProps) {
   async function handleRegenerate() {
     setIsRegenerating(true);
     try {
-      const repository = getQuoteRepository();
       // Reflete o estado "processing" imediatamente na tela.
       setQuote((prev) => (prev ? { ...prev, status: "processing", errorMessage: undefined } : prev));
-      const updated = await repository.regenerate(quoteId);
+      const updated = await regenerateQuoteAction(quoteId);
       setQuote(updated);
       if (updated.status === "error") {
         toast.error(updated.errorMessage ?? "Falha ao gerar o orçamento.");

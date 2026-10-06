@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getQuoteRepository } from "@/features/quotes/repository";
+import { listQuotesAction } from "@/features/quotes/actions/quote-actions";
 import { QuoteStatusBadge } from "@/features/quotes/components/QuoteStatusBadge";
 import { quoteStatusLabels, quoteStatusValues, type QuoteStatus } from "@/features/quotes/schemas/quote.schema";
 import type { QuoteSummary } from "@/features/quotes/schemas/quote.schema";
@@ -42,10 +42,8 @@ const INITIAL_FILTERS: Filters = {
 };
 
 /**
- * Tela de listagem de orçamentos (M3): busca por texto e filtros por status,
- * destino e período, usando a camada `QuoteRepository` (mock). A busca no
- * servidor chega no M5; por ora os filtros são aplicados pelo próprio
- * repositório mock, que já expõe a mesma assinatura futura.
+ * Tela de listagem de orçamentos: busca por texto e filtros por status,
+ * destino e período, resolvidos no servidor via `listQuotesAction` (M5).
  */
 export function QuoteListScreen() {
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
@@ -57,8 +55,7 @@ export function QuoteListScreen() {
     setIsLoading(true);
     setError(null);
     try {
-      const repository = getQuoteRepository();
-      const result = await repository.list({
+      const result = await listQuotesAction({
         search: currentFilters.search || undefined,
         status: currentFilters.status === STATUS_FILTER_ALL ? undefined : currentFilters.status,
         destination: currentFilters.destination || undefined,

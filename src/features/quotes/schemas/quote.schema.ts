@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { quoteFormSchema } from "@/features/quotes/schemas/quote-form.schema";
+import { normalizeQuoteDraft, quoteDraftSchema } from "@/features/quotes/schemas/quote-form.schema";
 
 /**
  * Schemas Zod do registro de orçamento (metadados + payload do formulário).
@@ -28,10 +28,26 @@ export const quoteRecordSchema = z.object({
   updatedAt: z.string(),
   createdBy: z.string(),
   errorMessage: z.string().optional(),
-  form: quoteFormSchema,
+  form: quoteDraftSchema,
 });
 
-export type QuoteRecord = z.infer<typeof quoteRecordSchema>;
+type QuoteRecordParsed = z.infer<typeof quoteRecordSchema>;
+
+/**
+ * Registro de orçamento. `form` é sempre normalizado (`normalizeQuoteDraft`)
+ * para `QuoteFormValues` completo, mesmo quando o rascunho no banco está
+ * parcialmente preenchido — telas como `toQuoteSummary` podem acessar os
+ * campos sem checagem extra.
+ */
+export type QuoteRecord = Omit<QuoteRecordParsed, "form"> & {
+  form: ReturnType<typeof normalizeQuoteDraft>;
+};
+
+/** Valida e normaliza um registro bruto (ex.: linha do banco) em `QuoteRecord`. */
+export function parseQuoteRecord(raw: unknown): QuoteRecord {
+  const parsed = quoteRecordSchema.parse(raw);
+  return { ...parsed, form: normalizeQuoteDraft(parsed.form) };
+}
 
 /**
  * Resumo usado em listagens (evita carregar o formulário completo quando não
