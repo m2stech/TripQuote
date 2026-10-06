@@ -82,6 +82,7 @@ Baseado em [CLAUDE.md](../CLAUDE.md) e [PRD.md](PRD.md). Ordem: **setup → inte
 - [x] Validação inline com mensagens em pt-BR
 - [x] Rascunho em `localStorage` (provisório, removido no M5)
 - [x] Testes Vitest dos schemas
+- [x] Merge em `main`
 
 **Aceite:** formulário completo, validado e responsivo; nenhum texto de prompt no front.
 **Commit final:** `feat(quotes): add quote form UI with Zod validation`
