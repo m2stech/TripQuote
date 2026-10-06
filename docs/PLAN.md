@@ -51,14 +51,14 @@ Baseado em [CLAUDE.md](../CLAUDE.md) e [PRD.md](PRD.md). Ordem: **setup → inte
 **Branch:** `feat/m1-design-system`
 **Objetivo:** identidade visual do protótipo reproduzida em Tailwind + shadcn.
 
-- [ ] Inicializar shadcn/ui
-- [ ] Tokens SNOW (navy, azul, laranja, bg, line, muted) como variáveis CSS do tema; fonte system-ui, base 15px
-- [ ] Raios (9px inputs, 15px cards), sombra de card, container 1050px
-- [ ] Componentes base: Button (primário, secundário, remover, gerar/laranja), Input, Textarea, Select, Checkbox, Label, Card, Badge, Alert/aviso, Dialog, Toast
-- [ ] Componente `SectionCard` com número laranja ("01 Título")
-- [ ] Hero com logo SNOW e gradiente `#102b43 → #175171`
-- [ ] Layout base responsivo (grid 2 colunas → 1 em ≤650px)
-- [ ] Página `/design` (apenas dev) listando os componentes
+- [x] Inicializar shadcn/ui
+- [x] Tokens SNOW (navy, azul, laranja, bg, line, muted) como variáveis CSS do tema; fonte system-ui, base 15px
+- [x] Raios (9px inputs, 15px cards), sombra de card, container 1050px
+- [x] Componentes base: Button (primário, secundário, remover, gerar/laranja), Input, Textarea, Select, Checkbox, Label, Card, Badge, Alert/aviso, Dialog, Toast
+- [x] Componente `SectionCard` com número laranja ("01 Título")
+- [x] Hero com logo SNOW e gradiente `#102b43 → #175171`
+- [x] Layout base responsivo (grid 2 colunas → 1 em ≤650px)
+- [x] Página `/design` (apenas dev) listando os componentes
 
 **Aceite:** comparação visual lado a lado com o protótipo; responsivo em 375px e desktop.
 **Commit final:** `feat(ui): add SNOW design system on Tailwind and shadcn`
@@ -68,20 +68,20 @@ Baseado em [CLAUDE.md](../CLAUDE.md) e [PRD.md](PRD.md). Ordem: **setup → inte
 **Branch:** `feat/m2-quote-form-ui`
 **Objetivo:** todas as seções do protótipo funcionando no front, sem backend.
 
-- [ ] Schemas Zod em `features/quotes` (fonte dos tipos)
-- [ ] 01 Dados gerais (agência, consultor, destino, datas, base, moeda, tipo de valor, acomodação)
-- [ ] 02 Capa
-- [ ] 03 Inclusões
-- [ ] 04 Hotéis (lista dinâmica: adicionar/remover)
-- [ ] 05 Voos e serviços, com área de upload da imagem de voo (UI apenas)
-- [ ] 06 Programação dia a dia (opcional)
-- [ ] 07 Pagamento fixo
-- [ ] 08 Rodapé institucional
-- [ ] 09 Gerar: resumo, validação e botão "Gerar orçamento" (sem ação real; **sem exibir prompt**)
-- [ ] Upload de logo da agência (UI com pré-visualização)
-- [ ] Validação inline com mensagens em pt-BR
-- [ ] Rascunho em `localStorage` (provisório, removido no M5)
-- [ ] Testes Vitest dos schemas
+- [x] Schemas Zod em `features/quotes` (fonte dos tipos)
+- [x] 01 Dados gerais (agência, consultor, destino, datas, base, moeda, tipo de valor, acomodação)
+- [x] 02 Capa
+- [x] 03 Inclusões
+- [x] 04 Hotéis (lista dinâmica: adicionar/remover)
+- [x] 05 Voos e serviços, com área de upload da imagem de voo (UI apenas)
+- [x] 06 Programação dia a dia (opcional)
+- [x] 07 Pagamento fixo
+- [x] 08 Rodapé institucional
+- [x] 09 Gerar: resumo, validação e botão "Gerar orçamento" (sem ação real; **sem exibir prompt**)
+- [x] Upload de logo da agência (UI com pré-visualização)
+- [x] Validação inline com mensagens em pt-BR
+- [x] Rascunho em `localStorage` (provisório, removido no M5)
+- [x] Testes Vitest dos schemas
 
 **Aceite:** formulário completo, validado e responsivo; nenhum texto de prompt no front.
 **Commit final:** `feat(quotes): add quote form UI with Zod validation`
