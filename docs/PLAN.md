@@ -92,14 +92,14 @@ Baseado em [CLAUDE.md](../CLAUDE.md) e [PRD.md](PRD.md). Ordem: **setup → inte
 **Branch:** `feat/m3-quote-screens-ui`
 **Objetivo:** demais telas navegáveis com dados mockados.
 
-- [ ] Camada `features/quotes/repository` com implementação mock
-- [ ] Login (UI) e layout autenticado com navegação
-- [ ] Lista de orçamentos com busca e filtros (status, destino, período)
-- [ ] Detalhe do orçamento, com ações Duplicar, Editar e Regenerar
-- [ ] Badges de status: Rascunho, Processando, Concluído, Erro
-- [ ] Tela de progresso da geração (estados loading/erro/sucesso)
-- [ ] Esqueleto das telas admin: usuários, prompts, identidade visual, consumo
-- [ ] Estados vazios e de erro em todas as telas
+- [x] Camada `features/quotes/repository` com implementação mock
+- [x] Login (UI) e layout autenticado com navegação
+- [x] Lista de orçamentos com busca e filtros (status, destino, período)
+- [x] Detalhe do orçamento, com ações Duplicar, Editar e Regenerar
+- [x] Badges de status: Rascunho, Processando, Concluído, Erro
+- [x] Tela de progresso da geração (estados loading/erro/sucesso)
+- [x] Esqueleto das telas admin: usuários, prompts, identidade visual, consumo
+- [x] Estados vazios e de erro em todas as telas
 
 **Aceite:** fluxo completo navegável com mocks, em desktop e mobile.
 **Commit final:** `feat(ui): add quote management and admin screens with mock data`
