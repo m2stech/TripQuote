@@ -212,7 +212,12 @@ export function QuoteListScreen() {
                 title="Você ainda não criou nenhum orçamento"
                 description="Comece criando o primeiro orçamento para uma agência."
                 action={
-                  <Button variant="snow-generate" size="generate" render={<Link href="/orcamentos/novo" />}>
+                  <Button
+                    variant="snow-generate"
+                    size="generate"
+                    nativeButton={false}
+                    render={<Link href="/orcamentos/novo" />}
+                  >
                     + Novo orçamento
                   </Button>
                 }

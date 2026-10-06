@@ -105,7 +105,7 @@ export function QuoteDetailScreen({ quoteId }: QuoteDetailScreenProps) {
             title="Orçamento não encontrado"
             description="Ele pode ter sido removido ou o link está incorreto."
             action={
-              <Button variant="outline" render={<Link href="/orcamentos" />}>
+              <Button variant="outline" nativeButton={false} render={<Link href="/orcamentos" />}>
                 Voltar para orçamentos
               </Button>
             }
@@ -171,7 +171,11 @@ export function QuoteDetailScreen({ quoteId }: QuoteDetailScreenProps) {
                 >
                   {isRegenerating || quote.status === "processing" ? "Gerando…" : "Regenerar"}
                 </Button>
-                <Button variant="outline" render={<Link href={`/orcamentos/novo?duplicar=${quote.id}`} />}>
+                <Button
+                  variant="outline"
+                  nativeButton={false}
+                  render={<Link href={`/orcamentos/novo?duplicar=${quote.id}`} />}
+                >
                   Editar
                 </Button>
                 <Button

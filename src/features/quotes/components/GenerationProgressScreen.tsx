@@ -74,7 +74,11 @@ export function GenerationProgressScreen({ quoteId }: GenerationProgressScreenPr
                   <Button variant="snow-generate" size="generate" disabled>
                     Baixar .pptx (em breve)
                   </Button>
-                  <Button variant="outline" render={<Link href={`/orcamentos/${quoteId}`} />}>
+                  <Button
+                    variant="outline"
+                    nativeButton={false}
+                    render={<Link href={`/orcamentos/${quoteId}`} />}
+                  >
                     Ver detalhe do orçamento
                   </Button>
                 </div>
