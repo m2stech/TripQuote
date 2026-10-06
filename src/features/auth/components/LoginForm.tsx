@@ -9,13 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FormFieldError } from "@/features/quotes/components/FormFieldError";
-import { writeMockSession } from "@/features/auth/hooks/useMockSession";
+import { login } from "@/features/auth/actions/login";
 import { loginSchema, type LoginValues } from "@/features/auth/schemas/login.schema";
 
 /**
- * Formulário de login mockado (M3): valida e-mail/senha no client e cria uma
- * sessão local fictícia. A autenticação real (Supabase Auth) chega no M4,
- * mantendo esta mesma tela.
+ * Formulário de login: autentica via Supabase Auth (Server Action
+ * `login`) e navega para a área autenticada, respeitando `?next=`.
  */
 export function LoginForm() {
   const router = useRouter();
@@ -32,10 +31,14 @@ export function LoginForm() {
 
   async function onSubmit(values: LoginValues) {
     setAuthError(null);
-    // Simula latência de rede da autenticação real.
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    writeMockSession({ email: values.email });
-    router.push("/orcamentos");
+    const result = await login(values);
+    if (result.error) {
+      setAuthError(result.error);
+      return;
+    }
+    const next = new URLSearchParams(window.location.search).get("next");
+    router.push(next && next.startsWith("/") ? next : "/orcamentos");
+    router.refresh();
   }
 
   function onInvalid() {
