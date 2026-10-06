@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import type {
   Control,
@@ -63,11 +64,9 @@ type QuoteFormInput = z.input<typeof quoteFormSchema>;
  * lógica de IA é exposto aqui.
  */
 export function QuoteForm() {
-  const savedDraft = readQuoteDraft();
-
   const form = useForm<QuoteFormInput>({
     resolver: zodResolver(quoteFormSchema),
-    defaultValues: savedDraft ?? quoteFormDefaultValues,
+    defaultValues: quoteFormDefaultValues,
     mode: "onBlur",
   });
 
@@ -77,8 +76,17 @@ export function QuoteForm() {
     handleSubmit,
     watch,
     setValue,
+    reset,
     formState: { errors, isSubmitting },
   } = form;
+
+  // O rascunho salvo só é aplicado depois da montagem no client, para que a
+  // primeira renderização seja idêntica à do servidor (evita erro de
+  // hidratação, já que `localStorage` não existe no servidor).
+  useEffect(() => {
+    const savedDraft = readQuoteDraft();
+    if (savedDraft) reset(savedDraft);
+  }, [reset]);
 
   const { clearDraft } = useQuoteDraft(watch);
 
