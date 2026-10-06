@@ -51,14 +51,14 @@ Baseado em [CLAUDE.md](../CLAUDE.md) e [PRD.md](PRD.md). Ordem: **setup → inte
 **Branch:** `feat/m1-design-system`
 **Objetivo:** identidade visual do protótipo reproduzida em Tailwind + shadcn.
 
-- [ ] Inicializar shadcn/ui
-- [ ] Tokens SNOW (navy, azul, laranja, bg, line, muted) como variáveis CSS do tema; fonte system-ui, base 15px
-- [ ] Raios (9px inputs, 15px cards), sombra de card, container 1050px
-- [ ] Componentes base: Button (primário, secundário, remover, gerar/laranja), Input, Textarea, Select, Checkbox, Label, Card, Badge, Alert/aviso, Dialog, Toast
-- [ ] Componente `SectionCard` com número laranja ("01 Título")
-- [ ] Hero com logo SNOW e gradiente `#102b43 → #175171`
-- [ ] Layout base responsivo (grid 2 colunas → 1 em ≤650px)
-- [ ] Página `/design` (apenas dev) listando os componentes
+- [x] Inicializar shadcn/ui
+- [x] Tokens SNOW (navy, azul, laranja, bg, line, muted) como variáveis CSS do tema; fonte system-ui, base 15px
+- [x] Raios (9px inputs, 15px cards), sombra de card, container 1050px
+- [x] Componentes base: Button (primário, secundário, remover, gerar/laranja), Input, Textarea, Select, Checkbox, Label, Card, Badge, Alert/aviso, Dialog, Toast
+- [x] Componente `SectionCard` com número laranja ("01 Título")
+- [x] Hero com logo SNOW e gradiente `#102b43 → #175171`
+- [x] Layout base responsivo (grid 2 colunas → 1 em ≤650px)
+- [x] Página `/design` (apenas dev) listando os componentes
 
 **Aceite:** comparação visual lado a lado com o protótipo; responsivo em 375px e desktop.
 **Commit final:** `feat(ui): add SNOW design system on Tailwind and shadcn`
