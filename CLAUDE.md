@@ -84,4 +84,15 @@ Plano detalhado (branches, entregas e commits) em [docs/PLAN.md](docs/PLAN.md). 
 
 ## Comandos
 
-A preencher após inicializar o projeto (dev, build, lint, test, e2e).
+| Comando | Descrição |
+|---|---|
+| `npm run dev` | Servidor de desenvolvimento (Next.js) |
+| `npm run build` | Build de produção |
+| `npm run start` | Serve o build de produção |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run test` | Vitest (execução única); `npm run test:watch` para modo watch |
+| `npm run format` / `format:check` | Prettier (escrever / verificar) |
+| `npm run e2e` | Playwright — a configurar no M10 |
+
+Requer Node >= 22. Copie `.env.example` para `.env.local` e preencha as variáveis.
