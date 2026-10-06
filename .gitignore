@@ -14,3 +14,6 @@ playwright-report/
 .DS_Store
 npm-debug.log*
 .claude/settings.local.json
+
+# Internal prototype (contains the internal prompt); keep local only
+docs/reference/
