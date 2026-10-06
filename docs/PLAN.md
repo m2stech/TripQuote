@@ -68,20 +68,20 @@ Baseado em [CLAUDE.md](../CLAUDE.md) e [PRD.md](PRD.md). Ordem: **setup → inte
 **Branch:** `feat/m2-quote-form-ui`
 **Objetivo:** todas as seções do protótipo funcionando no front, sem backend.
 
-- [ ] Schemas Zod em `features/quotes` (fonte dos tipos)
-- [ ] 01 Dados gerais (agência, consultor, destino, datas, base, moeda, tipo de valor, acomodação)
-- [ ] 02 Capa
-- [ ] 03 Inclusões
-- [ ] 04 Hotéis (lista dinâmica: adicionar/remover)
-- [ ] 05 Voos e serviços, com área de upload da imagem de voo (UI apenas)
-- [ ] 06 Programação dia a dia (opcional)
-- [ ] 07 Pagamento fixo
-- [ ] 08 Rodapé institucional
-- [ ] 09 Gerar: resumo, validação e botão "Gerar orçamento" (sem ação real; **sem exibir prompt**)
-- [ ] Upload de logo da agência (UI com pré-visualização)
-- [ ] Validação inline com mensagens em pt-BR
-- [ ] Rascunho em `localStorage` (provisório, removido no M5)
-- [ ] Testes Vitest dos schemas
+- [x] Schemas Zod em `features/quotes` (fonte dos tipos)
+- [x] 01 Dados gerais (agência, consultor, destino, datas, base, moeda, tipo de valor, acomodação)
+- [x] 02 Capa
+- [x] 03 Inclusões
+- [x] 04 Hotéis (lista dinâmica: adicionar/remover)
+- [x] 05 Voos e serviços, com área de upload da imagem de voo (UI apenas)
+- [x] 06 Programação dia a dia (opcional)
+- [x] 07 Pagamento fixo
+- [x] 08 Rodapé institucional
+- [x] 09 Gerar: resumo, validação e botão "Gerar orçamento" (sem ação real; **sem exibir prompt**)
+- [x] Upload de logo da agência (UI com pré-visualização)
+- [x] Validação inline com mensagens em pt-BR
+- [x] Rascunho em `localStorage` (provisório, removido no M5)
+- [x] Testes Vitest dos schemas
 
 **Aceite:** formulário completo, validado e responsivo; nenhum texto de prompt no front.
 **Commit final:** `feat(quotes): add quote form UI with Zod validation`
