@@ -109,14 +109,14 @@ Baseado em [CLAUDE.md](../CLAUDE.md) e [PRD.md](PRD.md). Ordem: **setup → inte
 **Branch:** `feat/m4-supabase-auth-db`
 **Objetivo:** auth real, schema e RLS.
 
-- [ ] Projeto Supabase e CLI local; `supabase/migrations/`
-- [ ] Supabase Auth (e-mail/senha) com `@supabase/ssr`; middleware protegendo `(app)` e `admin`
-- [ ] Login/logout reais; login conectado à UI do M3
-- [ ] Tabelas: `profiles` (papel consultor/admin), `quotes`, `quote_attachments`, `prompt_versions`, `generations`, `audit_log`
-- [ ] Políticas RLS: consultor acessa só os próprios registros; admin gerencia tudo; `prompt_versions` apenas admin
-- [ ] Seed de usuários de teste
-- [ ] Tipos do banco gerados
-- [ ] Revisão com `supabase-rls-reviewer`
+- [x] Projeto Supabase e CLI local; `supabase/migrations/`
+- [x] Supabase Auth (e-mail/senha) com `@supabase/ssr`; middleware protegendo `(app)` e `admin`
+- [x] Login/logout reais; login conectado à UI do M3
+- [x] Tabelas: `profiles` (papel consultor/admin), `quotes`, `quote_attachments`, `prompt_versions`, `generations`, `audit_log`
+- [x] Políticas RLS: consultor acessa só os próprios registros; admin gerencia tudo; `prompt_versions` apenas admin
+- [x] Seed de usuários de teste
+- [x] Tipos do banco gerados
+- [x] Revisão com `supabase-rls-reviewer`
 
 **Aceite:** usuário A não lê dados do usuário B; rota admin bloqueada para consultor.
 **Commit final:** `feat(db): add Supabase auth, schema and RLS policies`
