@@ -7,8 +7,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * Tela de login (M3, mockada). Autenticação real via Supabase Auth chega no
- * M4; por ora, qualquer e-mail/senha válidos criam uma sessão local fictícia.
+ * Tela de login, autenticada via Supabase Auth (e-mail/senha).
  */
 export default function LoginPage() {
   return (

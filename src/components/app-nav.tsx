@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { clearMockSession } from "@/features/auth/hooks/useMockSession";
+import { logout } from "@/features/auth/actions/logout";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
@@ -19,12 +19,6 @@ const NAV_LINKS = [
  */
 export function AppNav() {
   const pathname = usePathname();
-  const router = useRouter();
-
-  function handleLogout() {
-    clearMockSession();
-    router.push("/login");
-  }
 
   return (
     <header className="border-b border-snow-line bg-snow-navy text-white">
@@ -56,15 +50,16 @@ export function AppNav() {
           </nav>
         </div>
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={handleLogout}
-          className="text-white hover:bg-white/10 hover:text-white"
-        >
-          Sair
-        </Button>
+        <form action={logout}>
+          <Button
+            type="submit"
+            variant="ghost"
+            size="sm"
+            className="text-white hover:bg-white/10 hover:text-white"
+          >
+            Sair
+          </Button>
+        </form>
       </div>
     </header>
   );
