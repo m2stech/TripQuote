@@ -163,9 +163,18 @@ export function QuoteDetailScreen({ quoteId }: QuoteDetailScreenProps) {
 
             <SectionCard number={3} title="Ações">
               <div className="flex flex-wrap gap-3">
+                {quote.status === "done" && quote.pptxStoragePath ? (
+                  <Button
+                    variant="snow-generate"
+                    nativeButton={false}
+                    render={<a href={`/api/quotes/${quote.id}/pptx`} />}
+                  >
+                    Baixar .pptx
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
-                  variant="snow-generate"
+                  variant={quote.status === "done" && quote.pptxStoragePath ? "default" : "snow-generate"}
                   onClick={handleRegenerate}
                   disabled={isRegenerating || quote.status === "processing"}
                 >
