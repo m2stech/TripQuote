@@ -1,49 +1,56 @@
 /**
- * Tokens de identidade visual SNOW (CLAUDE.md) para o builder PPTX.
+ * Tokens de identidade visual para o builder PPTX. Paleta extraída de
+ * `Orcamento_modelo.pptx` (resultado real do fluxo legado prompt + IA,
+ * fornecido pelo usuário como referência de design aprovada pelo cliente)
+ * — difere da paleta documentada no CLAUDE.md (navy real é mais escuro;
+ * blue/orange do CLAUDE.md não aparecem neste template e ficam como
+ * reserva, sem uso aqui).
+ *
  * PptxGenJS espera hex sem "#" e medidas em polegadas — diferente das
- * variáveis CSS do app (que usam oklch()) e das medidas em pontos do
- * protótipo de referência (`docs/reference/Prompt_orcamento_SNOW.html`).
+ * variáveis CSS do app (que usam oklch()) e do EMU nativo do OOXML
+ * (1" = 914400 EMU).
  */
 
 export const SNOW_COLORS = {
-  navy: "122B45",
+  navy: "091B3A",
+  card: "EEF2F7",
+  hairline: "D5DDE8",
+  hairlineDark: "1E355E",
+  label: "4A6491",
+  body: "2B3648",
+  caption: "5F6B7D",
+  white: "FFFFFF",
+  /** Reserva do CLAUDE.md: não usados neste template, mas mantidos para outras peças. */
   blue: "008FBD",
   orange: "F26522",
-  bg: "F3F7FA",
-  line: "D9E4EB",
-  muted: "5C7180",
-  heroStart: "102B43",
-  heroEnd: "175171",
-  white: "FFFFFF",
 } as const;
 
-export const FONT_FACE = "Arial";
+export const FONT_SANS = "Calibri";
+export const FONT_SERIF = "Cambria";
 
-/** Converte pontos (unidade do protótipo original) em polegadas (unidade do PptxGenJS). */
+/** Converte pontos em polegadas (1pt = 1/72in). */
 export function pt(points: number): number {
   return points / 72;
 }
 
-/** Dimensões do slide em LAYOUT_WIDE (13.33" x 7.5", padrão PptxGenJS). */
-export const SLIDE_WIDTH_IN = 13.33;
-export const SLIDE_HEIGHT_IN = 7.5;
+/** Converte EMU (unidade nativa do OOXML) em polegadas (1" = 914400 EMU). */
+export function emu(value: number): number {
+  return value / 914400;
+}
 
-/** Quadro da logo da agência na capa: máx. 150x65pt (seção 3 do protótipo). */
-export const COVER_LOGO_BOX = { w: pt(150), h: pt(65) };
+/** Dimensões do slide, confirmadas em `Orcamento_modelo.pptx` (12192000x6858000 EMU = 16:9). */
+export const SLIDE_WIDTH_IN = emu(12192000);
+export const SLIDE_HEIGHT_IN = emu(6858000);
 
-/** Quadro da logo da agência nos slides internos: máx. 110x48pt, a 38pt da esquerda/topo. */
-export const INNER_LOGO_BOX = { w: pt(110), h: pt(48) };
-export const INNER_LOGO_MARGIN = pt(38);
+/** Margem lateral padrão de conteúdo nos slides internos (consistente em todo o modelo). */
+export const CONTENT_MARGIN_X = emu(482600);
 
-/** Quadro da foto de cada hotel. */
-export const HOTEL_PHOTO_BOX = { w: pt(260), h: pt(180) };
+/** Logo da agência: maior na capa que nos slides internos (confirmado no modelo). */
+export const COVER_LOGO_BOX = { w: emu(979979), h: emu(825500) };
+export const INNER_LOGO_BOX = { w: emu(723677), h: emu(609600) };
 
-/** Quadro da foto de destino na capa. */
-export const DESTINATION_PHOTO_BOX = { w: SLIDE_WIDTH_IN, h: SLIDE_HEIGHT_IN };
+/** Logo institucional no rodapé do slide final. */
+export const FOOTER_LOGO_BOX = { w: emu(599056), h: emu(635000) };
 
-/** Quadro da logo institucional no rodapé: máx. 12% da altura do slide. */
-export const FOOTER_LOGO_BOX = { w: pt(140), h: SLIDE_HEIGHT_IN * 0.12 };
-
-/** Espaçamento mínimo entre caixas de info do hotel e fonte mínima (seção 5 do protótipo). */
-export const HOTEL_INFO_GAP = pt(10);
-export const HOTEL_INFO_MIN_FONT_SIZE = 7;
+/** Foto de cada hotel (coluna esquerda do slide de hotel). */
+export const HOTEL_PHOTO_BOX = { w: emu(5080000), h: emu(3810000) };
