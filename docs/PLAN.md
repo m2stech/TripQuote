@@ -144,16 +144,18 @@ Baseado em [CLAUDE.md](../CLAUDE.md) e [PRD.md](PRD.md). Ordem: **setup → inte
 **Branch:** `feat/m6-ai-generation`
 **Objetivo:** orquestração com a OpenAI inteiramente no backend.
 
-- [ ] Módulos `server-only` em `features/ai` e `features/prompts`
-- [ ] Prompt migrado do protótipo para `prompt_versions` (nunca no client)
-- [ ] Composição do prompt a partir dos dados do orçamento
-- [ ] Interpretação da imagem de voo (visão) → dados estruturados
-- [ ] Schema Zod da resposta da IA com `safeParse`, com retry e tratamento de falha
-- [ ] Rota/Server Action de geração: status `draft → processing → done | error`
-- [ ] Execução assíncrona com polling ou Realtime na UI; tratamento de timeout (`maxDuration`)
-- [ ] Gravar em `generations`: modelo, tokens, custo estimado, versão do prompt
-- [ ] Testes Vitest com OpenAI mockada
-- [ ] Revisão com `ai-prompt-guard`
+- [x] Módulos `server-only` em `features/ai` e `features/prompts`
+- [x] Prompt migrado do protótipo para `prompt_versions` (nunca no client; seed via migration)
+- [x] Composição do prompt a partir dos dados do orçamento
+- [x] Interpretação da imagem de voo (visão) → dados estruturados
+- [x] Schema Zod da resposta da IA com `safeParse`, com retry e tratamento de falha
+- [x] Rota/Server Action de geração: status `draft → processing → done | error`
+- [x] Execução síncrona na Server Action, com `maxDuration` alto (sem polling/Realtime neste marco — decisão registrada no plano do M6)
+- [x] Gravar em `generations`: modelo, tokens, custo estimado, versão do prompt; auditoria em `audit_log`
+- [x] Nova coluna `quotes.ai_output` (saída estruturada da IA, separada do `form` do usuário)
+- [x] Testes Vitest com OpenAI mockada
+- [x] Revisão com `ai-prompt-guard` (achado crítico de bundling client corrigido: schema do output da IA movido para fora de `features/ai`)
+- [x] Merge em `main`
 
 **Aceite:** gerar produz conteúdo estruturado válido; prompt e chave ausentes do bundle do client e de qualquer resposta de API.
 **Commit final:** `feat(ai): add server-side OpenAI generation with status tracking`

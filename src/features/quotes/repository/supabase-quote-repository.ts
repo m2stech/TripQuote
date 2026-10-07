@@ -6,6 +6,7 @@ import type { Database } from "@/lib/supabase/types";
 import type { QuoteDraftValues } from "@/features/quotes/schemas/quote-form.schema";
 import { parseQuoteRecord, toQuoteSummary, type QuoteRecord } from "@/features/quotes/schemas/quote.schema";
 import type {
+  GenerationResult,
   QuoteListFilters,
   QuoteListResult,
   QuoteRepository,
@@ -22,6 +23,7 @@ function rowToRecord(row: QuoteRow): QuoteRecord {
     createdBy: row.created_by,
     errorMessage: row.error_message ?? undefined,
     form: row.form,
+    aiOutput: row.ai_output ?? null,
   });
 }
 
@@ -194,22 +196,26 @@ export class SupabaseQuoteRepository implements QuoteRepository {
     if (error) throw new Error(`Não foi possível excluir o orçamento: ${error.message}`);
   }
 
-  /**
-   * Simulação mantida até o M6 (orquestração real com a OpenAI). Atualiza o
-   * status no banco para manter o comportamento visível entre recargas.
-   */
-  async regenerate(id: string): Promise<QuoteRecord> {
-    await this.supabase.from("quotes").update({ status: "processing", error_message: null }).eq("id", id);
+  async markProcessing(id: string): Promise<void> {
+    const { error } = await this.supabase
+      .from("quotes")
+      .update({ status: "processing", error_message: null })
+      .eq("id", id);
+    if (error) throw new Error(`Não foi possível iniciar a geração: ${error.message}`);
+  }
 
-    await new Promise((resolve) => setTimeout(resolve, 700));
-
-    const didFail = Math.random() < 0.15;
+  async updateGenerationResult(id: string, result: GenerationResult): Promise<QuoteRecord> {
     const { data, error } = await this.supabase
       .from("quotes")
-      .update({
-        status: didFail ? "error" : "done",
-        error_message: didFail ? "Não foi possível gerar o orçamento. Tente novamente." : null,
-      })
+      .update(
+        result.status === "done"
+          ? {
+              status: "done",
+              error_message: null,
+              ai_output: result.aiOutput as unknown as Database["public"]["Tables"]["quotes"]["Row"]["ai_output"],
+            }
+          : { status: "error", error_message: result.errorMessage },
+      )
       .eq("id", id)
       .select("*")
       .single();

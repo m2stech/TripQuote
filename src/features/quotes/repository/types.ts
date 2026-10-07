@@ -1,5 +1,11 @@
+import type { GenerationOutput } from "@/features/quotes/schemas/generation-output.schema";
 import type { QuoteDraftValues } from "@/features/quotes/schemas/quote-form.schema";
 import type { QuoteRecord, QuoteStatus, QuoteSummary } from "@/features/quotes/schemas/quote.schema";
+
+/** Resultado final de uma geração via IA, gravado pelo orquestrador (M6). */
+export type GenerationResult =
+  | { status: "done"; aiOutput: GenerationOutput }
+  | { status: "error"; errorMessage: string };
 
 /**
  * Filtros de listagem de orçamentos. `period` filtra pela data de início da
@@ -48,8 +54,15 @@ export interface QuoteRepository {
   duplicate(id: string): Promise<QuoteRecord>;
   remove(id: string): Promise<void>;
   /**
-   * Simula o ciclo de geração via IA (`draft` → `processing` → `done`/`error`).
-   * No M6, isso será substituído pela orquestração real com a OpenAI.
+   * Marca o orçamento como `processing`, limpando qualquer erro anterior.
+   * Chamado pelo orquestrador (`features/quotes/actions/generation-orchestrator.ts`)
+   * antes de disparar a chamada à IA.
    */
-  regenerate(id: string): Promise<QuoteRecord>;
+  markProcessing(id: string): Promise<void>;
+  /**
+   * Grava o resultado final de uma geração via IA: `done` com a saída
+   * estruturada (`ai_output`), ou `error` com a mensagem genérica pt-BR
+   * exibida ao usuário (o detalhe técnico fica só em `generations`/`audit_log`).
+   */
+  updateGenerationResult(id: string, result: GenerationResult): Promise<QuoteRecord>;
 }

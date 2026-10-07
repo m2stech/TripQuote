@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { requireCurrentUserId } from "@/lib/auth/require-current-user-id";
 import { getQuoteRepository } from "@/features/quotes/repository";
 import {
   AttachmentValidationError,
@@ -34,13 +35,10 @@ export async function uploadQuoteAttachmentAction(
   }
 
   const supabase = await createClient();
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError || !userData.user) {
-    throw new Error("Sessão expirada. Faça login novamente.");
-  }
+  const userId = await requireCurrentUserId();
 
   const repository = await getQuoteRepository();
-  await repository.ensureDraftExists(quoteId, userData.user.id);
+  await repository.ensureDraftExists(quoteId, userId);
 
   try {
     const attachment = await uploadQuoteImageAttachment(supabase, { quoteId, kind, file });

@@ -28,6 +28,7 @@ function createFakeSupabase() {
     start_date: string | null;
     end_date: string | null;
     form: unknown;
+    ai_output: unknown;
     error_message: string | null;
     created_at: string;
     updated_at: string;
@@ -76,6 +77,7 @@ function createFakeSupabase() {
           start_date: null,
           end_date: null,
           form: {},
+          ai_output: null,
           error_message: null,
           created_at: now,
           updated_at: now,
@@ -154,6 +156,7 @@ function createFakeSupabase() {
             start_date: null,
             end_date: null,
             form: {},
+            ai_output: null,
             error_message: null,
             created_at: now,
             updated_at: now,
@@ -170,7 +173,19 @@ function createFakeSupabase() {
         }
         return Promise.resolve({ data: null, error: { message: "unsupported" } });
       },
-      then(resolve: (value: { data: Row[]; error: null; count: number }) => void) {
+      then(
+        resolve: (value: { data: Row[] | null; error: { message: string } | null; count: number }) => void,
+      ) {
+        if (pendingUpdate) {
+          const row = rows.find((candidate) => candidate.id === pendingUpdateMatchId);
+          if (!row) {
+            resolve({ data: null, error: { message: "not found" }, count: 0 });
+            return;
+          }
+          Object.assign(row, pendingUpdate, { updated_at: new Date().toISOString() });
+          resolve({ data: [row], error: null, count: 1 });
+          return;
+        }
         resolve({ data: filtered, error: null, count: filtered.length });
       },
     };
@@ -315,13 +330,35 @@ describe("SupabaseQuoteRepository", () => {
     expect(found).toBeNull();
   });
 
-  it("regenerate() transiciona para 'done' ou 'error'", async () => {
-    const created = await repository.create(
-      draft({ general: { agency: "Primus Turismo" } }),
-      "user-1",
-    );
-    const result = await repository.regenerate(created.id);
-    expect(["done", "error"]).toContain(result.status);
+  it("markProcessing() marca o orçamento como processing, limpando erro anterior", async () => {
+    const created = await repository.create(draft({ general: { agency: "Primus Turismo" } }), "user-1");
+    await repository.markProcessing(created.id);
+    const found = await repository.getById(created.id);
+    expect(found?.status).toBe("processing");
+    expect(found?.errorMessage).toBeUndefined();
+  });
+
+  it("updateGenerationResult() grava status done com a saída da IA", async () => {
+    const created = await repository.create(draft({ general: { agency: "Primus Turismo" } }), "user-1");
+    const aiOutput = {
+      coverTagline: "Tagline gerada",
+      destinationDescription: "Descrição gerada",
+      hotels: [],
+      flightImageExtraction: null,
+    };
+    const result = await repository.updateGenerationResult(created.id, { status: "done", aiOutput });
+    expect(result.status).toBe("done");
+    expect(result.aiOutput).toEqual(aiOutput);
+  });
+
+  it("updateGenerationResult() grava status error com a mensagem informada", async () => {
+    const created = await repository.create(draft({ general: { agency: "Primus Turismo" } }), "user-1");
+    const result = await repository.updateGenerationResult(created.id, {
+      status: "error",
+      errorMessage: "Não foi possível gerar o orçamento. Tente novamente.",
+    });
+    expect(result.status).toBe("error");
+    expect(result.errorMessage).toBe("Não foi possível gerar o orçamento. Tente novamente.");
   });
 
   it("normaliza o form ao ler (compatibilidade com `quoteFormDefaultValues`)", async () => {
