@@ -7,6 +7,7 @@ import {
   hotelsSchema,
   inclusionsSchema,
   itinerarySchema,
+  quoteDraftSchema,
   quoteFormDefaultValues,
   quoteFormSchema,
 } from "@/features/quotes/schemas/quote-form.schema";
@@ -54,8 +55,8 @@ describe("generalDataSchema", () => {
 });
 
 describe("inclusionsSchema", () => {
-  it("rejeita lista vazia", () => {
-    expect(inclusionsSchema.safeParse([]).success).toBe(false);
+  it("aceita lista vazia (seção opcional)", () => {
+    expect(inclusionsSchema.safeParse([]).success).toBe(true);
   });
 
   it("aceita ao menos uma inclusão com texto", () => {
@@ -132,6 +133,40 @@ describe("itinerarySchema", () => {
     const result = itinerarySchema.safeParse({
       enabled: true,
       days: [{ id: "1", label: "Dia 1 — 20/07", description: "Chegada e city tour" }],
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("quoteDraftSchema", () => {
+  // Regressão: ao marcar "Incluir slide de voos"/"Incluir roteiro detalhado"
+  // no formulário, o autosave salva o rascunho imediatamente com os campos
+  // ainda vazios (o usuário não teve tempo de preenchê-los). O schema de
+  // rascunho não deve exigir `legs`/`days` completos nesse momento — só o
+  // schema final (`quoteFormSchema`, na seção "09 Gerar") exige isso.
+  it("aceita voos ativados com campos ainda vazios", () => {
+    const result = quoteDraftSchema.safeParse({
+      flights: { enabled: true, legs: "", baggage: undefined, seat: undefined, services: "" },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("aceita roteiro ativado sem dias ou com dias ainda vazios", () => {
+    const resultNoDays = quoteDraftSchema.safeParse({
+      itinerary: { enabled: true },
+    });
+    expect(resultNoDays.success).toBe(true);
+
+    const resultEmptyDay = quoteDraftSchema.safeParse({
+      itinerary: { enabled: true, days: [{ id: "1", label: "", description: "" }] },
+    });
+    expect(resultEmptyDay.success).toBe(true);
+  });
+
+  it("ainda aceita voos e roteiro desativados", () => {
+    const result = quoteDraftSchema.safeParse({
+      flights: { enabled: false },
+      itinerary: { enabled: false },
     });
     expect(result.success).toBe(true);
   });

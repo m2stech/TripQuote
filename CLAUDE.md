@@ -76,7 +76,7 @@ Referência de cores, organização e experiência — **não** copiar o HTML li
 
 ## Seções do formulário a preservar
 
-01 Dados gerais (agência, consultor, destino, datas, base do orçamento, moeda, tipo de valor, base de acomodação) · 02 Capa · 03 Inclusões · 04 Hotéis · 05 Voos e serviços · 06 Programação dia a dia (opcional) · 07 Pagamento fixo · 08 Rodapé institucional · 09 Gerar. A logo da agência e a imagem de voo passam a ser **uploads** (no protótipo eram anexadas manualmente na IA).
+01 Dados gerais (agência, consultor, destino, datas, base do orçamento, moeda, tipo de valor, base de acomodação) · 02 Capa · 03 Inclusões (opcional) · 04 Hotéis · 05 Voos e serviços (opcional) · 06 Programação dia a dia (opcional) · 07 Pagamento fixo · 08 Rodapé institucional · 09 Gerar. A logo da agência e a imagem de voo passam a ser **uploads** (no protótipo eram anexadas manualmente na IA). Apenas 01 Dados gerais e 04 Hotéis são obrigatórios para gerar.
 
 ## Marcos
 

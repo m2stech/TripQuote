@@ -48,9 +48,8 @@ export const inclusionSchema = z.object({
 
 export type Inclusion = z.infer<typeof inclusionSchema>;
 
-export const inclusionsSchema = z
-  .array(inclusionSchema)
-  .min(1, "Adicione ao menos uma inclusão.");
+// Opcional: o orçamento pode ser gerado sem nenhuma inclusão listada.
+export const inclusionsSchema = z.array(inclusionSchema);
 
 // 04 — Hotéis -------------------------------------------------------------
 
@@ -109,6 +108,22 @@ export const flightsSchema = z.discriminatedUnion("enabled", [
 
 export type Flights = z.infer<typeof flightsSchema>;
 
+/**
+ * Versão de rascunho de `flightsSchema`: com `enabled: true`, os campos
+ * ainda podem estar vazios enquanto o usuário preenche a seção — mesmo
+ * motivo de `generalDataDraftSchema` (ver comentário em `quoteDraftSchema`).
+ */
+const flightsDraftSchema = z.discriminatedUnion("enabled", [
+  z.object({ enabled: z.literal(false) }),
+  z.object({
+    enabled: z.literal(true),
+    legs: z.string().trim().optional().default(""),
+    baggage: z.enum(baggageOptions).optional().default(baggageOptions[0]),
+    seat: z.enum(seatOptions).optional().default(seatOptions[0]),
+    services: z.string().trim().optional().default(""),
+  }),
+]);
+
 // 06 — Programação dia a dia -------------------------------------------
 
 export const itineraryDaySchema = z.object({
@@ -128,6 +143,25 @@ export const itinerarySchema = z.discriminatedUnion("enabled", [
 ]);
 
 export type Itinerary = z.infer<typeof itinerarySchema>;
+
+/**
+ * Versão de rascunho de `itinerarySchema`: com `enabled: true`, os dias
+ * podem estar vazios ou com campos ainda não preenchidos (mesmo motivo de
+ * `flightsDraftSchema`/`generalDataDraftSchema`).
+ */
+const itineraryDayDraftSchema = z.object({
+  id: z.string(),
+  label: z.string().trim().optional().default(""),
+  description: z.string().trim().optional().default(""),
+});
+
+const itineraryDraftSchema = z.discriminatedUnion("enabled", [
+  z.object({ enabled: z.literal(false) }),
+  z.object({
+    enabled: z.literal(true),
+    days: z.array(itineraryDayDraftSchema).optional().default([]),
+  }),
+]);
 
 // 07 — Pagamento fixo (somente leitura, texto institucional fixo) ---------
 
@@ -194,8 +228,8 @@ export const quoteDraftSchema = z.object({
   cover: coverSchema.optional(),
   inclusions: z.array(inclusionSchema).optional(),
   hotels: z.array(hotelSchema).optional(),
-  flights: flightsSchema.optional(),
-  itinerary: itinerarySchema.optional(),
+  flights: flightsDraftSchema.optional(),
+  itinerary: itineraryDraftSchema.optional(),
   agencyLogo: uploadedAttachmentSchema.nullable().optional(),
   flightImage: uploadedAttachmentSchema.nullable().optional(),
 });
