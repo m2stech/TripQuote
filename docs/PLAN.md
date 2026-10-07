@@ -165,14 +165,15 @@ Baseado em [CLAUDE.md](../CLAUDE.md) e [PRD.md](PRD.md). Ordem: **setup → inte
 **Branch:** `feat/m7-pptx-builder`
 **Objetivo:** gerar o .pptx editável de forma determinística.
 
-- [ ] `features/pptx`: templates e layout 16:9 (`LAYOUT_WIDE`) com tokens SNOW
-- [ ] Slides: capa, destino, hotéis, voos, serviços/inclusões, programação (opcional), pagamento, rodapé institucional
-- [ ] Logos da agência e institucional com proporção preservada (Sharp)
-- [ ] Textos, imagens e formas nativos e editáveis (sem texto rasterizado)
-- [ ] Salvar arquivo no Storage e registrar em `quotes`; rota de download autenticada
-- [ ] Integração com o fluxo do M6: `done` disponibiliza o download
-- [ ] Testes Vitest (nº de slides, textos presentes, quebra de conteúdo longo) e abertura manual no PowerPoint
-- [ ] Revisão com `pptx-builder`
+- [x] `features/pptx`: templates e layout 16:9 (`LAYOUT_WIDE`) com tokens SNOW
+- [x] Slides: capa, destino, hotéis, voos, serviços/inclusões, programação (opcional), pagamento, rodapé institucional
+- [x] Logos da agência e institucional com proporção preservada (Sharp)
+- [x] Textos, imagens e formas nativos e editáveis (sem texto rasterizado)
+- [x] Salvar arquivo no Storage e registrar em `quotes`; rota de download autenticada
+- [x] Integração com o fluxo do M6: `done` disponibiliza o download
+- [x] Fontes determinísticas de foto real (Wikipedia para destino, Google Places para hotéis), com fallback para a URL citada pela IA, retry e placeholder
+- [x] Testes Vitest (nº de slides, textos presentes, quebra de conteúdo longo) e abertura manual no PowerPoint
+- [x] Revisão com `pptx-builder`
 
 **Aceite:** orçamento ponta a ponta gera um .pptx que abre e edita sem erros no PowerPoint.
 **Commit final:** `feat(pptx): add deterministic PptxGenJS builder and download`
