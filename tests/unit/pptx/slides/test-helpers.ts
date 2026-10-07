@@ -44,3 +44,12 @@ export function getSlideShapeCount(slide: ReturnType<pptxgen["addSlide"]>): numb
 export function getSlideTableCount(slide: ReturnType<pptxgen["addSlide"]>): number {
   return getRawSlideObjects(slide).filter((object) => object._type === "table").length;
 }
+
+/** Extrai todos os textos de todas as células de todas as tabelas de um slide. */
+export function getSlideTableTexts(slide: ReturnType<pptxgen["addSlide"]>): string[] {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- estrutura interna do pptxgenjs
+  const tables = (slide as any)._slideObjects.filter((object: RawSlideObject) => object._type === "table") as Array<{
+    arrTabRows: Array<Array<{ text?: string }>>;
+  }>;
+  return tables.flatMap((table) => table.arrTabRows.flatMap((row) => row.map((cell) => cell.text ?? "")));
+}
