@@ -250,6 +250,7 @@ export type Database = {
       quotes: {
         Row: {
           agency: string
+          ai_output: Json | null
           consultant: string
           created_at: string
           created_by: string
@@ -265,6 +266,7 @@ export type Database = {
         }
         Insert: {
           agency: string
+          ai_output?: Json | null
           consultant?: string
           created_at?: string
           created_by: string
@@ -280,6 +282,7 @@ export type Database = {
         }
         Update: {
           agency?: string
+          ai_output?: Json | null
           consultant?: string
           created_at?: string
           created_by?: string

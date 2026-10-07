@@ -2,21 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 
-import { createClient } from "@/lib/supabase/server";
+import { requireCurrentUserId } from "@/lib/auth/require-current-user-id";
 import { getQuoteRepository } from "@/features/quotes/repository";
+import { runQuoteGeneration } from "@/features/quotes/actions/generation-orchestrator";
 import type { QuoteListFilters } from "@/features/quotes/repository/types";
 import { quoteDraftSchema, type QuoteDraftInput } from "@/features/quotes/schemas/quote-form.schema";
 import type { QuoteRecord } from "@/features/quotes/schemas/quote.schema";
-
-/** Fronteira Zod: nunca confiar em dados vindos do client sem validar aqui. */
-async function requireCurrentUserId(): Promise<string> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) {
-    throw new Error("Sessão expirada. Faça login novamente.");
-  }
-  return data.user.id;
-}
 
 export async function listQuotesAction(filters: QuoteListFilters = {}) {
   const repository = await getQuoteRepository();
@@ -68,8 +59,8 @@ export async function removeQuoteAction(id: string): Promise<void> {
 }
 
 export async function regenerateQuoteAction(id: string): Promise<QuoteRecord> {
-  const repository = await getQuoteRepository();
-  const record = await repository.regenerate(id);
+  const userId = await requireCurrentUserId();
+  const record = await runQuoteGeneration(id, userId);
   revalidatePath(`/orcamentos/${id}`);
   return record;
 }

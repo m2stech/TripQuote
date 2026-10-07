@@ -16,10 +16,11 @@ interface GenerationProgressScreenProps {
 }
 
 /**
- * Tela de progresso da geração: simula o ciclo `processing` → `done` | `error`
- * via `regenerateQuoteAction` (Server Action). No M6, o status virá do
- * backend via polling/Realtime, mas os três estados visuais (carregando,
- * erro, sucesso) já ficam definidos aqui.
+ * Tela de progresso da geração: dispara `regenerateQuoteAction` (Server
+ * Action), que aguarda a orquestração completa com a OpenAI (prompt
+ * versionado, busca web, redação) antes de retornar — sem polling/Realtime
+ * neste marco, mantendo o padrão de "uma chamada, aguarda o resultado" já
+ * usado no projeto.
  */
 export function GenerationProgressScreen({ quoteId }: GenerationProgressScreenProps) {
   const [status, setStatus] = useState<QuoteStatus>("processing");
@@ -62,7 +63,8 @@ export function GenerationProgressScreen({ quoteId }: GenerationProgressScreenPr
                   className="border-snow-blue size-10 animate-spin rounded-full border-4 border-t-transparent"
                 />
                 <p className="text-muted-foreground text-sm">
-                  Estamos montando o seu orçamento. Isso pode levar alguns instantes…
+                  Estamos montando o seu orçamento com a ajuda de IA. Isso pode levar até alguns
+                  minutos — não saia desta página.
                 </p>
               </>
             ) : null}

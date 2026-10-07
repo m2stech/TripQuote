@@ -68,17 +68,43 @@ describe("InMemoryQuoteRepository", () => {
     expect(found).toBeNull();
   });
 
-  it("regenerate() transiciona para 'done' ou 'error', nunca permanece em 'processing'", async () => {
+  it("markProcessing() marca o orçamento como processing", async () => {
     const repository = new InMemoryQuoteRepository([]);
     const created = await repository.create(makeForm(), "user@test.com");
-    const result = await repository.regenerate(created.id);
-    expect(["done", "error"]).toContain(result.status);
+    await repository.markProcessing(created.id);
+    const found = await repository.getById(created.id);
+    expect(found?.status).toBe("processing");
+  });
+
+  it("updateGenerationResult() grava status done com a saída da IA", async () => {
+    const repository = new InMemoryQuoteRepository([]);
+    const created = await repository.create(makeForm(), "user@test.com");
+    const aiOutput = {
+      coverTagline: "Tagline",
+      destinationDescription: "Descrição",
+      hotels: [],
+      flightImageExtraction: null,
+    };
+    const result = await repository.updateGenerationResult(created.id, { status: "done", aiOutput });
+    expect(result.status).toBe("done");
+    expect(result.aiOutput).toEqual(aiOutput);
+  });
+
+  it("updateGenerationResult() grava status error com a mensagem informada", async () => {
+    const repository = new InMemoryQuoteRepository([]);
+    const created = await repository.create(makeForm(), "user@test.com");
+    const result = await repository.updateGenerationResult(created.id, {
+      status: "error",
+      errorMessage: "Falha na geração.",
+    });
+    expect(result.status).toBe("error");
+    expect(result.errorMessage).toBe("Falha na geração.");
   });
 
   it("rejeita operações sobre orçamento inexistente", async () => {
     const repository = new InMemoryQuoteRepository([]);
     await expect(repository.update("inexistente", makeForm())).rejects.toThrow();
     await expect(repository.duplicate("inexistente")).rejects.toThrow();
-    await expect(repository.regenerate("inexistente")).rejects.toThrow();
+    await expect(repository.markProcessing("inexistente")).rejects.toThrow();
   });
 });

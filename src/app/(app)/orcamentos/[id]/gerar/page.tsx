@@ -7,6 +7,11 @@ export const metadata: Metadata = {
   title: "Gerando orçamento — TripQuote",
 };
 
+// A geração via IA (busca web + redação) pode levar bem mais que o padrão da
+// plataforma; a Server Action chamada por esta página aguarda o resultado
+// completo (sem polling), então precisa do tempo máximo disponível.
+export const maxDuration = 300;
+
 interface GenerateQuotePageProps {
   params: Promise<{ id: string }>;
 }

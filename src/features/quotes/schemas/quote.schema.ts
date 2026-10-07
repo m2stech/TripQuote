@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { generationOutputSchema } from "@/features/quotes/schemas/generation-output.schema";
 import { normalizeQuoteDraft, quoteDraftSchema } from "@/features/quotes/schemas/quote-form.schema";
 
 /**
@@ -29,6 +30,7 @@ export const quoteRecordSchema = z.object({
   createdBy: z.string(),
   errorMessage: z.string().optional(),
   form: quoteDraftSchema,
+  aiOutput: generationOutputSchema.nullable().optional(),
 });
 
 type QuoteRecordParsed = z.infer<typeof quoteRecordSchema>;

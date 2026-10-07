@@ -2,6 +2,7 @@ import type { QuoteDraftValues, QuoteFormValues } from "@/features/quotes/schema
 import { normalizeQuoteDraft, quoteFormDefaultValues } from "@/features/quotes/schemas/quote-form.schema";
 import { toQuoteSummary, type QuoteRecord } from "@/features/quotes/schemas/quote.schema";
 import type {
+  GenerationResult,
   QuoteListFilters,
   QuoteListResult,
   QuoteRepository,
@@ -256,12 +257,12 @@ export class InMemoryQuoteRepository implements QuoteRepository {
     this.quotes = this.quotes.filter((quote) => quote.id !== id);
   }
 
-  async regenerate(id: string): Promise<QuoteRecord> {
+  async markProcessing(id: string): Promise<void> {
+    await wait(SIMULATED_LATENCY_MS);
     const existing = this.quotes.find((quote) => quote.id === id);
     if (!existing) {
       throw new Error(`Orçamento ${id} não encontrado.`);
     }
-
     const processing: QuoteRecord = {
       ...existing,
       status: "processing",
@@ -269,17 +270,20 @@ export class InMemoryQuoteRepository implements QuoteRepository {
       updatedAt: new Date().toISOString(),
     };
     this.quotes = this.quotes.map((quote) => (quote.id === id ? processing : quote));
+  }
 
-    await wait(SIMULATED_LATENCY_MS * 2);
+  async updateGenerationResult(id: string, result: GenerationResult): Promise<QuoteRecord> {
+    await wait(SIMULATED_LATENCY_MS);
+    const existing = this.quotes.find((quote) => quote.id === id);
+    if (!existing) {
+      throw new Error(`Orçamento ${id} não encontrado.`);
+    }
 
-    // Simula uma falha ocasional para exercitar o estado de erro na UI.
-    const didFail = Math.random() < 0.15;
-    const finished: QuoteRecord = {
-      ...processing,
-      status: didFail ? "error" : "done",
-      errorMessage: didFail ? "Não foi possível gerar o orçamento. Tente novamente." : undefined,
-      updatedAt: new Date().toISOString(),
-    };
+    const finished: QuoteRecord =
+      result.status === "done"
+        ? { ...existing, status: "done", errorMessage: undefined, aiOutput: result.aiOutput, updatedAt: new Date().toISOString() }
+        : { ...existing, status: "error", errorMessage: result.errorMessage, updatedAt: new Date().toISOString() };
+
     this.quotes = this.quotes.map((quote) => (quote.id === id ? finished : quote));
     return finished;
   }
