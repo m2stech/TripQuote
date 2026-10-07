@@ -6,6 +6,7 @@ function validOutput(): GenerationOutput {
   return {
     coverTagline: "Uma viagem inesquecível ao Chile",
     destinationDescription: "Santiago combina modernidade e tradição aos pés dos Andes.",
+    destinationAttractions: ["Cerro San Cristóbal", "Mercado Central", "La Moneda"],
     destinationPhoto: {
       status: "real_photo_found",
       url: "https://example.com/destino.jpg",
@@ -66,6 +67,18 @@ describe("generationOutputSchema", () => {
     delete output.coverTagline;
     const result = generationOutputSchema.safeParse(output);
     expect(result.success).toBe(false);
+  });
+
+  it("rejeita quando falta destinationAttractions", () => {
+    const output = validOutput() as Record<string, unknown>;
+    delete output.destinationAttractions;
+    const result = generationOutputSchema.safeParse(output);
+    expect(result.success).toBe(false);
+  });
+
+  it("aceita destinationAttractions vazio", () => {
+    const result = generationOutputSchema.safeParse({ ...validOutput(), destinationAttractions: [] });
+    expect(result.success).toBe(true);
   });
 
   it("rejeita quando falta destinationPhoto", () => {
