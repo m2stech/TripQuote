@@ -24,6 +24,7 @@ function rowToRecord(row: QuoteRow): QuoteRecord {
     errorMessage: row.error_message ?? undefined,
     form: row.form,
     aiOutput: row.ai_output ?? null,
+    pptxStoragePath: row.pptx_storage_path ?? null,
   });
 }
 
@@ -220,6 +221,17 @@ export class SupabaseQuoteRepository implements QuoteRepository {
       .select("*")
       .single();
     if (error) throw new Error(`Não foi possível concluir a geração: ${error.message}`);
+    return rowToRecord(data);
+  }
+
+  async updatePptxStoragePath(id: string, path: string): Promise<QuoteRecord> {
+    const { data, error } = await this.supabase
+      .from("quotes")
+      .update({ pptx_storage_path: path })
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) throw new Error(`Não foi possível registrar o arquivo gerado: ${error.message}`);
     return rowToRecord(data);
   }
 }

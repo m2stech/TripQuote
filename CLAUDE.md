@@ -50,7 +50,7 @@ docs/PRD.md
 
 - Código, nomes e commits em **inglês**; textos de UI, mensagens e erros em **pt-BR**.
 - TS strict, sem `any`; Server Components por padrão, `"use client"` só quando necessário.
-- Sem segredos no repo: `.env.local` (`OPENAI_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SENTRY_DSN`); manter `.env.example`.
+- Sem segredos no repo: `.env.local` (`OPENAI_API_KEY`, `GOOGLE_PLACES_API_KEY` opcional, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SENTRY_DSN`); manter `.env.example`.
 - Vitest para builder PPTX, schemas e lógica de custo; Playwright para o fluxo crítico (login → criar → gerar → baixar).
 - Validar cada marco antes de iniciar o próximo.
 

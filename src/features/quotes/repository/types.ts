@@ -65,4 +65,11 @@ export interface QuoteRepository {
    * exibida ao usuário (o detalhe técnico fica só em `generations`/`audit_log`).
    */
   updateGenerationResult(id: string, result: GenerationResult): Promise<QuoteRecord>;
+  /**
+   * Grava o caminho do .pptx gerado no Storage após a montagem determinística
+   * (M7). Separado de `updateGenerationResult`: a montagem do PPTX é uma etapa
+   * subsequente e independente da geração via IA — pode falhar sem reverter o
+   * `status: "done"` já obtido com sucesso.
+   */
+  updatePptxStoragePath(id: string, path: string): Promise<QuoteRecord>;
 }

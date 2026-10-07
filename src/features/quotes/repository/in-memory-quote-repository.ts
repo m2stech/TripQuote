@@ -287,4 +287,19 @@ export class InMemoryQuoteRepository implements QuoteRepository {
     this.quotes = this.quotes.map((quote) => (quote.id === id ? finished : quote));
     return finished;
   }
+
+  async updatePptxStoragePath(id: string, path: string): Promise<QuoteRecord> {
+    await wait(SIMULATED_LATENCY_MS);
+    const existing = this.quotes.find((quote) => quote.id === id);
+    if (!existing) {
+      throw new Error(`Orçamento ${id} não encontrado.`);
+    }
+    const updated: QuoteRecord = {
+      ...existing,
+      pptxStoragePath: path,
+      updatedAt: new Date().toISOString(),
+    };
+    this.quotes = this.quotes.map((quote) => (quote.id === id ? updated : quote));
+    return updated;
+  }
 }

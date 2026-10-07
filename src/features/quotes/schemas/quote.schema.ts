@@ -31,6 +31,7 @@ export const quoteRecordSchema = z.object({
   errorMessage: z.string().optional(),
   form: quoteDraftSchema,
   aiOutput: generationOutputSchema.nullable().optional(),
+  pptxStoragePath: z.string().nullable().optional(),
 });
 
 type QuoteRecordParsed = z.infer<typeof quoteRecordSchema>;

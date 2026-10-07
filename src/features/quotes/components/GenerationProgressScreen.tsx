@@ -25,6 +25,7 @@ interface GenerationProgressScreenProps {
 export function GenerationProgressScreen({ quoteId }: GenerationProgressScreenProps) {
   const [status, setStatus] = useState<QuoteStatus>("processing");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [pptxStoragePath, setPptxStoragePath] = useState<string | null>(null);
 
   const startGeneration = useCallback(async () => {
     setStatus("processing");
@@ -33,6 +34,7 @@ export function GenerationProgressScreen({ quoteId }: GenerationProgressScreenPr
       const result = await regenerateQuoteAction(quoteId);
       setStatus(result.status);
       setErrorMessage(result.errorMessage ?? null);
+      setPptxStoragePath(result.pptxStoragePath ?? null);
     } catch {
       setStatus("error");
       setErrorMessage("Não foi possível iniciar a geração. Tente novamente.");
@@ -73,9 +75,20 @@ export function GenerationProgressScreen({ quoteId }: GenerationProgressScreenPr
               <>
                 <p className="text-foreground text-base font-semibold">Orçamento gerado com sucesso!</p>
                 <div className="flex flex-wrap justify-center gap-3">
-                  <Button variant="snow-generate" size="generate" disabled>
-                    Baixar .pptx (em breve)
-                  </Button>
+                  {pptxStoragePath ? (
+                    <Button
+                      variant="snow-generate"
+                      size="generate"
+                      nativeButton={false}
+                      render={<a href={`/api/quotes/${quoteId}/pptx`} />}
+                    >
+                      Baixar .pptx
+                    </Button>
+                  ) : (
+                    <Button variant="snow-generate" size="generate" disabled>
+                      Arquivo indisponível — tente gerar novamente
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     nativeButton={false}
