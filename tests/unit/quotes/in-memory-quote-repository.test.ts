@@ -82,6 +82,7 @@ describe("InMemoryQuoteRepository", () => {
     const aiOutput = {
       coverTagline: "Tagline",
       destinationDescription: "Descrição",
+      destinationPhoto: { status: "not_found" as const, url: null, sourceUrl: null, caption: null },
       hotels: [],
       flightImageExtraction: null,
     };
