@@ -103,6 +103,30 @@ describe("composePromptInput", () => {
     expect(instructions).toContain("Marcação de assento: Marcação de assento incluso");
   });
 
+  it("voos habilitados, sem texto digitado, com imagem anexada: pede extração da imagem", () => {
+    const { instructions, inventoryCounts } = composePromptInput(
+      draft({
+        flights: {
+          enabled: true,
+          legs: "",
+          baggage: "1 peça de 23 kg por pessoa",
+          seat: "Marcação de assento incluso",
+          services: "",
+        },
+        flightImage: {
+          fileName: "voo.jpg",
+          storagePath: "quote-1/flight_image/voo.jpg",
+          mimeType: "image/jpeg",
+          sizeBytes: 12345,
+        },
+      }),
+      PROMPT_TEMPLATE,
+    );
+    expect(instructions).toContain("Nenhum trecho foi digitado; extraia os trechos");
+    expect(instructions).toContain("flightImageExtraction.extractedLegs");
+    expect(inventoryCounts.legs).toBe(0);
+  });
+
   it("roteiro desabilitado: bloco informa que não foi solicitado", () => {
     const { instructions } = composePromptInput(draft(), PROMPT_TEMPLATE);
     expect(instructions).toContain("Não foi solicitado roteiro dia a dia.");

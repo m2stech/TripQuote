@@ -54,6 +54,21 @@ function formatFlightsBlock(form: QuoteFormValues): string {
     .map((leg) => leg.trim())
     .filter(Boolean);
 
+  // Sem texto digitado, mas com imagem de comprovante anexada: os trechos
+  // vêm exclusivamente de `flightImageExtraction` (ver instrução na seção 6
+  // do prompt-base), não há nada para "transcrever" aqui.
+  if (legs.length === 0 && form.flightImage) {
+    return (
+      `SLIDE OBRIGATÓRIO: Voos contemplados no orçamento\n` +
+      `Nenhum trecho foi digitado; extraia os trechos e horários da imagem de ` +
+      `comprovante anexa a esta mensagem e preencha \`flightImageExtraction.extractedLegs\`.\n` +
+      `Franquia de bagagem: ${form.flights.baggage}\n` +
+      `Marcação de assento: ${form.flights.seat}\n` +
+      `Outros serviços: ${form.flights.services || "Nenhum informado."}\n` +
+      `Não inferir conexões, horários ou aeroportos além do que a imagem mostra.`
+    );
+  }
+
   return (
     `SLIDE OBRIGATÓRIO: Voos contemplados no orçamento\n` +
     `Trechos (${legs.length}), transcrever integralmente:\n` +

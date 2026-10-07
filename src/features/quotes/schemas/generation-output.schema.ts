@@ -60,7 +60,10 @@ export const generatedHotelSchema = z.object({
 export type GeneratedHotel = z.infer<typeof generatedHotelSchema>;
 
 export const extractedFlightLegSchema = z.object({
-  description: z.string(),
+  // Mesmo limite de `flightFieldsSchema.legs` (quote-form.schema.ts): texto
+  // digitado e texto extraído da imagem convergem no mesmo slide
+  // (`resolveFlightLegs`), por isso recebem o mesmo tratamento.
+  description: z.string().trim().max(200),
 });
 
 export const flightImageExtractionSchema = z.object({

@@ -94,8 +94,25 @@ export const seatOptions = [
   "Marcação de assento incluso",
 ] as const;
 
+const MAX_FLIGHT_LEG_LINE_LENGTH = 200;
+
 const flightFieldsSchema = z.object({
-  legs: requiredText("Informe os trechos e horários do voo."),
+  // Opcional no schema em si: exigido só quando não há `flightImage` anexado
+  // (ver `.superRefine` em `quoteFormSchema`) — com imagem, a IA extrai os
+  // trechos automaticamente e o texto digitado deixa de ser necessário.
+  // Limite por linha (não na string inteira, que é multilinha) — mesmo
+  // limite de `extractedFlightLegSchema.description` (generation-output
+  // .schema.ts): texto digitado e texto extraído da imagem convergem no
+  // mesmo slide (`resolveFlightLegs`).
+  legs: z
+    .string()
+    .trim()
+    .optional()
+    .default("")
+    .refine(
+      (value) => value.split(/\r?\n/).every((line) => line.length <= MAX_FLIGHT_LEG_LINE_LENGTH),
+      `Cada trecho deve ter no máximo ${MAX_FLIGHT_LEG_LINE_LENGTH} caracteres.`,
+    ),
   baggage: z.enum(baggageOptions, { error: "Selecione a franquia de bagagem." }),
   seat: z.enum(seatOptions, { error: "Selecione a marcação de assento." }),
   services: z.string().trim().optional().default(""),
@@ -190,16 +207,28 @@ export const uploadedAttachmentSchema = z.object({
 
 export type UploadedAttachment = z.infer<typeof uploadedAttachmentSchema>;
 
-export const quoteFormSchema = z.object({
-  general: generalDataSchema,
-  cover: coverSchema,
-  inclusions: inclusionsSchema,
-  hotels: hotelsSchema,
-  flights: flightsSchema,
-  itinerary: itinerarySchema,
-  agencyLogo: uploadedAttachmentSchema.nullable().default(null),
-  flightImage: uploadedAttachmentSchema.nullable().default(null),
-});
+export const quoteFormSchema = z
+  .object({
+    general: generalDataSchema,
+    cover: coverSchema,
+    inclusions: inclusionsSchema,
+    hotels: hotelsSchema,
+    flights: flightsSchema,
+    itinerary: itinerarySchema,
+    agencyLogo: uploadedAttachmentSchema.nullable().default(null),
+    flightImage: uploadedAttachmentSchema.nullable().default(null),
+  })
+  .superRefine((data, ctx) => {
+    // Com voos habilitados, é preciso informar os trechos de alguma forma:
+    // texto digitado OU uma imagem de comprovante (que a IA extrai no M6).
+    if (data.flights.enabled && !data.flights.legs && !data.flightImage) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["flights", "legs"],
+        message: "Informe os trechos e horários do voo ou anexe uma imagem de comprovante.",
+      });
+    }
+  });
 
 export type QuoteFormValues = z.infer<typeof quoteFormSchema>;
 

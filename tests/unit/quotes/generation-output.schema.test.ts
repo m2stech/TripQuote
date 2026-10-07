@@ -115,6 +115,17 @@ describe("generationOutputSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("rejeita trecho extraído com descrição acima do limite de caracteres", () => {
+    const output = validOutput();
+    output.flightImageExtraction = {
+      wasImageProvided: true,
+      extractedLegs: [{ description: "A".repeat(201) }],
+      notes: null,
+    };
+    const result = generationOutputSchema.safeParse(output);
+    expect(result.success).toBe(false);
+  });
+
   it("rejeita quando hotels não é um array", () => {
     const output = { ...validOutput(), hotels: "nenhum" };
     const result = generationOutputSchema.safeParse(output);

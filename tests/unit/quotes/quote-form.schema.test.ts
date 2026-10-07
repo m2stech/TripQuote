@@ -102,7 +102,7 @@ describe("flightsSchema", () => {
     expect(flightsSchema.safeParse({ enabled: false }).success).toBe(true);
   });
 
-  it("exige trechos, bagagem e assento quando ativado", () => {
+  it("exige bagagem e assento quando ativado", () => {
     const result = flightsSchema.safeParse({ enabled: true });
     expect(result.success).toBe(false);
   });
@@ -111,6 +111,28 @@ describe("flightsSchema", () => {
     const result = flightsSchema.safeParse({
       enabled: true,
       legs: "20JUL - CNF (12:00) / SCL (16:00)",
+      baggage: "1 peça de 23 kg por pessoa",
+      seat: "Marcação de assento incluso",
+      services: "",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita quando uma linha de trecho excede o limite de caracteres", () => {
+    const result = flightsSchema.safeParse({
+      enabled: true,
+      legs: "A".repeat(201),
+      baggage: "1 peça de 23 kg por pessoa",
+      seat: "Marcação de assento incluso",
+      services: "",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("aceita quando ativado com trechos vazios (fonte pode ser a imagem anexada)", () => {
+    const result = flightsSchema.safeParse({
+      enabled: true,
+      legs: "",
       baggage: "1 peça de 23 kg por pessoa",
       seat: "Marcação de assento incluso",
       services: "",
@@ -200,6 +222,92 @@ describe("quoteFormSchema", () => {
           rooms: [{ id: "r1", text: "Standard | R$ 10.000,00" }],
         },
       ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("aceita lista de inclusões vazia (seção opcional)", () => {
+    const result = quoteFormSchema.safeParse({
+      ...quoteFormDefaultValues,
+      general: {
+        agency: "Primus Turismo",
+        consultant: "",
+        destination: "Santiago",
+        startDate: "2026-07-20",
+        endDate: "2026-07-27",
+        travelers: "",
+        currency: "Real brasileiro (R$)",
+        priceType: "Por família",
+        occupancy: "",
+      },
+      inclusions: [],
+      hotels: [
+        {
+          id: "1",
+          name: "Mandarin Oriental, Santiago",
+          mealPlan: "Café da manhã",
+          rooms: [{ id: "r1", text: "Standard | R$ 10.000,00" }],
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  const baseValidForm = {
+    ...quoteFormDefaultValues,
+    general: {
+      agency: "Primus Turismo",
+      consultant: "",
+      destination: "Santiago",
+      startDate: "2026-07-20",
+      endDate: "2026-07-27",
+      travelers: "",
+      currency: "Real brasileiro (R$)",
+      priceType: "Por família" as const,
+      occupancy: "",
+    },
+    inclusions: [{ id: "1", text: "Traslado IN/OUT" }],
+    hotels: [
+      {
+        id: "1",
+        name: "Mandarin Oriental, Santiago",
+        mealPlan: "Café da manhã" as const,
+        rooms: [{ id: "r1", text: "Standard | R$ 10.000,00" }],
+      },
+    ],
+  };
+
+  it("rejeita voos ativados sem texto digitado e sem imagem anexada", () => {
+    const result = quoteFormSchema.safeParse({
+      ...baseValidForm,
+      flights: {
+        enabled: true,
+        legs: "",
+        baggage: "1 peça de 23 kg por pessoa",
+        seat: "Marcação de assento incluso",
+        services: "",
+      },
+      flightImage: null,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("aceita voos ativados sem texto digitado quando há imagem anexada", () => {
+    const result = quoteFormSchema.safeParse({
+      ...baseValidForm,
+      flights: {
+        enabled: true,
+        legs: "",
+        baggage: "1 peça de 23 kg por pessoa",
+        seat: "Marcação de assento incluso",
+        services: "",
+      },
+      flightImage: {
+        fileName: "voo.jpg",
+        storagePath: "quote-1/flight_image/voo.jpg",
+        mimeType: "image/jpeg",
+        sizeBytes: 12345,
+      },
     });
     expect(result.success).toBe(true);
   });

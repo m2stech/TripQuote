@@ -460,11 +460,11 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
           {flightsEnabled ? (
             <TwoColumnGrid>
               <Field
-                label="Trechos e horários"
+                label="Trechos e horários (opcional com imagem anexada)"
                 htmlFor="flights.legs"
                 error={flightErrors?.legs?.message}
                 className="sm:col-span-2"
-                helperText="Um trecho por linha."
+                helperText="Um trecho por linha. Se anexar uma imagem de comprovante abaixo, a IA extrai os trechos automaticamente e este campo pode ficar em branco."
               >
                 <Textarea id="flights.legs" rows={4} {...register("flights.legs")} />
               </Field>
