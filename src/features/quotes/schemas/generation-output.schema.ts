@@ -74,6 +74,7 @@ export type FlightImageExtraction = z.infer<typeof flightImageExtractionSchema>;
 export const generationOutputSchema = z.object({
   coverTagline: z.string(),
   destinationDescription: z.string(),
+  destinationAttractions: z.array(z.string()),
   destinationPhoto: generatedPhotoSchema,
   hotels: z.array(generatedHotelSchema),
   flightImageExtraction: flightImageExtractionSchema.nullable(),

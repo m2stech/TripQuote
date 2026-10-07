@@ -98,6 +98,7 @@ describe("runQuoteGeneration", () => {
       output: {
         coverTagline: "Tagline",
         destinationDescription: "Descrição",
+        destinationAttractions: [],
         destinationPhoto: { status: "not_found", url: null, sourceUrl: null, caption: null },
         hotels: [],
         flightImageExtraction: null,
