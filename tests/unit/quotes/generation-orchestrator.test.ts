@@ -12,6 +12,12 @@ vi.mock("@/features/ai/orchestration/generate-quote-content", () => ({
 vi.mock("@/features/ai/vision/flight-image-input", () => ({
   buildFlightImagePart: vi.fn(),
 }));
+vi.mock("@/features/pptx/build-quote-presentation", () => ({
+  buildQuotePresentation: vi.fn(),
+}));
+vi.mock("@/features/pptx/storage", () => ({
+  uploadGeneratedPptx: vi.fn(),
+}));
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -19,6 +25,8 @@ import { getQuoteRepository } from "@/features/quotes/repository";
 import { getActivePromptVersion } from "@/features/prompts/repository/prompt-version-repository";
 import { generateQuoteContent } from "@/features/ai/orchestration/generate-quote-content";
 import { buildFlightImagePart } from "@/features/ai/vision/flight-image-input";
+import { buildQuotePresentation } from "@/features/pptx/build-quote-presentation";
+import { uploadGeneratedPptx } from "@/features/pptx/storage";
 import { AiGenerationError } from "@/features/ai/orchestration/errors";
 import { runQuoteGeneration } from "@/features/quotes/actions/generation-orchestrator";
 import { normalizeQuoteDraft } from "@/features/quotes/schemas/quote-form.schema";
@@ -57,6 +65,7 @@ describe("runQuoteGeneration", () => {
     getById: ReturnType<typeof vi.fn>;
     markProcessing: ReturnType<typeof vi.fn>;
     updateGenerationResult: ReturnType<typeof vi.fn>;
+    updatePptxStoragePath: ReturnType<typeof vi.fn>;
   };
   let adminFrom: ReturnType<typeof vi.fn>;
   let userFrom: ReturnType<typeof vi.fn>;
@@ -73,10 +82,19 @@ describe("runQuoteGeneration", () => {
         aiOutput: result.status === "done" ? result.aiOutput : undefined,
         errorMessage: result.status === "error" ? result.errorMessage : undefined,
       })),
+      updatePptxStoragePath: vi.fn().mockImplementation(async (id, path) => ({
+        ...quote,
+        status: "done",
+        pptxStoragePath: path,
+      })),
     };
     vi.mocked(getQuoteRepository).mockResolvedValue(repository as never);
     vi.mocked(getActivePromptVersion).mockResolvedValue(promptVersion);
     vi.mocked(buildFlightImagePart).mockResolvedValue(null);
+    vi.mocked(buildQuotePresentation).mockReset();
+    vi.mocked(uploadGeneratedPptx).mockReset();
+    vi.mocked(buildQuotePresentation).mockResolvedValue(Buffer.from("fake-pptx"));
+    vi.mocked(uploadGeneratedPptx).mockResolvedValue(`${quoteId}/orcamento.pptx`);
 
     const { update, insert } = mockGenerationsTable({ data: { id: "generation-1" }, error: null });
     generationsUpdate = update;
@@ -121,7 +139,35 @@ describe("runQuoteGeneration", () => {
       quoteId,
       expect.objectContaining({ status: "done" }),
     );
+    expect(buildQuotePresentation).toHaveBeenCalled();
+    expect(uploadGeneratedPptx).toHaveBeenCalledWith(expect.anything(), quoteId, expect.any(Buffer));
+    expect(repository.updatePptxStoragePath).toHaveBeenCalledWith(quoteId, `${quoteId}/orcamento.pptx`);
     expect(result.status).toBe("done");
+    expect(result.pptxStoragePath).toBe(`${quoteId}/orcamento.pptx`);
+  });
+
+  it("falha na montagem do PPTX não reverte o status 'done' já obtido", async () => {
+    vi.mocked(generateQuoteContent).mockResolvedValue({
+      output: {
+        coverTagline: "Tagline",
+        destinationDescription: "Descrição",
+        destinationAttractions: [],
+        destinationPhoto: { status: "not_found", url: null, sourceUrl: null, caption: null },
+        hotels: [],
+        flightImageExtraction: null,
+      },
+      model: "gpt-4.1",
+      promptTokens: 100,
+      completionTokens: 50,
+    });
+    vi.mocked(buildQuotePresentation).mockRejectedValue(new Error("falha ao buscar imagem externa"));
+
+    const result = await runQuoteGeneration(quoteId, userId);
+
+    expect(result.status).toBe("done");
+    expect(result.pptxStoragePath).toBeUndefined();
+    expect(repository.updatePptxStoragePath).not.toHaveBeenCalled();
+    expect(auditInsert).toHaveBeenCalledWith(expect.objectContaining({ action: "quote.pptx.failed" }));
   });
 
   it("fluxo de erro: grava status error com mensagem técnica no banco e genérica ao usuário", async () => {

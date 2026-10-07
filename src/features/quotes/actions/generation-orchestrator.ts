@@ -1,14 +1,20 @@
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import { AiGenerationError } from "@/features/ai/orchestration/errors";
 import { generateQuoteContent } from "@/features/ai/orchestration/generate-quote-content";
 import { buildFlightImagePart } from "@/features/ai/vision/flight-image-input";
 import { estimateCostUsd } from "@/features/ai/pricing/estimate-cost";
+import { buildQuotePresentation } from "@/features/pptx/build-quote-presentation";
+import { uploadGeneratedPptx } from "@/features/pptx/storage";
 import { getActivePromptVersion } from "@/features/prompts/repository/prompt-version-repository";
 import { getQuoteRepository } from "@/features/quotes/repository";
+import type { QuoteRepository } from "@/features/quotes/repository/types";
 import type { QuoteRecord } from "@/features/quotes/schemas/quote.schema";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/supabase/types";
 
 const GENERIC_ERROR_MESSAGE = "Não foi possível gerar o orçamento. Tente novamente.";
 
@@ -94,7 +100,12 @@ export async function runQuoteGeneration(quoteId: string, userId: string): Promi
       metadata: { generationId, model: result.model, promptVersionId: promptVersion.id },
     });
 
-    return repository.updateGenerationResult(quoteId, { status: "done", aiOutput: result.output });
+    const doneQuote = await repository.updateGenerationResult(quoteId, {
+      status: "done",
+      aiOutput: result.output,
+    });
+
+    return await buildAndStorePptx(doneQuote, supabase, adminSupabase, repository, userId, quoteId);
   } catch (error) {
     const technicalReason =
       error instanceof AiGenerationError || error instanceof Error ? error.message : "Erro desconhecido.";
@@ -116,5 +127,41 @@ export async function runQuoteGeneration(quoteId: string, userId: string): Promi
       status: "error",
       errorMessage: GENERIC_ERROR_MESSAGE,
     });
+  }
+}
+
+/**
+ * Monta o .pptx determinístico e salva no Storage, isolado em seu próprio
+ * `try/catch`: a montagem é uma etapa subsequente e independente da geração
+ * via IA (já concluída com sucesso em `doneQuote`) — uma falha aqui (ex.:
+ * timeout ao buscar uma foto externa) não deve reverter o `status: "done"`
+ * do conteúdo já gerado. Em caso de falha, registra em `audit_log` e
+ * retorna o quote com `pptxStoragePath` ainda nulo (usuário pode tentar
+ * gerar novamente).
+ */
+async function buildAndStorePptx(
+  doneQuote: QuoteRecord,
+  supabase: SupabaseClient<Database>,
+  adminSupabase: SupabaseClient<Database>,
+  repository: QuoteRepository,
+  userId: string,
+  quoteId: string,
+): Promise<QuoteRecord> {
+  try {
+    const pptxBuffer = await buildQuotePresentation(supabase, doneQuote);
+    const storagePath = await uploadGeneratedPptx(supabase, quoteId, pptxBuffer);
+    return await repository.updatePptxStoragePath(quoteId, storagePath);
+  } catch (pptxError) {
+    const reason = pptxError instanceof Error ? pptxError.message : "Erro desconhecido ao montar o arquivo.";
+
+    await adminSupabase.from("audit_log").insert({
+      actor_id: userId,
+      action: "quote.pptx.failed",
+      entity_type: "quote",
+      entity_id: quoteId,
+      metadata: { reason },
+    });
+
+    return doneQuote;
   }
 }
