@@ -147,6 +147,15 @@ export const FIXED_INSTITUTIONAL_FOOTER =
 
 // Formulário completo -----------------------------------------------------
 
+export const uploadedAttachmentSchema = z.object({
+  fileName: z.string(),
+  storagePath: z.string(),
+  mimeType: z.string(),
+  sizeBytes: z.number(),
+});
+
+export type UploadedAttachment = z.infer<typeof uploadedAttachmentSchema>;
+
 export const quoteFormSchema = z.object({
   general: generalDataSchema,
   cover: coverSchema,
@@ -154,23 +163,66 @@ export const quoteFormSchema = z.object({
   hotels: hotelsSchema,
   flights: flightsSchema,
   itinerary: itinerarySchema,
-  agencyLogo: z
-    .object({
-      fileName: z.string(),
-      dataUrl: z.string(),
-    })
-    .nullable()
-    .default(null),
-  flightImage: z
-    .object({
-      fileName: z.string(),
-      dataUrl: z.string(),
-    })
-    .nullable()
-    .default(null),
+  agencyLogo: uploadedAttachmentSchema.nullable().default(null),
+  flightImage: uploadedAttachmentSchema.nullable().default(null),
 });
 
 export type QuoteFormValues = z.infer<typeof quoteFormSchema>;
+
+/**
+ * Formulário em edição (rascunho), antes da validação completa: os campos
+ * obrigatórios em `quoteFormSchema` (agência, inclusões, hotéis etc.) podem
+ * estar vazios enquanto o usuário ainda preenche — por isso usa `z.string()`
+ * solto em vez de `requiredText(...)`, e listas sem `.min(1)`. Usado pelo
+ * autosave no banco (M5); a validação completa só é exigida ao gerar o
+ * orçamento (seção "09 Gerar", client-side, com `quoteFormSchema`).
+ */
+const generalDataDraftSchema = z.object({
+  agency: z.string().trim().optional().default(""),
+  consultant: z.string().trim().optional().default(""),
+  destination: z.string().trim().optional().default(""),
+  startDate: z.string().trim().optional().default(""),
+  endDate: z.string().trim().optional().default(""),
+  travelers: z.string().trim().optional().default(""),
+  currency: z.string().trim().optional().default(""),
+  priceType: z.enum(priceTypeOptions).optional().default(priceTypeOptions[0]),
+  occupancy: z.string().trim().optional().default(""),
+});
+
+export const quoteDraftSchema = z.object({
+  general: generalDataDraftSchema.optional(),
+  cover: coverSchema.optional(),
+  inclusions: z.array(inclusionSchema).optional(),
+  hotels: z.array(hotelSchema).optional(),
+  flights: flightsSchema.optional(),
+  itinerary: itinerarySchema.optional(),
+  agencyLogo: uploadedAttachmentSchema.nullable().optional(),
+  flightImage: uploadedAttachmentSchema.nullable().optional(),
+});
+
+export type QuoteDraftValues = z.infer<typeof quoteDraftSchema>;
+
+/** Tipo de entrada do rascunho — o que o formulário produz antes do `parse`. */
+export type QuoteDraftInput = z.input<typeof quoteDraftSchema>;
+
+/**
+ * Preenche os campos ausentes de um rascunho parcial com os valores padrão,
+ * produzindo um `QuoteFormValues` sempre completo para uso pelas telas (ex.:
+ * `toQuoteSummary`). Não substitui a validação da seção "09 Gerar": um
+ * rascunho incompleto normalizado ainda terá campos vazios.
+ */
+export function normalizeQuoteDraft(draft: QuoteDraftValues): QuoteFormValues {
+  return {
+    general: { ...quoteFormDefaultValues.general, ...draft.general },
+    cover: { ...quoteFormDefaultValues.cover, ...draft.cover },
+    inclusions: draft.inclusions ?? quoteFormDefaultValues.inclusions,
+    hotels: draft.hotels ?? quoteFormDefaultValues.hotels,
+    flights: draft.flights ?? quoteFormDefaultValues.flights,
+    itinerary: draft.itinerary ?? quoteFormDefaultValues.itinerary,
+    agencyLogo: draft.agencyLogo ?? null,
+    flightImage: draft.flightImage ?? null,
+  };
+}
 
 export const quoteFormDefaultValues: QuoteFormValues = {
   general: {

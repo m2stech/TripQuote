@@ -126,14 +126,15 @@ Baseado em [CLAUDE.md](../CLAUDE.md) e [PRD.md](PRD.md). Ordem: **setup → inte
 **Branch:** `feat/m5-persistence-uploads`
 **Objetivo:** trocar o mock por dados reais.
 
-- [ ] Repository Supabase substituindo o mock (mesma interface)
-- [ ] Server Actions: criar, atualizar, excluir e duplicar orçamento, validadas com Zod
-- [ ] Histórico, busca e filtros no servidor
-- [ ] Buckets privados no Storage (logos, anexos de voo) com políticas por dono
-- [ ] Upload com validação de tipo e tamanho; normalização com Sharp preservando proporção
-- [ ] Remover rascunho em `localStorage`; autosave de rascunho no banco
-- [ ] Testes Vitest da lógica de repositório e das actions
-- [ ] Revisão com `supabase-rls-reviewer`
+- [x] Repository Supabase substituindo o mock (mesma interface)
+- [x] Server Actions: criar, atualizar, excluir e duplicar orçamento, validadas com Zod
+- [x] Histórico, busca e filtros no servidor
+- [x] Buckets privados no Storage (logos, anexos de voo) com políticas por dono
+- [x] Upload com validação de tipo e tamanho; normalização com Sharp preservando proporção
+- [x] Remover rascunho em `localStorage`; autosave de rascunho no banco
+- [x] Testes Vitest da lógica de repositório e das actions
+- [x] Revisão com `supabase-rls-reviewer`
+- [x] Merge em `main`
 
 **Aceite:** criar, editar, duplicar e listar orçamentos reais, com anexos persistidos e isolados por usuário.
 **Commit final:** `feat(quotes): persist quotes and attachments with Supabase`

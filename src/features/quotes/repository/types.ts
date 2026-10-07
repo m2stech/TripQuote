@@ -1,4 +1,4 @@
-import type { QuoteFormValues } from "@/features/quotes/schemas/quote-form.schema";
+import type { QuoteDraftValues } from "@/features/quotes/schemas/quote-form.schema";
 import type { QuoteRecord, QuoteStatus, QuoteSummary } from "@/features/quotes/schemas/quote.schema";
 
 /**
@@ -19,16 +19,32 @@ export interface QuoteListResult {
 }
 
 /**
- * Camada de acesso a orçamentos. A implementação mock (`InMemoryQuoteRepository`)
- * é usada até o M5; a partir dele é substituída por uma implementação baseada
- * em Supabase, mantendo esta mesma interface para que as telas não precisem
- * ser reescritas (ver docs/PLAN.md, M5).
+ * Camada de acesso a orçamentos. `InMemoryQuoteRepository` foi a implementação
+ * mock usada até o M5 (mantida para testes); `SupabaseQuoteRepository` é a
+ * implementação real, usada pelas Server Actions (ver `features/quotes/actions`).
  */
 export interface QuoteRepository {
   list(filters?: QuoteListFilters): Promise<QuoteListResult>;
   getById(id: string): Promise<QuoteRecord | null>;
-  create(form: QuoteFormValues, createdBy: string): Promise<QuoteRecord>;
-  update(id: string, form: QuoteFormValues): Promise<QuoteRecord>;
+  create(form: QuoteDraftValues, createdBy: string): Promise<QuoteRecord>;
+  /**
+   * Cria (com o `id` e o conteúdo informados) ou atualiza um rascunho,
+   * conforme ele já exista ou não — idempotente por `id` (chamadas
+   * concorrentes com o mesmo id nunca duplicam, graças ao conflito de PK no
+   * Postgres). Usado pelo autosave e pelo upload de anexo: a linha só passa a
+   * existir no banco quando há algo de fato para salvar (ver
+   * `useQuoteAutosave`/`uploadQuoteAttachmentAction`), nunca só por visitar
+   * a página de novo orçamento.
+   */
+  upsertDraft(id: string, form: QuoteDraftValues, createdBy: string): Promise<QuoteRecord>;
+  /**
+   * Garante que existe uma linha com esse `id`, sem alterar o conteúdo se ela
+   * já existir — usado pelo upload de anexo, que só precisa satisfazer a FK
+   * de `quote_attachments` e nunca deve sobrescrever um rascunho já salvo
+   * (ex.: logo enviada depois de outros campos já preenchidos).
+   */
+  ensureDraftExists(id: string, createdBy: string): Promise<QuoteRecord>;
+  update(id: string, form: QuoteDraftValues): Promise<QuoteRecord>;
   duplicate(id: string): Promise<QuoteRecord>;
   remove(id: string): Promise<void>;
   /**

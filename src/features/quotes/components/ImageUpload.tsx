@@ -5,17 +5,21 @@ import { useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-
-export interface UploadedImage {
-  fileName: string;
-  dataUrl: string;
-}
+import {
+  removeQuoteAttachmentAction,
+  uploadQuoteAttachmentAction,
+} from "@/features/quotes/actions/attachment-actions";
+import type { UploadedAttachment } from "@/features/quotes/schemas/quote-form.schema";
 
 interface ImageUploadProps {
   label: string;
   helperText?: string;
-  value: UploadedImage | null;
-  onChange: (value: UploadedImage | null) => void;
+  value: UploadedAttachment | null;
+  previewUrl?: string | null;
+  onChange: (value: UploadedAttachment | null, previewUrl: string | null) => void;
+  /** Orçamento (rascunho) ao qual o anexo pertence; define o path no Storage. */
+  quoteId: string | null;
+  kind: "agency_logo" | "flight_image";
   disabled?: boolean;
   className?: string;
 }
@@ -25,25 +29,36 @@ const MAX_SIZE_BYTES = 5 * 1024 * 1024;
 
 /**
  * Upload de imagem com preview, usado para a logo da agência e para a
- * imagem de voo. Converte o arquivo para dataURL no client; o envio real ao
- * backend/storage será implementado no M5. Validação de tipo e tamanho aqui
- * é apenas UX — a validação forte (Sharp) acontece no servidor.
+ * imagem de voo. O arquivo é enviado via Server Action, normalizado com
+ * Sharp e salvo no Storage (buckets privados); apenas uma URL assinada
+ * temporária chega ao client para o preview. Validação de tipo e tamanho
+ * aqui é só UX — a validação forte roda no servidor (ver `lib/validation/image-upload`).
  */
 export function ImageUpload({
   label,
   helperText,
   value,
+  previewUrl,
   onChange,
+  quoteId,
+  kind,
   disabled,
   className,
 }: ImageUploadProps) {
   const inputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
-  function handleFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    if (!quoteId) {
+      setError("Aguarde o rascunho terminar de ser criado e tente novamente.");
+      event.target.value = "";
+      return;
+    }
 
     if (!ACCEPTED_TYPES.includes(file.type)) {
       setError("Formato inválido. Envie uma imagem PNG, JPG ou WEBP.");
@@ -58,21 +73,26 @@ export function ImageUpload({
     }
 
     setError(null);
+    setIsUploading(true);
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        onChange({ fileName: file.name, dataUrl: reader.result });
-      }
-    };
-    reader.onerror = () => {
-      setError("Não foi possível ler o arquivo. Tente novamente.");
-    };
-    reader.readAsDataURL(file);
+    try {
+      const formData = new FormData();
+      formData.set("file", file);
+      const result = await uploadQuoteAttachmentAction(quoteId, kind, formData);
+      onChange(result.attachment, result.previewUrl);
+    } catch {
+      setError("Não foi possível enviar o arquivo. Tente novamente.");
+    } finally {
+      setIsUploading(false);
+      event.target.value = "";
+    }
   }
 
-  function handleRemove() {
-    onChange(null);
+  async function handleRemove() {
+    if (value) {
+      await removeQuoteAttachmentAction(kind, value.storagePath);
+    }
+    onChange(null, null);
     setError(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
@@ -84,12 +104,14 @@ export function ImageUpload({
 
       {value ? (
         <div className="border-snow-input-border flex items-center gap-3 rounded-[9px] border p-2">
-          {/* eslint-disable-next-line @next/next/no-img-element -- preview local de dataURL, sem otimização necessária */}
-          <img
-            src={value.dataUrl}
-            alt={`Pré-visualização de ${value.fileName}`}
-            className="size-12 shrink-0 rounded-[6px] object-contain"
-          />
+          {previewUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- preview via URL assinada do Storage, sem otimização necessária
+            <img
+              src={previewUrl}
+              alt={`Pré-visualização de ${value.fileName}`}
+              className="size-12 shrink-0 rounded-[6px] object-contain"
+            />
+          ) : null}
           <span className="text-foreground min-w-0 flex-1 truncate text-sm">{value.fileName}</span>
           <Button
             type="button"
@@ -108,10 +130,12 @@ export function ImageUpload({
           type="file"
           accept={ACCEPTED_TYPES.join(",")}
           onChange={handleFileSelect}
-          disabled={disabled}
+          disabled={disabled || isUploading || !quoteId}
           className="rounded-snow-input border-input file:text-foreground text-muted-foreground w-full border bg-white px-2.5 py-1.5 text-sm file:mr-2 file:rounded-[6px] file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:cursor-not-allowed disabled:opacity-50"
         />
       )}
+
+      {isUploading ? <p className="text-muted-foreground text-xs">Enviando…</p> : null}
 
       {error ? (
         <p className="text-destructive text-xs" role="alert">

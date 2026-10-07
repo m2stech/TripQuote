@@ -1,7 +1,8 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useFieldArray, useForm } from "react-hook-form";
 import type {
   Control,
@@ -14,6 +15,7 @@ import { toast } from "sonner";
 import type { z } from "zod";
 
 import { InfoBox } from "@/components/info-box";
+import { LoadingState } from "@/components/loading-state";
 import { SectionCard } from "@/components/section-card";
 import { TwoColumnGrid } from "@/components/two-column-grid";
 import { Button } from "@/components/ui/button";
@@ -28,9 +30,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { getQuoteAction, updateQuoteAction } from "@/features/quotes/actions/quote-actions";
+import { getAttachmentPreviewUrlAction } from "@/features/quotes/actions/attachment-actions";
 import { FormFieldError } from "@/features/quotes/components/FormFieldError";
 import { ImageUpload } from "@/features/quotes/components/ImageUpload";
-import { useQuoteDraft, readQuoteDraft } from "@/features/quotes/hooks/useQuoteDraft";
+import { useQuoteAutosave } from "@/features/quotes/hooks/useQuoteAutosave";
 import {
   baggageOptions,
   FIXED_INSTITUTIONAL_FOOTER,
@@ -41,6 +45,7 @@ import {
   quoteFormDefaultValues,
   quoteFormSchema,
   seatOptions,
+  type QuoteDraftInput,
 } from "@/features/quotes/schemas/quote-form.schema";
 
 function createId() {
@@ -57,13 +62,40 @@ function createId() {
  */
 type QuoteFormInput = z.input<typeof quoteFormSchema>;
 
+interface QuoteFormProps {
+  /**
+   * Id inicial de um orçamento a carregar, vindo de `?id=<id>` (rascunho em
+   * andamento, escrito na URL por este componente) ou `?duplicar=<id>`
+   * (editar um orçamento existente). Em ambos os casos o formulário carrega
+   * esse registro e continua salvando nele.
+   */
+  quoteId?: string;
+}
+
 /**
- * Formulário completo de criação de orçamento (M2). Coleta e valida os
- * dados no client; a geração de fato (chamada à IA e montagem do .pptx)
- * acontece no backend em marcos futuros (M6/M7). Nenhum texto de prompt ou
- * lógica de IA é exposto aqui.
+ * Formulário completo de criação de orçamento. Coleta e valida os dados no
+ * client; a geração de fato (chamada à IA e montagem do .pptx) acontece no
+ * backend em marcos futuros (M6/M7). Nenhum texto de prompt ou lógica de IA
+ * é exposto aqui.
+ *
+ * O rascunho é persistido no banco (M5) com autosave (`useQuoteAutosave`),
+ * substituindo o rascunho em `localStorage` do M2 — mas a linha em `quotes`
+ * só é criada quando há algo de fato para salvar (primeiro autosave real ou
+ * primeiro upload de anexo), nunca só por visitar a página: o `quoteId` é
+ * gerado no client (`crypto.randomUUID()`) sem bater no banco, e só é
+ * gravado na URL (`?id=<id>`) depois que o primeiro save é confirmado.
  */
-export function QuoteForm() {
+export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
+  const router = useRouter();
+  // Sem `initialQuoteId` (criação nova), o id é gerado localmente — nenhuma
+  // chamada ao banco acontece até o usuário de fato salvar algo.
+  const [newDraftId] = useState(() => crypto.randomUUID());
+  const [quoteId, setQuoteId] = useState<string | null>(initialQuoteId ?? newDraftId);
+  const [isDraftPersisted, setIsDraftPersisted] = useState(false);
+  const [isLoadingDraft, setIsLoadingDraft] = useState(Boolean(initialQuoteId));
+  const [agencyLogoPreview, setAgencyLogoPreview] = useState<string | null>(null);
+  const [flightImagePreview, setFlightImagePreview] = useState<string | null>(null);
+
   const form = useForm<QuoteFormInput>({
     resolver: zodResolver(quoteFormSchema),
     defaultValues: quoteFormDefaultValues,
@@ -80,15 +112,60 @@ export function QuoteForm() {
     formState: { errors, isSubmitting },
   } = form;
 
-  // O rascunho salvo só é aplicado depois da montagem no client, para que a
-  // primeira renderização seja idêntica à do servidor (evita erro de
-  // hidratação, já que `localStorage` não existe no servidor).
+  // Carrega um orçamento já existente: `?id=<id>` (rascunho salvo em uma
+  // visita anterior) ou `?duplicar=<id>` (editar/duplicar). Sem
+  // `initialQuoteId`, não há nada para carregar — o formulário começa vazio.
   useEffect(() => {
-    const savedDraft = readQuoteDraft();
-    if (savedDraft) reset(savedDraft);
-  }, [reset]);
+    if (!initialQuoteId) return;
 
-  const { clearDraft } = useQuoteDraft(watch);
+    let isActive = true;
+
+    setIsLoadingDraft(true);
+    getQuoteAction(initialQuoteId)
+      .then(async (record) => {
+        if (!isActive) return;
+        if (!record) {
+          toast.error("Orçamento não encontrado. Iniciando um novo rascunho.");
+          return;
+        }
+        setQuoteId(record.id);
+        setIsDraftPersisted(true);
+        reset(record.form);
+
+        const [agencyPreview, flightPreview] = await Promise.all([
+          record.form.agencyLogo
+            ? getAttachmentPreviewUrlAction("agency_logo", record.form.agencyLogo.storagePath)
+            : Promise.resolve(null),
+          record.form.flightImage
+            ? getAttachmentPreviewUrlAction("flight_image", record.form.flightImage.storagePath)
+            : Promise.resolve(null),
+        ]);
+        if (!isActive) return;
+        setAgencyLogoPreview(agencyPreview);
+        setFlightImagePreview(flightPreview);
+      })
+      .catch(() => {
+        if (isActive) toast.error("Não foi possível carregar o orçamento.");
+      })
+      .finally(() => {
+        if (isActive) setIsLoadingDraft(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [initialQuoteId, reset]);
+
+  // Grava o id do rascunho na URL assim que o primeiro save (autosave ou
+  // upload) é confirmado — a partir daí um F5 na página reaproveita o mesmo
+  // registro em vez de começar um rascunho novo.
+  function handleDraftPersisted() {
+    if (isDraftPersisted || !quoteId) return;
+    setIsDraftPersisted(true);
+    router.replace(`/orcamentos/novo?id=${quoteId}`, { scroll: false });
+  }
+
+  useQuoteAutosave(quoteId, watch, handleDraftPersisted);
 
   const inclusionsArray = useFieldArray({ control, name: "inclusions" });
   const hotelsArray = useFieldArray({ control, name: "hotels" });
@@ -122,8 +199,15 @@ export function QuoteForm() {
     days: { label: string; description: string }[];
   }>;
 
-  function onSubmit() {
-    toast.success("Formulário válido. Pronto para gerar.");
+  async function onSubmit(values: QuoteFormInput) {
+    if (!quoteId) return;
+    try {
+      await updateQuoteAction(quoteId, values as QuoteDraftInput);
+      handleDraftPersisted();
+      router.push(`/orcamentos/${quoteId}/gerar`);
+    } catch {
+      toast.error("Não foi possível salvar o orçamento. Tente novamente.");
+    }
   }
 
   function onInvalid() {
@@ -153,6 +237,10 @@ export function QuoteForm() {
     } else {
       setValue("itinerary", { enabled: false });
     }
+  }
+
+  if (isLoadingDraft) {
+    return <LoadingState label="Preparando o rascunho do orçamento…" />;
   }
 
   return (
@@ -252,7 +340,14 @@ export function QuoteForm() {
             label="Logo da agência"
             helperText="PNG, JPG ou WEBP, até 5 MB."
             value={agencyLogo}
-            onChange={(value) => setValue("agencyLogo", value)}
+            previewUrl={agencyLogoPreview}
+            onChange={(value, preview) => {
+              setValue("agencyLogo", value);
+              setAgencyLogoPreview(preview);
+              if (value) handleDraftPersisted();
+            }}
+            quoteId={quoteId}
+            kind="agency_logo"
             className="sm:col-span-2"
           />
         </TwoColumnGrid>
@@ -435,7 +530,14 @@ export function QuoteForm() {
                 label="Imagem de voo"
                 helperText="PNG, JPG ou WEBP, até 5 MB."
                 value={flightImage}
-                onChange={(value) => setValue("flightImage", value)}
+                previewUrl={flightImagePreview}
+                onChange={(value, preview) => {
+                  setValue("flightImage", value);
+                  setFlightImagePreview(preview);
+                  if (value) handleDraftPersisted();
+                }}
+                quoteId={quoteId}
+                kind="flight_image"
                 className="sm:col-span-2"
               />
             </TwoColumnGrid>
@@ -562,18 +664,13 @@ export function QuoteForm() {
           </ul>
 
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" variant="snow-generate" size="generate" disabled={isSubmitting}>
-              Gerar orçamento
-            </Button>
             <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                clearDraft();
-                toast.info("Rascunho local removido.");
-              }}
+              type="submit"
+              variant="snow-generate"
+              size="generate"
+              disabled={isSubmitting || !quoteId}
             >
-              Limpar rascunho salvo
+              Gerar orçamento
             </Button>
           </div>
         </div>
