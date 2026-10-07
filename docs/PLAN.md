@@ -134,6 +134,7 @@ Baseado em [CLAUDE.md](../CLAUDE.md) e [PRD.md](PRD.md). Ordem: **setup → inte
 - [x] Remover rascunho em `localStorage`; autosave de rascunho no banco
 - [x] Testes Vitest da lógica de repositório e das actions
 - [x] Revisão com `supabase-rls-reviewer`
+- [x] Merge em `main`
 
 **Aceite:** criar, editar, duplicar e listar orçamentos reais, com anexos persistidos e isolados por usuário.
 **Commit final:** `feat(quotes): persist quotes and attachments with Supabase`
