@@ -39,18 +39,22 @@ export const hotelImageStatusSchema = z.enum([
 
 export type HotelImageStatus = z.infer<typeof hotelImageStatusSchema>;
 
+export const generatedPhotoSchema = z.object({
+  status: hotelImageStatusSchema,
+  url: z.string().nullable(),
+  sourceUrl: z.string().nullable(),
+  caption: z.string().nullable(),
+});
+
+export type GeneratedPhoto = z.infer<typeof generatedPhotoSchema>;
+
 export const generatedHotelSchema = z.object({
   name: z.string(),
   shortDescription: z.string(),
   location: z.string(),
   category: z.string(),
   tripadvisorRating: z.string(),
-  photo: z.object({
-    status: hotelImageStatusSchema,
-    url: z.string().nullable(),
-    sourceUrl: z.string().nullable(),
-    caption: z.string().nullable(),
-  }),
+  photo: generatedPhotoSchema,
 });
 
 export type GeneratedHotel = z.infer<typeof generatedHotelSchema>;
@@ -70,6 +74,7 @@ export type FlightImageExtraction = z.infer<typeof flightImageExtractionSchema>;
 export const generationOutputSchema = z.object({
   coverTagline: z.string(),
   destinationDescription: z.string(),
+  destinationPhoto: generatedPhotoSchema,
   hotels: z.array(generatedHotelSchema),
   flightImageExtraction: flightImageExtractionSchema.nullable(),
 });

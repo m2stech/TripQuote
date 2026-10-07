@@ -49,6 +49,7 @@ function validOutputParsed() {
   return {
     coverTagline: "Uma viagem inesquecível",
     destinationDescription: "Santiago aos pés dos Andes.",
+    destinationPhoto: { status: "not_found", url: null, sourceUrl: null, caption: null },
     hotels: [
       {
         name: "Mandarin Oriental, Santiago",

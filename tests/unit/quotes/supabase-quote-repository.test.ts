@@ -343,6 +343,7 @@ describe("SupabaseQuoteRepository", () => {
     const aiOutput = {
       coverTagline: "Tagline gerada",
       destinationDescription: "Descrição gerada",
+      destinationPhoto: { status: "not_found" as const, url: null, sourceUrl: null, caption: null },
       hotels: [],
       flightImageExtraction: null,
     };

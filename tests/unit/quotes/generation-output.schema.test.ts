@@ -6,6 +6,12 @@ function validOutput(): GenerationOutput {
   return {
     coverTagline: "Uma viagem inesquecível ao Chile",
     destinationDescription: "Santiago combina modernidade e tradição aos pés dos Andes.",
+    destinationPhoto: {
+      status: "real_photo_found",
+      url: "https://example.com/destino.jpg",
+      sourceUrl: "https://example.com/destino",
+      caption: null,
+    },
     hotels: [
       {
         name: "Mandarin Oriental, Santiago",
@@ -60,6 +66,25 @@ describe("generationOutputSchema", () => {
     delete output.coverTagline;
     const result = generationOutputSchema.safeParse(output);
     expect(result.success).toBe(false);
+  });
+
+  it("rejeita quando falta destinationPhoto", () => {
+    const output = validOutput() as Record<string, unknown>;
+    delete output.destinationPhoto;
+    const result = generationOutputSchema.safeParse(output);
+    expect(result.success).toBe(false);
+  });
+
+  it("aceita destinationPhoto com status illustration_required e sem url", () => {
+    const output = validOutput();
+    output.destinationPhoto = {
+      status: "illustration_required",
+      url: null,
+      sourceUrl: null,
+      caption: "Imagem ilustrativa",
+    };
+    const result = generationOutputSchema.safeParse(output);
+    expect(result.success).toBe(true);
   });
 
   it("rejeita status de foto fora do enum", () => {
