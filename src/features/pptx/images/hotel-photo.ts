@@ -1,36 +1,47 @@
 import "server-only";
 
 import { findAlternativePhoto } from "@/features/ai/orchestration/find-alternative-photo";
-import { fetchAndSizeImage, type BoxInches } from "@/features/pptx/images/resolve-image-sizing";
+import { fetchGooglePlacesPhoto } from "@/features/pptx/images/google-places-photo";
+import { fetchAndSizeImage, sizeImage, type BoxInches } from "@/features/pptx/images/resolve-image-sizing";
 import type { ResolvedImage } from "@/features/pptx/types";
 import type { GeneratedPhoto } from "@/features/quotes/schemas/generation-output.schema";
 
 /**
- * Resolve a foto de um hotel a partir do que a IA retornou. Só tenta o
- * fetch quando `status === "real_photo_found"` e há `url`; qualquer outro
- * caso (sem dados, "illustration_required", "not_found") cai direto em
- * placeholder — desenhado pelo próprio slide como forma nativa (nunca uma
- * imagem rasterizada substituta). Se o fetch da URL original falhar (ex.:
- * URL morta/bloqueada, comum com `web_search`), tenta 1 vez uma foto
- * alternativa via `findAlternativePhoto` antes de desistir.
+ * Resolve a foto de um hotel, em ordem de confiabilidade:
+ * 1. Google Places API (`fetchGooglePlacesPhoto`) — fonte paga mas
+ *    determinística e verificada (busca o estabelecimento real pelo nome e
+ *    localização). Requer `GOOGLE_PLACES_API_KEY`; sem ela, pula direto
+ *    para o próximo degrau.
+ * 2. Fallback: a URL que a IA retornou em `aiOutput.hotels[i].photo` (pode
+ *    funcionar, sem custo extra tentar).
+ * 3. Último recurso: pedir à IA uma foto alternativa via
+ *    `findAlternativePhoto` (1 retry) quando a URL original falha.
+ * 4. Placeholder — desenhado pelo próprio slide como forma nativa (nunca
+ *    uma imagem rasterizada substituta).
  */
 export async function resolveHotelPhoto(
-  photo: GeneratedPhoto | null,
+  hotelName: string,
+  location: string | null,
+  aiPhoto: GeneratedPhoto | null,
   box: BoxInches,
-  subject: string,
 ): Promise<ResolvedImage> {
-  if (!photo || photo.status !== "real_photo_found" || !photo.url) {
-    return { kind: "placeholder" };
+  const query = location ? `${hotelName}, ${location}` : hotelName;
+  const places = await fetchGooglePlacesPhoto(query);
+  if (places) {
+    const resolved = await sizeImage(places, box);
+    if (resolved) return resolved;
   }
 
-  const resolved = await fetchAndSizeImage(photo.url, box);
-  if (resolved) return resolved;
+  if (aiPhoto && aiPhoto.status === "real_photo_found" && aiPhoto.url) {
+    const resolved = await fetchAndSizeImage(aiPhoto.url, box);
+    if (resolved) return resolved;
 
-  const alternative = await findAlternativePhoto({ subject, failedUrl: photo.url });
-  if (alternative.photo.status !== "real_photo_found" || !alternative.photo.url) {
-    return { kind: "placeholder" };
+    const alternative = await findAlternativePhoto({ subject: `o hotel ${hotelName}`, failedUrl: aiPhoto.url });
+    if (alternative.photo.status === "real_photo_found" && alternative.photo.url) {
+      const retryResolved = await fetchAndSizeImage(alternative.photo.url, box);
+      if (retryResolved) return retryResolved;
+    }
   }
 
-  const retryResolved = await fetchAndSizeImage(alternative.photo.url, box);
-  return retryResolved ?? { kind: "placeholder" };
+  return { kind: "placeholder" };
 }

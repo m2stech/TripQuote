@@ -50,7 +50,10 @@ export async function buildQuotePresentation(
   const [agencyLogoCover, agencyLogoInner, destinationPhoto, institutionalLogo] = await Promise.all([
     resolveAgencyLogo(supabase, form.agencyLogo, COVER_LOGO_BOX),
     resolveAgencyLogo(supabase, form.agencyLogo, INNER_LOGO_BOX),
-    resolveDestinationPhoto(aiOutput.destinationPhoto, { w: SLIDE_WIDTH_IN, h: SLIDE_HEIGHT_IN }, form.general.destination),
+    resolveDestinationPhoto(form.general.destination, aiOutput.destinationPhoto, {
+      w: SLIDE_WIDTH_IN,
+      h: SLIDE_HEIGHT_IN,
+    }),
     resolveInstitutionalLogo(FOOTER_LOGO_BOX),
   ]);
 
@@ -75,7 +78,12 @@ export async function buildQuotePresentation(
 
   const matchedHotels = matchHotelsByName(form.hotels, aiOutput.hotels);
   for (const [index, matched] of matchedHotels.entries()) {
-    const photo = await resolveHotelPhoto(matched.ai?.photo ?? null, HOTEL_PHOTO_BOX, matched.form.name);
+    const photo = await resolveHotelPhoto(
+      matched.form.name,
+      matched.ai?.location ?? null,
+      matched.ai?.photo ?? null,
+      HOTEL_PHOTO_BOX,
+    );
     buildHotelSlides(pres, {
       optionNumber: index + 1,
       name: matched.form.name,

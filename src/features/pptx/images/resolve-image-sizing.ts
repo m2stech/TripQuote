@@ -2,7 +2,7 @@ import "server-only";
 
 import sharp from "sharp";
 
-import { fetchExternalImage } from "@/features/pptx/images/fetch-external-image";
+import { fetchExternalImage, type FetchedImage } from "@/features/pptx/images/fetch-external-image";
 import type { ResolvedImage } from "@/features/pptx/types";
 
 export interface BoxInches {
@@ -43,7 +43,16 @@ export async function resolveContainSizing(buffer: Buffer, box: BoxInches): Prom
 export async function fetchAndSizeImage(url: string, box: BoxInches): Promise<ResolvedImage | null> {
   const fetched = await fetchExternalImage(url);
   if (!fetched) return null;
+  return sizeImage(fetched, box);
+}
 
+/**
+ * Calcula o sizing de uma imagem já obtida (buffer em mãos, ex.: vinda de
+ * `fetchWikipediaPhoto`/`fetchGooglePlacesPhoto`, que já fazem seu próprio
+ * fetch) — devolve `null` só se a leitura de metadata falhar (buffer
+ * corrompido). Complementa `fetchAndSizeImage`, que busca por URL.
+ */
+export async function sizeImage(fetched: FetchedImage, box: BoxInches): Promise<ResolvedImage | null> {
   try {
     const sizing = await resolveContainSizing(fetched.buffer, box);
     return { kind: "image", data: fetched.buffer, sizing };

@@ -2,6 +2,15 @@ import JSZip from "jszip";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.stubGlobal("fetch", vi.fn());
+// Isola explicitamente da rede real as fontes determinísticas de foto
+// (Wikipedia/Google Places): sem isso, o teste dependeria de o `fetch`
+// global mockado falhar "por acidente" dentro do try/catch desses módulos
+// — frágil caso alguém rode a suíte com GOOGLE_PLACES_API_KEY configurada
+// no ambiente.
+vi.mock("@/features/pptx/images/wikipedia-photo", () => ({ fetchWikipediaPhoto: vi.fn().mockResolvedValue(null) }));
+vi.mock("@/features/pptx/images/google-places-photo", () => ({
+  fetchGooglePlacesPhoto: vi.fn().mockResolvedValue(null),
+}));
 
 import { buildQuotePresentation } from "@/features/pptx/build-quote-presentation";
 import { normalizeQuoteDraft } from "@/features/quotes/schemas/quote-form.schema";
