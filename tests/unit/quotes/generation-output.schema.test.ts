@@ -70,11 +70,11 @@ describe("generationOutputSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejeita url de foto inválida", () => {
+  it("aceita qualquer string em url (sem .url(): formato 'uri' é rejeitado pelo strict mode da Responses API)", () => {
     const output = validOutput();
-    output.hotels[0]!.photo.url = "não é uma url";
+    output.hotels[0]!.photo.url = "não é uma url, mas o schema não valida formato aqui";
     const result = generationOutputSchema.safeParse(output);
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it("rejeita quando hotels não é um array", () => {

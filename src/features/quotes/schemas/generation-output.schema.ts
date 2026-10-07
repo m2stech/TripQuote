@@ -22,6 +22,13 @@ import { z } from "zod";
  * modo `strict: true` do JSON Schema da Responses API exige todos os campos
  * em `required` e `additionalProperties: false` — "opcional" na prática
  * precisa ser "presente, podendo ser null".
+ *
+ * Campos de URL usam `z.string()` simples, não `z.string().url()`: o
+ * conversor para JSON Schema (`zodTextFormat`) gera `format: "uri"`, que a
+ * Responses API rejeita em modo `strict` ("'uri' is not a valid format" —
+ * confirmado em teste manual contra a API real). A validação de formato de
+ * URL de fato comercialmente útil (usada pelo builder PPTX no M7 antes de
+ * um fetch) deve ficar no consumidor, não nesta fronteira de parsing.
  */
 
 export const hotelImageStatusSchema = z.enum([
@@ -40,8 +47,8 @@ export const generatedHotelSchema = z.object({
   tripadvisorRating: z.string(),
   photo: z.object({
     status: hotelImageStatusSchema,
-    url: z.string().url().nullable(),
-    sourceUrl: z.string().url().nullable(),
+    url: z.string().nullable(),
+    sourceUrl: z.string().nullable(),
     caption: z.string().nullable(),
   }),
 });

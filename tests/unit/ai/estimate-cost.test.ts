@@ -28,4 +28,11 @@ describe("estimateCostUsd", () => {
   it("retorna 0 quando não há tokens", () => {
     expect(estimateCostUsd("gpt-4.1", 0, 0)).toBe(0);
   });
+
+  it("reconhece o modelo mesmo com sufixo de versão datada (ex.: retornado pela Responses API)", () => {
+    const withSuffix = estimateCostUsd("gpt-4.1-2025-04-14", 1_000_000, 500_000);
+    const withoutSuffix = estimateCostUsd("gpt-4.1", 1_000_000, 500_000);
+    expect(withSuffix).toBe(withoutSuffix);
+    expect(withSuffix).toBeGreaterThan(0);
+  });
 });
