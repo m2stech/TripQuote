@@ -2,6 +2,9 @@ import "server-only";
 
 import sharp from "sharp";
 
+import { fetchExternalImage } from "@/features/pptx/images/fetch-external-image";
+import type { ResolvedImage } from "@/features/pptx/types";
+
 export interface BoxInches {
   w: number;
   h: number;
@@ -28,4 +31,23 @@ export async function resolveContainSizing(buffer: Buffer, box: BoxInches): Prom
     return { w: box.w, h: box.w / imageRatio };
   }
   return { w: box.h * imageRatio, h: box.h };
+}
+
+/**
+ * Busca uma imagem externa e calcula seu sizing numa única chamada,
+ * devolvendo `null` em qualquer falha (fetch ou leitura de metadata) —
+ * usado por `destination-photo.ts`/`hotel-photo.ts` tanto na tentativa
+ * original quanto na de retry (`findAlternativePhoto`), evitando duplicar
+ * o par fetch+sizing+try/catch em cada um.
+ */
+export async function fetchAndSizeImage(url: string, box: BoxInches): Promise<ResolvedImage | null> {
+  const fetched = await fetchExternalImage(url);
+  if (!fetched) return null;
+
+  try {
+    const sizing = await resolveContainSizing(fetched.buffer, box);
+    return { kind: "image", data: fetched.buffer, sizing };
+  } catch {
+    return null;
+  }
 }

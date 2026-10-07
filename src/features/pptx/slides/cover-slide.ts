@@ -37,6 +37,13 @@ export async function buildCoverSlide(pres: pptxgen, data: CoverSlideData): Prom
   const slide = pres.addSlide();
 
   if (data.destinationPhoto.kind === "image") {
+    // Exceção deliberada à regra geral de `sizing: contain`: este é o único
+    // quadro da apresentação pensado como fundo full-bleed (hero de capa,
+    // replicando `Orcamento_modelo.pptx`), não uma foto emoldurada — usar
+    // `contain` aqui deixaria faixas vazias nas laterais/topo sempre que a
+    // proporção da foto não for exatamente 16:9. O campo `sizing` calculado
+    // por `resolveDestinationPhoto` (preservação de proporção) não se aplica
+    // a este caso e é intencionalmente ignorado.
     slide.addImage({
       data: toDataUri(data.destinationPhoto.data),
       x: 0,
