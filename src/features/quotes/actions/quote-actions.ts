@@ -28,24 +28,6 @@ export async function getQuoteAction(id: string): Promise<QuoteRecord | null> {
   return repository.getById(id);
 }
 
-/**
- * Cria (ou retorna) o rascunho do formulário em edição. Usada no mount da
- * tela de novo orçamento para obter um `quoteId` real antes de qualquer
- * upload de anexo (o path no Storage depende do orçamento já existir).
- */
-export async function ensureDraftQuoteAction(existingId?: string): Promise<QuoteRecord> {
-  const repository = await getQuoteRepository();
-
-  if (existingId) {
-    const existing = await repository.getById(existingId);
-    if (existing) return existing;
-  }
-
-  const userId = await requireCurrentUserId();
-  const parsed = quoteDraftSchema.parse({});
-  return repository.create(parsed, userId);
-}
-
 export async function createQuoteAction(form: QuoteDraftInput): Promise<QuoteRecord> {
   const parsed = quoteDraftSchema.parse(form);
   const userId = await requireCurrentUserId();
@@ -55,10 +37,18 @@ export async function createQuoteAction(form: QuoteDraftInput): Promise<QuoteRec
   return record;
 }
 
+/**
+ * Salva o rascunho em edição, criando a linha em `quotes` no primeiro save
+ * (autosave ou upload de anexo) e atualizando nas chamadas seguintes —
+ * idempotente por `id` (gerado no client, sem bater no banco, ao abrir o
+ * formulário). Propositalmente **não** há criação no mount da tela: visitar
+ * "/orcamentos/novo" sem preencher nada não deve gravar nenhuma linha.
+ */
 export async function updateQuoteAction(id: string, form: QuoteDraftInput): Promise<QuoteRecord> {
   const parsed = quoteDraftSchema.parse(form);
+  const userId = await requireCurrentUserId();
   const repository = await getQuoteRepository();
-  const record = await repository.update(id, parsed);
+  const record = await repository.upsertDraft(id, parsed, userId);
   revalidatePath("/orcamentos");
   revalidatePath(`/orcamentos/${id}`);
   return record;

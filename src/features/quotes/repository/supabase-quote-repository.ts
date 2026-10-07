@@ -93,6 +93,43 @@ export class SupabaseQuoteRepository implements QuoteRepository {
     return rowToRecord(data);
   }
 
+  async upsertDraft(id: string, form: QuoteDraftValues, createdBy: string): Promise<QuoteRecord> {
+    const { data, error } = await this.supabase
+      .from("quotes")
+      .upsert(
+        { id, ...formToColumns(form), created_by: createdBy, status: "draft" },
+        { onConflict: "id", ignoreDuplicates: true },
+      )
+      .select("*");
+    if (error) throw new Error(`Não foi possível salvar o rascunho: ${error.message}`);
+
+    // `ignoreDuplicates: true` faz o Postgres pular a linha em conflito sem
+    // retorná-la em `data` — nesse caso (o registro já existe, seja porque
+    // outra chamada concorrente criou primeiro, ex.: duplo-mount do Strict
+    // Mode, seja porque é uma atualização de um rascunho já salvo),
+    // atualizamos o conteúdo de fato.
+    if (data && data.length > 0) return rowToRecord(data[0]!);
+
+    return this.update(id, form);
+  }
+
+  async ensureDraftExists(id: string, createdBy: string): Promise<QuoteRecord> {
+    const { data, error } = await this.supabase
+      .from("quotes")
+      .upsert(
+        { id, ...formToColumns({}), created_by: createdBy, status: "draft" },
+        { onConflict: "id", ignoreDuplicates: true },
+      )
+      .select("*");
+    if (error) throw new Error(`Não foi possível salvar o rascunho: ${error.message}`);
+
+    if (data && data.length > 0) return rowToRecord(data[0]!);
+
+    const existing = await this.getById(id);
+    if (!existing) throw new Error(`Não foi possível carregar o rascunho ${id}.`);
+    return existing;
+  }
+
   async update(id: string, form: QuoteDraftValues): Promise<QuoteRecord> {
     const { data, error } = await this.supabase
       .from("quotes")

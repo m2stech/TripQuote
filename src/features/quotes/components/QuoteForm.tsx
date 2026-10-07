@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ensureDraftQuoteAction, updateQuoteAction } from "@/features/quotes/actions/quote-actions";
+import { getQuoteAction, updateQuoteAction } from "@/features/quotes/actions/quote-actions";
 import { getAttachmentPreviewUrlAction } from "@/features/quotes/actions/attachment-actions";
 import { FormFieldError } from "@/features/quotes/components/FormFieldError";
 import { ImageUpload } from "@/features/quotes/components/ImageUpload";
@@ -63,8 +63,13 @@ function createId() {
 type QuoteFormInput = z.input<typeof quoteFormSchema>;
 
 interface QuoteFormProps {
-  /** Id de um orçamento existente a editar/duplicar (`?duplicar=<id>`). */
-  duplicateFromId?: string;
+  /**
+   * Id inicial de um orçamento a carregar, vindo de `?id=<id>` (rascunho em
+   * andamento, escrito na URL por este componente) ou `?duplicar=<id>`
+   * (editar um orçamento existente). Em ambos os casos o formulário carrega
+   * esse registro e continua salvando nele.
+   */
+  quoteId?: string;
 }
 
 /**
@@ -73,14 +78,21 @@ interface QuoteFormProps {
  * backend em marcos futuros (M6/M7). Nenhum texto de prompt ou lógica de IA
  * é exposto aqui.
  *
- * O rascunho é persistido no banco (M5): ao montar, cria (ou carrega) um
- * orçamento com `status = draft` e salva as alterações com debounce
- * (`useQuoteAutosave`), substituindo o rascunho em `localStorage` do M2.
+ * O rascunho é persistido no banco (M5) com autosave (`useQuoteAutosave`),
+ * substituindo o rascunho em `localStorage` do M2 — mas a linha em `quotes`
+ * só é criada quando há algo de fato para salvar (primeiro autosave real ou
+ * primeiro upload de anexo), nunca só por visitar a página: o `quoteId` é
+ * gerado no client (`crypto.randomUUID()`) sem bater no banco, e só é
+ * gravado na URL (`?id=<id>`) depois que o primeiro save é confirmado.
  */
-export function QuoteForm({ duplicateFromId }: QuoteFormProps) {
+export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
   const router = useRouter();
-  const [quoteId, setQuoteId] = useState<string | null>(null);
-  const [isLoadingDraft, setIsLoadingDraft] = useState(true);
+  // Sem `initialQuoteId` (criação nova), o id é gerado localmente — nenhuma
+  // chamada ao banco acontece até o usuário de fato salvar algo.
+  const [newDraftId] = useState(() => crypto.randomUUID());
+  const [quoteId, setQuoteId] = useState<string | null>(initialQuoteId ?? newDraftId);
+  const [isDraftPersisted, setIsDraftPersisted] = useState(false);
+  const [isLoadingDraft, setIsLoadingDraft] = useState(Boolean(initialQuoteId));
   const [agencyLogoPreview, setAgencyLogoPreview] = useState<string | null>(null);
   const [flightImagePreview, setFlightImagePreview] = useState<string | null>(null);
 
@@ -100,16 +112,24 @@ export function QuoteForm({ duplicateFromId }: QuoteFormProps) {
     formState: { errors, isSubmitting },
   } = form;
 
-  // Cria (ou carrega) o rascunho no banco ao montar. Repete se `duplicateFromId`
-  // mudar (navegação entre "/orcamentos/novo" e "/orcamentos/novo?duplicar=...").
+  // Carrega um orçamento já existente: `?id=<id>` (rascunho salvo em uma
+  // visita anterior) ou `?duplicar=<id>` (editar/duplicar). Sem
+  // `initialQuoteId`, não há nada para carregar — o formulário começa vazio.
   useEffect(() => {
+    if (!initialQuoteId) return;
+
     let isActive = true;
 
     setIsLoadingDraft(true);
-    ensureDraftQuoteAction(duplicateFromId)
+    getQuoteAction(initialQuoteId)
       .then(async (record) => {
         if (!isActive) return;
+        if (!record) {
+          toast.error("Orçamento não encontrado. Iniciando um novo rascunho.");
+          return;
+        }
         setQuoteId(record.id);
+        setIsDraftPersisted(true);
         reset(record.form);
 
         const [agencyPreview, flightPreview] = await Promise.all([
@@ -125,7 +145,7 @@ export function QuoteForm({ duplicateFromId }: QuoteFormProps) {
         setFlightImagePreview(flightPreview);
       })
       .catch(() => {
-        if (isActive) toast.error("Não foi possível iniciar o rascunho do orçamento.");
+        if (isActive) toast.error("Não foi possível carregar o orçamento.");
       })
       .finally(() => {
         if (isActive) setIsLoadingDraft(false);
@@ -134,9 +154,18 @@ export function QuoteForm({ duplicateFromId }: QuoteFormProps) {
     return () => {
       isActive = false;
     };
-  }, [duplicateFromId, reset]);
+  }, [initialQuoteId, reset]);
 
-  useQuoteAutosave(quoteId, watch);
+  // Grava o id do rascunho na URL assim que o primeiro save (autosave ou
+  // upload) é confirmado — a partir daí um F5 na página reaproveita o mesmo
+  // registro em vez de começar um rascunho novo.
+  function handleDraftPersisted() {
+    if (isDraftPersisted || !quoteId) return;
+    setIsDraftPersisted(true);
+    router.replace(`/orcamentos/novo?id=${quoteId}`, { scroll: false });
+  }
+
+  useQuoteAutosave(quoteId, watch, handleDraftPersisted);
 
   const inclusionsArray = useFieldArray({ control, name: "inclusions" });
   const hotelsArray = useFieldArray({ control, name: "hotels" });
@@ -174,6 +203,7 @@ export function QuoteForm({ duplicateFromId }: QuoteFormProps) {
     if (!quoteId) return;
     try {
       await updateQuoteAction(quoteId, values as QuoteDraftInput);
+      handleDraftPersisted();
       router.push(`/orcamentos/${quoteId}/gerar`);
     } catch {
       toast.error("Não foi possível salvar o orçamento. Tente novamente.");
@@ -314,6 +344,7 @@ export function QuoteForm({ duplicateFromId }: QuoteFormProps) {
             onChange={(value, preview) => {
               setValue("agencyLogo", value);
               setAgencyLogoPreview(preview);
+              if (value) handleDraftPersisted();
             }}
             quoteId={quoteId}
             kind="agency_logo"
@@ -503,6 +534,7 @@ export function QuoteForm({ duplicateFromId }: QuoteFormProps) {
                 onChange={(value, preview) => {
                   setValue("flightImage", value);
                   setFlightImagePreview(preview);
+                  if (value) handleDraftPersisted();
                 }}
                 quoteId={quoteId}
                 kind="flight_image"

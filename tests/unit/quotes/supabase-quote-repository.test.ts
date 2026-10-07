@@ -50,9 +50,39 @@ function createFakeSupabase() {
     let pendingInsert: Partial<Row> | null = null;
     let pendingUpdate: Partial<Row> | null = null;
     let pendingUpdateMatchId: string | null = null;
+    let pendingUpsertResult: Row[] | null = null;
 
     const builder = {
       select() {
+        if (pendingUpsertResult) {
+          const result = pendingUpsertResult;
+          return Promise.resolve({ data: result, error: null });
+        }
+        return builder;
+      },
+      upsert(values: Partial<Row> & { id: string }, options?: { ignoreDuplicates?: boolean }) {
+        const existing = rows.find((row) => row.id === values.id);
+        if (existing) {
+          pendingUpsertResult = options?.ignoreDuplicates ? [] : [existing];
+          return builder;
+        }
+        const now = new Date().toISOString();
+        const row: Row = {
+          status: "draft",
+          created_by: "",
+          agency: "",
+          consultant: "",
+          destination: "",
+          start_date: null,
+          end_date: null,
+          form: {},
+          error_message: null,
+          created_at: now,
+          updated_at: now,
+          ...values,
+        };
+        rows.push(row);
+        pendingUpsertResult = [row];
         return builder;
       },
       eq(column: keyof Row, value: unknown) {
@@ -233,6 +263,49 @@ describe("SupabaseQuoteRepository", () => {
     expect(copy.id).not.toBe(original.id);
     expect(copy.status).toBe("draft");
     expect(copy.form.general.agency).toBe("Primus Turismo");
+  });
+
+  it("upsertDraft() cria um rascunho novo com o id e o conteúdo informados", async () => {
+    const id = "fixed-draft-id";
+    const created = await repository.upsertDraft(id, draft({ general: { agency: "Primus Turismo" } }), "user-1");
+    expect(created.id).toBe(id);
+    expect(created.status).toBe("draft");
+    expect(created.form.general.agency).toBe("Primus Turismo");
+  });
+
+  it("upsertDraft() é idempotente: chamadas concorrentes com o mesmo id não duplicam", async () => {
+    const id = "fixed-draft-id";
+    const [first, second] = await Promise.all([
+      repository.upsertDraft(id, draft(), "user-1"),
+      repository.upsertDraft(id, draft(), "user-1"),
+    ]);
+    expect(first.id).toBe(id);
+    expect(second.id).toBe(id);
+
+    const result = await repository.list();
+    const matching = result.items.filter((item) => item.id === id);
+    expect(matching).toHaveLength(1);
+  });
+
+  it("upsertDraft() atualiza o conteúdo quando o rascunho já existe", async () => {
+    const id = "fixed-draft-id";
+    await repository.upsertDraft(id, draft({ general: { agency: "Primeira" } }), "user-1");
+    const updated = await repository.upsertDraft(id, draft({ general: { agency: "Segunda" } }), "user-1");
+    expect(updated.form.general.agency).toBe("Segunda");
+  });
+
+  it("ensureDraftExists() cria um rascunho vazio quando ele não existe", async () => {
+    const id = "fixed-draft-id";
+    const created = await repository.ensureDraftExists(id, "user-1");
+    expect(created.id).toBe(id);
+    expect(created.status).toBe("draft");
+  });
+
+  it("ensureDraftExists() não sobrescreve o conteúdo de um rascunho já existente", async () => {
+    const id = "fixed-draft-id";
+    await repository.upsertDraft(id, draft({ general: { agency: "Primus Turismo" } }), "user-1");
+    const result = await repository.ensureDraftExists(id, "user-1");
+    expect(result.form.general.agency).toBe("Primus Turismo");
   });
 
   it("remove um orçamento", async () => {

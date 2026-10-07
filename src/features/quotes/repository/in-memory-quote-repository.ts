@@ -173,6 +173,50 @@ export class InMemoryQuoteRepository implements QuoteRepository {
     return record;
   }
 
+  async upsertDraft(id: string, form: QuoteDraftValues, createdBy: string): Promise<QuoteRecord> {
+    await wait(SIMULATED_LATENCY_MS);
+    const existing = this.quotes.find((quote) => quote.id === id);
+    if (existing) {
+      const updated: QuoteRecord = {
+        ...existing,
+        form: normalizeQuoteDraft(form),
+        updatedAt: new Date().toISOString(),
+      };
+      this.quotes = this.quotes.map((quote) => (quote.id === id ? updated : quote));
+      return updated;
+    }
+
+    const now = new Date().toISOString();
+    const record: QuoteRecord = {
+      id,
+      status: "draft",
+      createdAt: now,
+      updatedAt: now,
+      createdBy,
+      form: normalizeQuoteDraft(form),
+    };
+    this.quotes = [record, ...this.quotes];
+    return record;
+  }
+
+  async ensureDraftExists(id: string, createdBy: string): Promise<QuoteRecord> {
+    await wait(SIMULATED_LATENCY_MS);
+    const existing = this.quotes.find((quote) => quote.id === id);
+    if (existing) return existing;
+
+    const now = new Date().toISOString();
+    const record: QuoteRecord = {
+      id,
+      status: "draft",
+      createdAt: now,
+      updatedAt: now,
+      createdBy,
+      form: normalizeQuoteDraft({}),
+    };
+    this.quotes = [record, ...this.quotes];
+    return record;
+  }
+
   async update(id: string, form: QuoteDraftValues): Promise<QuoteRecord> {
     await wait(SIMULATED_LATENCY_MS);
     const existing = this.quotes.find((quote) => quote.id === id);
