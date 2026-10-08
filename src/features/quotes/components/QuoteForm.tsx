@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useFieldArray, useForm } from "react-hook-form";
 import type {
@@ -92,7 +92,7 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
   // chamada ao banco acontece até o usuário de fato salvar algo.
   const [newDraftId] = useState(() => crypto.randomUUID());
   const [quoteId, setQuoteId] = useState<string | null>(initialQuoteId ?? newDraftId);
-  const [isDraftPersisted, setIsDraftPersisted] = useState(false);
+  const [, setIsDraftPersisted] = useState(false);
   const [isLoadingDraft, setIsLoadingDraft] = useState(Boolean(initialQuoteId));
   const [agencyLogoPreview, setAgencyLogoPreview] = useState<string | null>(null);
   const [flightImagePreview, setFlightImagePreview] = useState<string | null>(null);
@@ -172,12 +172,18 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
 
   // Grava o id do rascunho na URL assim que o primeiro save (autosave ou
   // upload) é confirmado — a partir daí um F5 na página reaproveita o mesmo
-  // registro em vez de começar um rascunho novo.
-  function handleDraftPersisted() {
-    if (isDraftPersisted || !quoteId) return;
-    setIsDraftPersisted(true);
-    router.replace(`/orcamentos/novo?id=${quoteId}`, { scroll: false });
-  }
+  // registro em vez de começar um rascunho novo. Memoizada: `useQuoteAutosave`
+  // recria sua subscription do `watch()` sempre que esta função muda de
+  // identidade, o que fazia cada keystroke reiniciar a subscription e nunca
+  // disparar o autosave (ela sempre via sua própria primeira notificação,
+  // que é descartada por design).
+  const handleDraftPersisted = useCallback(() => {
+    setIsDraftPersisted((wasPersisted) => {
+      if (wasPersisted || !quoteId) return wasPersisted;
+      router.replace(`/orcamentos/novo?id=${quoteId}`, { scroll: false });
+      return true;
+    });
+  }, [quoteId, router]);
 
   useQuoteAutosave(quoteId, watch, handleDraftPersisted);
 

@@ -220,13 +220,13 @@ Baseado em [CLAUDE.md](../CLAUDE.md) e [PRD.md](PRD.md). Ordem: **setup → inte
 **Branch:** `feat/m10-e2e-deploy`
 **Objetivo:** validar o fluxo crítico e publicar.
 
-- [ ] Playwright: login → criar orçamento → anexar → gerar (OpenAI mockada) → baixar
-- [ ] Playwright: permissões (consultor × admin) e duplicar orçamento
+- [x] Playwright: login → criar orçamento → anexar → gerar (OpenAI mockada) → baixar
+- [x] Playwright: permissões (consultor × admin) e duplicar orçamento
 - [ ] Revisão de segurança (`security-review`) e checagem de RLS
-- [ ] Projeto Vercel vinculado; variáveis de ambiente por ambiente
-- [ ] Projeto Supabase de produção e migrations aplicadas
-- [ ] Deploy de preview e verificação; depois produção
-- [ ] Domínio e Sentry de produção
+- [x] Projeto Vercel vinculado; variáveis de ambiente por ambiente
+- [x] Projeto Supabase de produção e migrations aplicadas
+- [x] Deploy de preview e verificação; depois produção
+- [ ] Domínio produção
 - [ ] README com setup e runbook básico
 - [ ] Smoke test em produção com geração real
 

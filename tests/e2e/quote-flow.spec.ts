@@ -18,14 +18,20 @@ test("cria, anexa, gera e baixa um orçamento", async ({ page }) => {
 
   await page.goto("/orcamentos/novo");
 
-  // 01 — Dados gerais. Preenche só "Agência" primeiro e aguarda o primeiro
-  // autosave (sinalizado por `?id=` na URL, ver QuoteForm.tsx:handleDraftPersisted)
-  // antes de preencher o resto: assim que esse autosave confirma, a página
-  // recebe `initialQuoteId` e o form busca+reseta com `reset(record.form)`
-  // (QuoteForm.tsx:147) — preencher tudo de uma vez cria uma corrida em que
-  // esse reset sobrescreve campos digitados depois do autosave mas antes dele
-  // completar.
-  await page.locator("#general\\.agency").fill("Agência Teste E2E");
+  // 01 — Dados gerais. A notificação de `watch()` do react-hook-form logo
+  // após a montagem do form conta como "primeira chamada" (descartada por
+  // `useQuoteAutosave`) e coincide com o primeiro `.fill()` do teste — por
+  // isso preenchemos "Agência" duas vezes com valores diferentes (`.fill()`
+  // não dispara `input`/`change` se o valor não mudar): a 1ª absorve essa
+  // notificação inicial, a 2ª é a que de fato dispara o autosave. Só então
+  // aguardamos o `?id=` na URL antes de preencher o resto: assim que esse
+  // autosave confirma, a página recebe `initialQuoteId` e o form busca+reseta
+  // com `reset(record.form)` (QuoteForm.tsx) — preencher tudo de uma vez
+  // criaria uma corrida em que esse reset sobrescreve campos digitados
+  // depois do autosave mas antes dele completar.
+  const agencyInput = page.locator("#general\\.agency");
+  await agencyInput.fill("Agência Teste E2E ");
+  await agencyInput.fill("Agência Teste E2E");
   await expect(page).toHaveURL(/[?&]id=/, { timeout: 15_000 });
 
   await page.locator("#general\\.destination").fill("Buenos Aires");
@@ -54,7 +60,7 @@ test("cria, anexa, gera e baixa um orçamento", async ({ page }) => {
   await expect(page.getByText("Orçamento gerado com sucesso!")).toBeVisible({ timeout: 45_000 });
 
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("link", { name: "Baixar .pptx" }).click();
+  await page.getByText("Baixar .pptx").click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toMatch(/\.pptx$/);
 });

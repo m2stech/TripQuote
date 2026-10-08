@@ -8,11 +8,15 @@ test("duplicar um orçamento cria uma cópia com um novo id", async ({ page }) =
 
   await page.goto("/orcamentos/novo");
 
-  // Preenche só "Agência" primeiro e aguarda o primeiro autosave (`?id=` na
-  // URL) antes do resto — preencher tudo de uma vez cria uma corrida com o
-  // `reset(record.form)` que roda assim que a página recebe esse id (ver
-  // mesmo comentário em quote-flow.spec.ts).
-  await page.locator("#general\\.agency").fill("Agência Duplicar E2E");
+  // Preenche "Agência" duas vezes com valores diferentes (a 1ª absorve a
+  // notificação inicial do `watch()`, descartada por `useQuoteAutosave`; um
+  // `.fill()` repetindo o mesmo valor não dispara `input`/`change`) e aguarda
+  // o primeiro autosave (`?id=` na URL) antes do resto — preencher tudo de
+  // uma vez cria uma corrida com o `reset(record.form)` que roda assim que a
+  // página recebe esse id (ver mesmo comentário em quote-flow.spec.ts).
+  const agencyInput = page.locator("#general\\.agency");
+  await agencyInput.fill("Agência Duplicar E2E ");
+  await agencyInput.fill("Agência Duplicar E2E");
   await expect(page).toHaveURL(/[?&]id=/, { timeout: 15_000 });
 
   await page.locator("#general\\.destination").fill("Santiago");
@@ -37,9 +41,9 @@ test("duplicar um orçamento cria uma cópia com um novo id", async ({ page }) =
   await page.waitForTimeout(1200);
 
   await page.goto(`/orcamentos/${quoteId}`);
-  await expect(page.getByText("Agência Duplicar E2E")).toBeVisible();
+  await expect(page.getByText("Agência Duplicar E2E", { exact: true }).first()).toBeVisible();
 
   await page.getByRole("button", { name: "Duplicar" }).click();
   await expect(page).toHaveURL(new RegExp(`/orcamentos/(?!${quoteId}$)[^/]+$`), { timeout: 15_000 });
-  await expect(page.getByText("Agência Duplicar E2E")).toBeVisible();
+  await expect(page.getByText("Agência Duplicar E2E", { exact: true }).first()).toBeVisible();
 });
