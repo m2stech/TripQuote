@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { BrandingSettingsScreen } from "@/features/branding/components/BrandingSettingsScreen";
 
 export const metadata: Metadata = {
-  title: "Identidade visual — Administração — TripQuote",
+  title: "Identidade visual — Administração — SnowQuote",
 };
 
 // Os dados são carregados no client (ver `BrandingSettingsScreen`), não

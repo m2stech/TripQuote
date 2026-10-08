@@ -4,7 +4,7 @@ import { Hero } from "@/components/hero";
 import { MyAccountScreen } from "@/features/auth/components/MyAccountScreen";
 
 export const metadata: Metadata = {
-  title: "Minha conta — TripQuote",
+  title: "Minha conta — SnowQuote",
 };
 
 export default function MyAccountPage() {

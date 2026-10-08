@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { UserManagementScreen } from "@/features/users/components/UserManagementScreen";
 
 export const metadata: Metadata = {
-  title: "Usuários — Administração — TripQuote",
+  title: "Usuários — Administração — SnowQuote",
 };
 
 // A lista é carregada no client (ver `UserManagementScreen`), não aqui: uma

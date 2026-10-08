@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { DesignShowcase } from "./design-showcase";
 
 export const metadata: Metadata = {
-  title: "Design system SNOW — TripQuote",
+  title: "Design system SNOW — SnowQuote",
   robots: { index: false, follow: false },
 };
 

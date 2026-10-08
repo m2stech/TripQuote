@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { QuoteDetailScreen } from "@/features/quotes/components/QuoteDetailScreen";
 
 export const metadata: Metadata = {
-  title: "Detalhe do orçamento — TripQuote",
+  title: "Detalhe do orçamento — SnowQuote",
 };
 
 interface QuoteDetailPageProps {

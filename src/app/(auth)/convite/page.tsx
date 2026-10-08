@@ -4,7 +4,7 @@ import { SetPasswordAndRedirect } from "@/features/auth/components/SetPasswordAn
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Criar conta — TripQuote",
+  title: "Criar conta — SnowQuote",
 };
 
 /**
@@ -24,9 +24,9 @@ export default async function AcceptInvitePage() {
     <main className="bg-background flex min-h-screen flex-1 items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <span className="text-snow-navy text-2xl font-bold">TripQuote</span>
+          <span className="text-snow-navy text-2xl font-bold">SnowQuote</span>
           <p className="text-muted-foreground text-sm">
-            Você foi convidado para o TripQuote. Defina uma senha para criar sua conta.
+            Você foi convidado para o SnowQuote. Defina uma senha para criar sua conta.
           </p>
         </div>
 
@@ -35,7 +35,7 @@ export default async function AcceptInvitePage() {
             <SetPasswordAndRedirect
               submitLabel="Criar conta"
               submitLabelPending="Criando conta…"
-              successMessage="Conta criada com sucesso. Redirecionando para o TripQuote…"
+              successMessage="Conta criada com sucesso. Redirecionando para o SnowQuote…"
               redirectTo="/orcamentos"
             />
           ) : (

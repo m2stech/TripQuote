@@ -4,7 +4,7 @@ import Link from "next/link";
 import { RequestPasswordResetForm } from "@/features/auth/components/RequestPasswordResetForm";
 
 export const metadata: Metadata = {
-  title: "Recuperar senha — TripQuote",
+  title: "Recuperar senha — SnowQuote",
 };
 
 export default function RequestPasswordResetPage() {
@@ -12,7 +12,7 @@ export default function RequestPasswordResetPage() {
     <main className="bg-background flex min-h-screen flex-1 items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <span className="text-snow-navy text-2xl font-bold">TripQuote</span>
+          <span className="text-snow-navy text-2xl font-bold">SnowQuote</span>
           <p className="text-muted-foreground text-sm">
             Informe seu e-mail para receber um link de redefinição de senha.
           </p>

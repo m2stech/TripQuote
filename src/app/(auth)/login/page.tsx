@@ -5,7 +5,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LoginForm } from "@/features/auth/components/LoginForm";
 
 export const metadata: Metadata = {
-  title: "Entrar — TripQuote",
+  title: "Entrar — SnowQuote",
 };
 
 interface LoginPageProps {
@@ -38,7 +38,7 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
     <main className="bg-background flex min-h-screen flex-1 items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <span className="text-snow-navy text-2xl font-bold">TripQuote</span>
+          <span className="text-snow-navy text-2xl font-bold">SnowQuote</span>
           <p className="text-muted-foreground text-sm">
             Entre com sua conta para gerar orçamentos de turismo.
           </p>

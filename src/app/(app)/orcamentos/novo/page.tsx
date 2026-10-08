@@ -5,7 +5,7 @@ import { Hero } from "@/components/hero";
 import { QuoteForm } from "@/features/quotes/components/QuoteForm";
 
 export const metadata: Metadata = {
-  title: "Novo orçamento — TripQuote",
+  title: "Novo orçamento — SnowQuote",
 };
 
 interface NewQuotePageProps {

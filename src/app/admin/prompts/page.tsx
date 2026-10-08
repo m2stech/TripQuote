@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { PromptVersionManagementScreen } from "@/features/prompts/components/PromptVersionManagementScreen";
 
 export const metadata: Metadata = {
-  title: "Prompts — Administração — TripQuote",
+  title: "Prompts — Administração — SnowQuote",
 };
 
 // A lista é carregada no client (ver `PromptVersionManagementScreen`), não

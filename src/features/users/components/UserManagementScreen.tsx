@@ -252,7 +252,7 @@ export function UserManagementScreen() {
       {!isLoading && !error && users && users.length === 0 ? (
         <EmptyState
           title="Nenhum usuário cadastrado"
-          description="Convide o primeiro usuário para começar a usar o TripQuote."
+          description="Convide o primeiro usuário para começar a usar o SnowQuote."
         />
       ) : null}
 
@@ -315,7 +315,7 @@ export function UserManagementScreen() {
                       <DialogHeader>
                         <DialogTitle>Desativar usuário</DialogTitle>
                         <DialogDescription>
-                          {user.fullName ?? user.email} perderá acesso ao TripQuote imediatamente.
+                          {user.fullName ?? user.email} perderá acesso ao SnowQuote imediatamente.
                           Deseja continuar?
                         </DialogDescription>
                       </DialogHeader>

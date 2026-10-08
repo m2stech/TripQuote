@@ -4,7 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
-  title: "TripQuote",
+  title: "SnowQuote",
   description: "Gerador de orçamentos de turismo",
 };
 

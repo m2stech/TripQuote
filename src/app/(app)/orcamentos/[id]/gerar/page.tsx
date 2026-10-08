@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { GenerationProgressScreen } from "@/features/quotes/components/GenerationProgressScreen";
 
 export const metadata: Metadata = {
-  title: "Gerando orçamento — TripQuote",
+  title: "Gerando orçamento — SnowQuote",
 };
 
 // A geração via IA (busca web + redação) pode levar bem mais que o padrão da

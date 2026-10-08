@@ -4,7 +4,7 @@ import Link from "next/link";
 import { SectionCard } from "@/components/section-card";
 
 export const metadata: Metadata = {
-  title: "Administração — TripQuote",
+  title: "Administração — SnowQuote",
 };
 
 const ADMIN_SECTIONS = [

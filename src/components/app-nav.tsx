@@ -26,7 +26,7 @@ export function AppNav() {
       <div className="snow-container flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <div className="flex items-center gap-6">
           <Link href="/orcamentos" className="text-lg font-semibold tracking-tight">
-            TripQuote
+            SnowQuote
           </Link>
           <nav aria-label="Navegação principal" className="flex flex-wrap items-center gap-1">
             {NAV_LINKS.map((link) => {

@@ -45,7 +45,7 @@ export function DesignShowcase() {
     <main className="bg-background min-h-full pb-16">
       <div className="snow-container flex flex-col gap-8 px-4 pt-6 sm:px-6">
         <Hero
-          title="TripQuote"
+          title="SnowQuote"
           subtitle="Design system SNOW — página de comparação visual (apenas dev)"
           logoSlot={<span className="text-snow-navy text-sm font-semibold">LOGO SNOW</span>}
         />

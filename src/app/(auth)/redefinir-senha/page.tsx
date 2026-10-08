@@ -4,7 +4,7 @@ import { SetPasswordAndRedirect } from "@/features/auth/components/SetPasswordAn
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Redefinir senha — TripQuote",
+  title: "Redefinir senha — SnowQuote",
 };
 
 /**
@@ -21,7 +21,7 @@ export default async function ResetPasswordPage() {
     <main className="bg-background flex min-h-screen flex-1 items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <span className="text-snow-navy text-2xl font-bold">TripQuote</span>
+          <span className="text-snow-navy text-2xl font-bold">SnowQuote</span>
           <p className="text-muted-foreground text-sm">Escolha uma nova senha para sua conta.</p>
         </div>
 
@@ -30,7 +30,7 @@ export default async function ResetPasswordPage() {
             <SetPasswordAndRedirect
               submitLabel="Salvar nova senha"
               submitLabelPending="Salvando…"
-              successMessage="Senha redefinida com sucesso. Redirecionando para o TripQuote…"
+              successMessage="Senha redefinida com sucesso. Redirecionando para o SnowQuote…"
               redirectTo="/orcamentos"
             />
           ) : (

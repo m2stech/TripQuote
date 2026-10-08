@@ -12,7 +12,7 @@ import { SetPasswordForm } from "@/features/auth/components/SetPasswordForm";
  */
 export function MyAccountScreen() {
   return (
-    <SectionCard number={1} title="Minha conta" description="Troque a senha da sua conta TripQuote.">
+    <SectionCard number={1} title="Minha conta" description="Troque a senha da sua conta SnowQuote.">
       <SetPasswordForm
         submitLabel="Salvar nova senha"
         submitLabelPending="Salvando…"

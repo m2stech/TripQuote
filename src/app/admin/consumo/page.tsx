@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { UsageManagementScreen } from "@/features/usage/components/UsageManagementScreen";
 
 export const metadata: Metadata = {
-  title: "Consumo — Administração — TripQuote",
+  title: "Consumo — Administração — SnowQuote",
 };
 
 // Os dados são carregados no client (ver `UsageManagementScreen`), não
