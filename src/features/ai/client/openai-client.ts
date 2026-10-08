@@ -14,7 +14,8 @@ let cachedClient: OpenAI | null = null;
  */
 export function getOpenAiClient(): OpenAI {
   if (!cachedClient) {
-    cachedClient = new OpenAI({ apiKey: getAiEnv().OPENAI_API_KEY });
+    const env = getAiEnv();
+    cachedClient = new OpenAI({ apiKey: env.OPENAI_API_KEY, baseURL: env.OPENAI_BASE_URL });
   }
   return cachedClient;
 }

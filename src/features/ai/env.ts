@@ -9,10 +9,14 @@ import { z } from "zod";
  */
 const aiEnvSchema = z.object({
   OPENAI_API_KEY: z.string().min(1, "OPENAI_API_KEY não configurada."),
+  // Opcional: só usada em testes E2E para apontar o SDK a um servidor mock
+  // local em vez da API real da OpenAI. Nunca definida em produção.
+  OPENAI_BASE_URL: z.string().url().optional(),
 });
 
 export function getAiEnv() {
   return aiEnvSchema.parse({
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    OPENAI_BASE_URL: process.env.OPENAI_BASE_URL || undefined,
   });
 }

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
-import { SetPasswordAndRedirect } from "@/features/auth/components/SetPasswordAndRedirect";
-import { createClient } from "@/lib/supabase/server";
+import { ResetPasswordContent } from "./ResetPasswordContent";
 
 export const metadata: Metadata = {
   title: "Redefinir senha — SnowQuote",
@@ -11,12 +11,11 @@ export const metadata: Metadata = {
  * Destino (`next=`) do Route Handler `/auth/confirm`, que já trocou o
  * `token_hash` do e-mail de recuperação por uma sessão autenticada via
  * cookies antes de redirecionar aqui (ver
- * `src/features/auth/actions/request-password-reset.ts`).
+ * `src/features/auth/actions/request-password-reset.ts`). A checagem de
+ * sessão fica em `ResetPasswordContent`, dentro de `<Suspense>`, para não
+ * bloquear o prerendering estático do resto da página.
  */
-export default async function ResetPasswordPage() {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
-
+export default function ResetPasswordPage() {
   return (
     <main className="bg-background flex min-h-screen flex-1 items-center justify-center p-4">
       <div className="w-full max-w-sm">
@@ -26,19 +25,9 @@ export default async function ResetPasswordPage() {
         </div>
 
         <div className="rounded-snow-card border-border bg-card shadow-snow-card border p-6">
-          {data.user ? (
-            <SetPasswordAndRedirect
-              submitLabel="Salvar nova senha"
-              submitLabelPending="Salvando…"
-              successMessage="Senha redefinida com sucesso. Redirecionando para o SnowQuote…"
-              redirectTo="/orcamentos"
-            />
-          ) : (
-            <p className="text-destructive text-sm" role="alert">
-              Link de redefinição inválido ou expirado. Solicite um novo link em &quot;Esqueci minha
-              senha&quot;.
-            </p>
-          )}
+          <Suspense fallback={<p className="text-muted-foreground text-sm">Carregando…</p>}>
+            <ResetPasswordContent />
+          </Suspense>
         </div>
       </div>
     </main>

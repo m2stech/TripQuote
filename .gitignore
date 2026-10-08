@@ -17,3 +17,5 @@ npm-debug.log*
 
 # Internal prototype (contains the internal prompt); keep local only
 docs/reference/
+.vercel
+.env*

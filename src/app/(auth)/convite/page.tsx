@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
-import { SetPasswordAndRedirect } from "@/features/auth/components/SetPasswordAndRedirect";
-import { createClient } from "@/lib/supabase/server";
+import { InviteContent } from "./InviteContent";
 
 export const metadata: Metadata = {
   title: "Criar conta — SnowQuote",
@@ -14,12 +14,11 @@ export const metadata: Metadata = {
  * servidor, sem nenhuma detecção client-side de hash (ver
  * `src/features/users/actions/user-actions.ts`, `inviteUserAction`). O
  * usuário convidado define a própria senha aqui — nunca recebe uma senha
- * temporária por e-mail.
+ * temporária por e-mail. A checagem de sessão fica em `InviteContent`,
+ * dentro de `<Suspense>`, para não bloquear o prerendering estático do resto
+ * da página (ver seu comentário).
  */
-export default async function AcceptInvitePage() {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
-
+export default function AcceptInvitePage() {
   return (
     <main className="bg-background flex min-h-screen flex-1 items-center justify-center p-4">
       <div className="w-full max-w-sm">
@@ -31,18 +30,9 @@ export default async function AcceptInvitePage() {
         </div>
 
         <div className="rounded-snow-card border-border bg-card shadow-snow-card border p-6">
-          {data.user ? (
-            <SetPasswordAndRedirect
-              submitLabel="Criar conta"
-              submitLabelPending="Criando conta…"
-              successMessage="Conta criada com sucesso. Redirecionando para o SnowQuote…"
-              redirectTo="/orcamentos"
-            />
-          ) : (
-            <p className="text-destructive text-sm" role="alert">
-              Link de convite inválido ou expirado. Peça ao administrador para enviar um novo convite.
-            </p>
-          )}
+          <Suspense fallback={<p className="text-muted-foreground text-sm">Carregando…</p>}>
+            <InviteContent />
+          </Suspense>
         </div>
       </div>
     </main>
