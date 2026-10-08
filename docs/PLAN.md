@@ -198,22 +198,22 @@ Baseado em [CLAUDE.md](../CLAUDE.md) e [PRD.md](PRD.md). Ordem: **setup → inte
 **Aceite:** admin altera o prompt e a próxima geração usa a nova versão; consultor não acessa nada de admin; usuário convidado define a própria senha pelo link do e-mail e consegue trocá-la depois de logado; "esqueci minha senha" funciona ponta a ponta.
 **Commit final:** `feat(admin): add user, prompt versioning and branding management`
 
-## M9 — Consumo, auditoria e observabilidade
+## M9 — Consumo e auditoria
 
-**Branch:** `feat/m9-usage-audit-sentry`
+**Branch:** `feat/m9-usage-audit`
 **Objetivo:** controle de custo e rastreabilidade.
 
-- [ ] Tabela de preços por modelo e cálculo do custo estimado
-- [ ] Painel de consumo (por usuário, período, orçamento) com exportação CSV
-- [ ] Auditoria: usuário, data, orçamento e versão do prompt em `audit_log`
-- [ ] Tela de auditoria para admin, com filtros
-- [ ] Sentry no client e no server, com sourcemaps e sem vazar dados sensíveis
-- [ ] Limites básicos: tamanho de upload e rate limit por usuário na geração
-- [ ] Testes Vitest do cálculo de custo
-- [ ] Revisão com `ai-prompt-guard`
+- [x] Tabela `model_pricing` (preço por 1M tokens, por modelo), editável pelo admin, substituindo a tabela hardcoded de `estimate-cost.ts`
+- [x] Painel de consumo (por usuário, período, orçamento) com exportação CSV
+- [x] Tela de auditoria para admin, com filtros (lendo `audit_log`, já alimentada desde M4–M8)
+- [x] Rate limit por usuário na geração (janela de tempo simples sobre `generations`, limite configurável)
+- [x] Testes Vitest do cálculo de custo e do rate limit
+- [x] Revisão com `ai-prompt-guard`
 
-**Aceite:** cada geração aparece no painel com modelo, tokens e custo; erros chegam ao Sentry.
-**Commit final:** `feat(usage): add AI usage tracking, audit log and Sentry`
+**Fora de escopo por decisão (não essencial ao funcionamento do produto; revisitar depois se necessário):** Sentry, limite de upload diferenciado por tipo de anexo (mantém 5 MB único já existente).
+
+**Aceite:** cada geração aparece no painel com modelo, tokens e custo; admin ajusta preços sem deploy; auditoria consultável com filtros; geração acima do limite por hora é bloqueada com mensagem clara.
+**Commit final:** `feat(usage): add AI usage tracking, pricing management and audit view`
 
 ## M10 — Testes E2E e deploy
 

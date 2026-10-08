@@ -12,6 +12,10 @@ import { getActivePromptVersion } from "@/features/prompts/repository/prompt-ver
 import { getQuoteRepository } from "@/features/quotes/repository";
 import type { QuoteRepository } from "@/features/quotes/repository/types";
 import type { QuoteRecord } from "@/features/quotes/schemas/quote.schema";
+import {
+  enforceGenerationRateLimit,
+  GenerationRateLimitError,
+} from "@/features/usage/rate-limit/generation-rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
@@ -42,9 +46,21 @@ export async function runQuoteGeneration(quoteId: string, userId: string): Promi
     throw new Error("Orçamento não encontrado.");
   }
 
+  try {
+    await enforceGenerationRateLimit(adminSupabase, userId);
+  } catch (error) {
+    if (error instanceof GenerationRateLimitError) throw error;
+    throw await logPreflightFailureAndGetGenericError(adminSupabase, userId, quoteId, error);
+  }
+
   await repository.markProcessing(quoteId);
 
-  const promptVersion = await getActivePromptVersion(adminSupabase);
+  let promptVersion;
+  try {
+    promptVersion = await getActivePromptVersion(adminSupabase);
+  } catch (error) {
+    throw await logPreflightFailureAndGetGenericError(adminSupabase, userId, quoteId, error);
+  }
 
   const { data: generationRow, error: generationInsertError } = await supabase
     .from("generations")
@@ -79,7 +95,12 @@ export async function runQuoteGeneration(quoteId: string, userId: string): Promi
 
   try {
     const result = await generateQuoteContent({ form: quote.form, promptVersion, flightImagePart });
-    const estimatedCostUsd = estimateCostUsd(result.model, result.promptTokens, result.completionTokens);
+    const estimatedCostUsd = await estimateCostUsd(
+      adminSupabase,
+      result.model,
+      result.promptTokens,
+      result.completionTokens,
+    );
 
     await adminSupabase
       .from("generations")
@@ -128,6 +149,31 @@ export async function runQuoteGeneration(quoteId: string, userId: string): Promi
       errorMessage: GENERIC_ERROR_MESSAGE,
     });
   }
+}
+
+/**
+ * Loga em `audit_log` uma falha ocorrida antes de existir uma linha em
+ * `generations` (rate limit, leitura do prompt ativo) e devolve um erro
+ * genérico e seguro para o client — a mensagem técnica (ex.: detalhe do
+ * Postgres) nunca deve escapar para o usuário final.
+ */
+async function logPreflightFailureAndGetGenericError(
+  adminSupabase: SupabaseClient<Database>,
+  userId: string,
+  quoteId: string,
+  error: unknown,
+): Promise<Error> {
+  const technicalReason = error instanceof Error ? error.message : "Erro desconhecido.";
+
+  await adminSupabase.from("audit_log").insert({
+    actor_id: userId,
+    action: "quote.generation.failed",
+    entity_type: "quote",
+    entity_id: quoteId,
+    metadata: { reason: technicalReason },
+  });
+
+  return new Error(GENERIC_ERROR_MESSAGE);
 }
 
 /**

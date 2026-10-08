@@ -1,17 +1,13 @@
 import type { Metadata } from "next";
 
-import { AdminPlaceholder } from "@/components/admin-placeholder";
+import { UsageManagementScreen } from "@/features/usage/components/UsageManagementScreen";
 
 export const metadata: Metadata = {
   title: "Consumo — Administração — TripQuote",
 };
 
+// Os dados são carregados no client (ver `UsageManagementScreen`), não
+// aqui — mesma razão de `admin/usuarios/page.tsx` (Cache Components/Next 16).
 export default function AdminUsagePage() {
-  return (
-    <AdminPlaceholder
-      title="Consumo"
-      description="Painel de consumo de IA por usuário, período e orçamento, com auditoria e exportação CSV."
-      milestone="M9"
-    />
-  );
+  return <UsageManagementScreen />;
 }
