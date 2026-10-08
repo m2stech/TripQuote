@@ -32,6 +32,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { getQuoteAction, updateQuoteAction } from "@/features/quotes/actions/quote-actions";
 import { getAttachmentPreviewUrlAction } from "@/features/quotes/actions/attachment-actions";
+import { getInstitutionalFooterAction } from "@/features/branding/actions/branding-actions";
 import { FormFieldError } from "@/features/quotes/components/FormFieldError";
 import { ImageUpload } from "@/features/quotes/components/ImageUpload";
 import { useQuoteAutosave } from "@/features/quotes/hooks/useQuoteAutosave";
@@ -95,6 +96,19 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
   const [isLoadingDraft, setIsLoadingDraft] = useState(Boolean(initialQuoteId));
   const [agencyLogoPreview, setAgencyLogoPreview] = useState<string | null>(null);
   const [flightImagePreview, setFlightImagePreview] = useState<string | null>(null);
+  const [institutionalFooter, setInstitutionalFooter] = useState({
+    logoUrl: INSTITUTIONAL_LOGO_URL,
+    footerText: FIXED_INSTITUTIONAL_FOOTER,
+  });
+
+  // Logo e texto institucionais configurados pelo admin (M8); cai nos
+  // valores fixos históricos se a chamada falhar ou nada tiver sido
+  // configurado ainda.
+  useEffect(() => {
+    getInstitutionalFooterAction()
+      .then((footer) => setInstitutionalFooter(footer))
+      .catch(() => {});
+  }, []);
 
   const form = useForm<QuoteFormInput>({
     resolver: zodResolver(quoteFormSchema),
@@ -641,13 +655,13 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
         description="Texto e logo institucional fixos, definidos pelo sistema."
       >
         <InfoBox className="flex items-center gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element -- logo institucional fixa, servida de URL externa */}
+          {/* eslint-disable-next-line @next/next/no-img-element -- logo institucional, servida de URL assinada ou externa fixa */}
           <img
-            src={INSTITUTIONAL_LOGO_URL}
+            src={institutionalFooter.logoUrl}
             alt="Logo institucional SNOW"
             className="h-8 w-auto shrink-0"
           />
-          <span>{FIXED_INSTITUTIONAL_FOOTER}</span>
+          <span>{institutionalFooter.footerText}</span>
         </InfoBox>
       </SectionCard>
 

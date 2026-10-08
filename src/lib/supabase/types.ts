@@ -77,6 +77,44 @@ export type Database = {
           },
         ]
       }
+      branding_settings: {
+        Row: {
+          company_name: string
+          created_at: string
+          id: string
+          institutional_footer: string
+          institutional_logo_storage_path: string | null
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          company_name?: string
+          created_at?: string
+          id?: string
+          institutional_footer?: string
+          institutional_logo_storage_path?: string | null
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          company_name?: string
+          created_at?: string
+          id?: string
+          institutional_footer?: string
+          institutional_logo_storage_path?: string | null
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branding_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       generations: {
         Row: {
           completion_tokens: number

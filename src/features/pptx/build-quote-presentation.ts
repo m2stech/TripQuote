@@ -6,7 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveAgencyLogo } from "@/features/pptx/images/agency-logo";
 import { resolveDestinationPhoto } from "@/features/pptx/images/destination-photo";
 import { resolveHotelPhoto } from "@/features/pptx/images/hotel-photo";
-import { resolveInstitutionalLogo } from "@/features/pptx/images/institutional-logo";
+import { resolveInstitutionalBranding } from "@/features/pptx/images/institutional-logo";
 import { matchHotelsByName } from "@/features/pptx/match-hotels";
 import { resolveFlightLegs } from "@/features/pptx/resolve-flight-legs";
 import { buildCoverSlide } from "@/features/pptx/slides/cover-slide";
@@ -48,14 +48,14 @@ export async function buildQuotePresentation(
   const pres = new pptxgen();
   pres.layout = "LAYOUT_WIDE";
 
-  const [agencyLogoCover, agencyLogoInner, destinationPhoto, institutionalLogo] = await Promise.all([
+  const [agencyLogoCover, agencyLogoInner, destinationPhoto, institutionalBranding] = await Promise.all([
     resolveAgencyLogo(supabase, form.agencyLogo, COVER_LOGO_BOX),
     resolveAgencyLogo(supabase, form.agencyLogo, INNER_LOGO_BOX),
     resolveDestinationPhoto(form.general.destination, aiOutput.destinationPhoto, {
       w: SLIDE_WIDTH_IN,
       h: SLIDE_HEIGHT_IN,
     }),
-    resolveInstitutionalLogo(FOOTER_LOGO_BOX),
+    resolveInstitutionalBranding(supabase, FOOTER_LOGO_BOX),
   ]);
 
   await buildCoverSlide(pres, {
@@ -118,7 +118,10 @@ export async function buildQuotePresentation(
     });
   }
 
-  buildFinalSlide(pres, { institutionalLogo });
+  buildFinalSlide(pres, {
+    institutionalLogo: institutionalBranding.logo,
+    institutionalFooterText: institutionalBranding.footerText,
+  });
 
   return (await pres.write({ outputType: "nodebuffer" })) as Buffer;
 }

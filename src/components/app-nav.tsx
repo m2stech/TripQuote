@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { href: "/orcamentos", label: "Orçamentos" },
   { href: "/orcamentos/novo", label: "Novo orçamento" },
   { href: "/admin", label: "Admin" },
+  { href: "/minha-conta", label: "Minha conta" },
 ] as const;
 
 /**

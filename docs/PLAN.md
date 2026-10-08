@@ -183,15 +183,19 @@ Baseado em [CLAUDE.md](../CLAUDE.md) e [PRD.md](PRD.md). Ordem: **setup → inte
 **Branch:** `feat/m8-admin`
 **Objetivo:** governança da operadora.
 
-- [ ] Gestão de usuários: convidar, ativar/desativar, alterar papel
-- [ ] Editor de prompt com versionamento: nova versão, ativar, histórico e restauração
-- [ ] Gestão de identidade visual: logos institucionais e ativos
-- [ ] Configurações da empresa
-- [ ] Todas as rotas e actions admin com checagem de papel no servidor
-- [ ] Testes de autorização (consultor recebe 403)
-- [ ] Revisão com `supabase-rls-reviewer` e `ai-prompt-guard`
+- [x] Gestão de usuários: convidar, ativar/desativar, alterar papel
+- [x] Editor de prompt com versionamento: nova versão, ativar, histórico e restauração
+- [x] Gestão de identidade visual: logos institucionais e ativos
+- [x] Configurações da empresa
+- [x] Todas as rotas e actions admin com checagem de papel no servidor
+- [x] Testes de autorização (consultor recebe 403)
+- [x] Revisão com `supabase-rls-reviewer` e `ai-prompt-guard`
+- [x] Fluxo de primeiro acesso: página `/convite` (callback do link de convite do Supabase) onde o usuário define a própria senha — sem senha temporária em texto claro no e-mail
+- [x] Recuperação de senha: link "Esqueci minha senha" no login, página de solicitação e página de redefinição (callback do Supabase)
+- [x] Menu "Minha conta": troca de senha pelo próprio usuário autenticado
+- [x] Templates de e-mail do Supabase (convite, recuperação de senha) com identidade SNOW, aplicados via Management API
 
-**Aceite:** admin altera o prompt e a próxima geração usa a nova versão; consultor não acessa nada de admin.
+**Aceite:** admin altera o prompt e a próxima geração usa a nova versão; consultor não acessa nada de admin; usuário convidado define a própria senha pelo link do e-mail e consegue trocá-la depois de logado; "esqueci minha senha" funciona ponta a ponta.
 **Commit final:** `feat(admin): add user, prompt versioning and branding management`
 
 ## M9 — Consumo, auditoria e observabilidade

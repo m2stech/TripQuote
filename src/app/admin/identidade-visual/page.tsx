@@ -1,17 +1,13 @@
 import type { Metadata } from "next";
 
-import { AdminPlaceholder } from "@/components/admin-placeholder";
+import { BrandingSettingsScreen } from "@/features/branding/components/BrandingSettingsScreen";
 
 export const metadata: Metadata = {
   title: "Identidade visual — Administração — TripQuote",
 };
 
+// Os dados são carregados no client (ver `BrandingSettingsScreen`), não
+// aqui — mesma razão de `admin/usuarios/page.tsx` (Cache Components/Next 16).
 export default function AdminBrandingPage() {
-  return (
-    <AdminPlaceholder
-      title="Identidade visual"
-      description="Gestão de logos institucionais e demais ativos de marca da SNOW."
-      milestone="M8"
-    />
-  );
+  return <BrandingSettingsScreen />;
 }

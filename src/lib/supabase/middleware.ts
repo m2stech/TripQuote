@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import type { Database } from "@/lib/supabase/types";
 
-const PROTECTED_PREFIXES = ["/orcamentos", "/admin"];
+const PROTECTED_PREFIXES = ["/orcamentos", "/admin", "/minha-conta"];
 const ADMIN_ONLY_PREFIX = "/admin";
 
 /**

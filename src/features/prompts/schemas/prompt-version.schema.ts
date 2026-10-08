@@ -17,3 +17,10 @@ export const promptVersionRowSchema = z.object({
 });
 
 export type PromptVersionRecord = z.infer<typeof promptVersionRowSchema>;
+
+export const createPromptVersionInputSchema = z.object({
+  content: z.string().trim().min(1, "O conteúdo do prompt não pode ficar vazio."),
+  activate: z.boolean(),
+});
+
+export type CreatePromptVersionInput = z.infer<typeof createPromptVersionInputSchema>;
