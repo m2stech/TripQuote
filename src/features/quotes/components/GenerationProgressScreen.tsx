@@ -35,9 +35,11 @@ export function GenerationProgressScreen({ quoteId }: GenerationProgressScreenPr
       setStatus(result.status);
       setErrorMessage(result.errorMessage ?? null);
       setPptxStoragePath(result.pptxStoragePath ?? null);
-    } catch {
+    } catch (error) {
       setStatus("error");
-      setErrorMessage("Não foi possível iniciar a geração. Tente novamente.");
+      setErrorMessage(
+        error instanceof Error ? error.message : "Não foi possível iniciar a geração. Tente novamente.",
+      );
     }
   }, [quoteId]);
 

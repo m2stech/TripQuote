@@ -57,7 +57,17 @@ function mockGenerationsTable(insertResult: { data: { id: string } | null; error
   const update = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
   const insertSelectSingle = vi.fn().mockResolvedValue(insertResult);
   const insert = vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single: insertSelectSingle }) });
-  return { update, insert };
+  // Contagem usada por `enforceGenerationRateLimit`: `select(..., { count, head }).eq(...).gte(...)`.
+  const select = vi.fn().mockReturnValue({
+    eq: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ count: 0, error: null }) }),
+  });
+  return { update, insert, select };
+}
+
+/** `estimateCostUsd` consulta `model_pricing` via `select(...)` sem filtros adicionais. */
+function mockModelPricingTable() {
+  const select = vi.fn().mockResolvedValue({ data: [], error: null });
+  return { select };
 }
 
 describe("runQuoteGeneration", () => {
@@ -96,16 +106,21 @@ describe("runQuoteGeneration", () => {
     vi.mocked(buildQuotePresentation).mockResolvedValue(Buffer.from("fake-pptx"));
     vi.mocked(uploadGeneratedPptx).mockResolvedValue(`${quoteId}/orcamento.pptx`);
 
-    const { update, insert } = mockGenerationsTable({ data: { id: "generation-1" }, error: null });
+    const { update, insert, select: generationsSelect } = mockGenerationsTable({
+      data: { id: "generation-1" },
+      error: null,
+    });
     generationsUpdate = update;
     auditInsert = vi.fn().mockResolvedValue({ error: null });
+    const { select: modelPricingSelect } = mockModelPricingTable();
 
     userFrom = vi.fn().mockReturnValue({ insert });
     vi.mocked(createClient).mockResolvedValue({ from: userFrom } as never);
 
     adminFrom = vi.fn().mockImplementation((table: string) => {
-      if (table === "generations") return { update: generationsUpdate };
+      if (table === "generations") return { update: generationsUpdate, select: generationsSelect };
       if (table === "audit_log") return { insert: auditInsert };
+      if (table === "model_pricing") return { select: modelPricingSelect };
       throw new Error(`tabela inesperada: ${table}`);
     });
     vi.mocked(createAdminClient).mockReturnValue({ from: adminFrom } as never);
@@ -194,5 +209,68 @@ describe("runQuoteGeneration", () => {
   it("lança erro se o orçamento não existir", async () => {
     repository.getById.mockResolvedValue(null);
     await expect(runQuoteGeneration(quoteId, userId)).rejects.toThrow("Orçamento não encontrado.");
+  });
+
+  it("bloqueia a geração sem marcar processing quando o limite de gerações por hora é atingido", async () => {
+    adminFrom.mockImplementation((table: string) => {
+      if (table === "generations") {
+        return {
+          update: generationsUpdate,
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ count: 20, error: null }) }),
+          }),
+        };
+      }
+      if (table === "audit_log") return { insert: auditInsert };
+      throw new Error(`tabela inesperada: ${table}`);
+    });
+
+    await expect(runQuoteGeneration(quoteId, userId)).rejects.toThrow(/Limite de \d+ gerações por hora/);
+    expect(repository.markProcessing).not.toHaveBeenCalled();
+  });
+
+  it("converte falha técnica na checagem de rate limit em mensagem genérica, sem vazar o detalhe do banco", async () => {
+    adminFrom.mockImplementation((table: string) => {
+      if (table === "generations") {
+        return {
+          update: generationsUpdate,
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              gte: vi.fn().mockResolvedValue({ count: null, error: { message: "relation does not exist" } }),
+            }),
+          }),
+        };
+      }
+      if (table === "audit_log") return { insert: auditInsert };
+      throw new Error(`tabela inesperada: ${table}`);
+    });
+
+    await expect(runQuoteGeneration(quoteId, userId)).rejects.toThrow(
+      "Não foi possível gerar o orçamento. Tente novamente.",
+    );
+    expect(repository.markProcessing).not.toHaveBeenCalled();
+    expect(auditInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "quote.generation.failed",
+        metadata: expect.objectContaining({ reason: expect.stringContaining("relation does not exist") }),
+      }),
+    );
+  });
+
+  it("converte falha ao buscar o prompt ativo em mensagem genérica, sem vazar o detalhe do banco", async () => {
+    vi.mocked(getActivePromptVersion).mockRejectedValue(
+      new Error("Nenhuma versão de prompt ativa encontrada."),
+    );
+
+    await expect(runQuoteGeneration(quoteId, userId)).rejects.toThrow(
+      "Não foi possível gerar o orçamento. Tente novamente.",
+    );
+    expect(repository.markProcessing).toHaveBeenCalledWith(quoteId);
+    expect(auditInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "quote.generation.failed",
+        metadata: expect.objectContaining({ reason: "Nenhuma versão de prompt ativa encontrada." }),
+      }),
+    );
   });
 });

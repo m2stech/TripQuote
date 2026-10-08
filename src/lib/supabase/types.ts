@@ -179,6 +179,38 @@ export type Database = {
           },
         ]
       }
+      model_pricing: {
+        Row: {
+          input_per_million_usd: number
+          model: string
+          output_per_million_usd: number
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          input_per_million_usd: number
+          model: string
+          output_per_million_usd: number
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          input_per_million_usd?: number
+          model?: string
+          output_per_million_usd?: number
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "model_pricing_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           active: boolean
@@ -353,6 +385,10 @@ export type Database = {
       current_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
+      }
+      owns_quote_storage_object: {
+        Args: { object_name: string }
+        Returns: boolean
       }
     }
     Enums: {

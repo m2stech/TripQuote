@@ -80,8 +80,8 @@ export function QuoteDetailScreen({ quoteId }: QuoteDetailScreenProps) {
       } else {
         toast.success("Orçamento gerado com sucesso.");
       }
-    } catch {
-      toast.error("Não foi possível iniciar a geração.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível iniciar a geração.");
       await loadQuote();
     } finally {
       setIsRegenerating(false);
