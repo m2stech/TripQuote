@@ -85,6 +85,9 @@ function makeQuote(overrides: Partial<QuoteRecord["form"]> = {}, aiOverrides: Re
 
 const supabase = {
   storage: { from: vi.fn().mockReturnValue({ download: vi.fn() }) },
+  from: vi.fn().mockReturnValue({
+    select: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }),
+  }),
 } as never;
 
 describe("buildQuotePresentation", () => {

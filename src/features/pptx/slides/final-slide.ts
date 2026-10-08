@@ -3,10 +3,11 @@ import type pptxgen from "pptxgenjs";
 import { renderInternalHeader } from "@/features/pptx/slides/internal-header";
 import { CONTENT_MARGIN_X, FONT_SANS, FONT_SERIF, FOOTER_LOGO_BOX, SLIDE_HEIGHT_IN, SLIDE_WIDTH_IN, SNOW_COLORS } from "@/features/pptx/tokens";
 import type { ResolvedImage } from "@/features/pptx/types";
-import { FIXED_INSTITUTIONAL_FOOTER, FIXED_PAYMENT_TERMS } from "@/features/quotes/schemas/quote-form.schema";
+import { FIXED_PAYMENT_TERMS } from "@/features/quotes/schemas/quote-form.schema";
 
 export interface FinalSlideData {
   institutionalLogo: ResolvedImage;
+  institutionalFooterText: string;
 }
 
 const TITLE = "Condições de pagamento";
@@ -185,7 +186,7 @@ export function buildFinalSlide(pres: pptxgen, data: FinalSlideData): void {
     });
   }
 
-  slide.addText(FIXED_INSTITUTIONAL_FOOTER, {
+  slide.addText(data.institutionalFooterText, {
     x: CONTENT_MARGIN_X + FOOTER_LOGO_BOX.w + 0.2,
     y: footerY,
     w: SLIDE_WIDTH_IN - CONTENT_MARGIN_X * 2 - FOOTER_LOGO_BOX.w - 0.2,
