@@ -6,9 +6,13 @@ Fluxo: login → preenche formulário → anexa arquivos (logos, imagem de voo) 
 
 Personas: **Consultor** (usuário principal, cria orçamentos), **Admin** (usuários, permissões, prompt versionado, identidade visual, consumo de IA). A agência só recebe o arquivo.
 
+Telas de admin implementadas em `src/app/admin/`: usuários, prompts (versionamento), identidade-visual (branding), consumo (uso de IA + preço por modelo). Acesso via convite (`/convite`) criado pelo admin; usuário define senha e pode recuperá-la depois (`/recuperar-senha` → e-mail → `/redefinir-senha`), fluxo em `src/features/auth/`.
+
 ## Stack
 
-Next.js (App Router) · React · TypeScript (strict) · Node.js · Tailwind CSS · shadcn/ui · Supabase (Auth, Postgres, Storage) · OpenAI SDK · PptxGenJS · Zod · Sharp · Sentry · Vitest · Playwright · deploy Vercel.
+Next.js (App Router) · React · TypeScript (strict) · Node.js · Tailwind CSS · shadcn/ui · React Hook Form + Zod resolver · Supabase (Auth, Postgres, Storage) · OpenAI SDK · PptxGenJS · node-vibrant (extração de cor da logo) · Zod · Sharp · Vitest · Playwright · deploy Vercel.
+
+Sentry está no PRD e planejado para o M9, mas **ainda não implementado** (sem dependência no `package.json`, sem uso em `src/`) — não tratar como já ativo.
 
 ## Regras de arquitetura (não negociáveis)
 
@@ -18,30 +22,40 @@ Next.js (App Router) · React · TypeScript (strict) · Node.js · Tailwind CSS 
 - **Supabase RLS** por usuário e papel (consultor vs admin). `SUPABASE_SERVICE_ROLE_KEY` apenas server-side.
 - **Status da geração** explícito: `draft` (Rascunho) → `processing` → `done` (Concluído) | `error`. UI deve refletir progresso; geração é assíncrona/lenta.
 - **Por geração, registrar**: modelo, tokens, custo estimado, versão do prompt, usuário e data (auditoria).
-- **Prompts versionados em tabela**, editáveis só por admin; cada orçamento guarda a versão usada.
+- **Prompts versionados em tabela** (`prompt_versions`), editáveis só por admin; cada orçamento guarda a versão usada. Versionar = nova migration que desativa a versão anterior e insere a nova (condicionado a existir um admin) — nunca `UPDATE` numa versão já usada por orçamentos existentes. Hoje em v5 (histórico: v1 base → v2 foto do destino → v3 atrativos do destino → v4 fallback de voo via imagem → v5 modo Circuito).
+- **Preços de modelo de IA também versionados em tabela** (`model_pricing`, migration `20261014000000`), mesmo padrão: RLS leitura para todos, escrita só admin — não mais constante hardcoded.
+- **Rate limit de geração**: 20 gerações/hora por usuário (`src/features/usage/rate-limit/generation-rate-limit.ts`), contabilizado pela tabela `generations`.
+- **Buckets de Storage separados por tipo de arquivo**, cada um com RLS fail-closed via função `owns_quote_storage_object`: `agency-logos`, `flight-images` (M5) e `generated-pptx` (M7 — único com policy de `UPDATE`, pois sobrescreve o mesmo path a cada geração).
 - Imagens/logos: preservar integridade visual (Sharp para normalizar, sem distorcer proporção).
 - PDF é futuro; não implementar agora.
 
-## Estrutura de pastas (proposta)
+## Estrutura de pastas
 
 ```
 src/
   app/
-    (auth)/login/
-    (app)/orcamentos/         # lista, novo, [id], histórico, duplicar
-    admin/                    # usuários, prompts, identidade visual, consumo
-    api/                      # generate, uploads, download
-  components/ui/              # shadcn
-  components/                 # componentes de domínio compartilhados
-  features/
-    quotes/                   # formulário, schemas, ações
-    ai/                       # cliente OpenAI, orquestração, parsing de anexos
-    pptx/                     # builder PptxGenJS, templates, layout
-    prompts/                  # leitura/versionamento (server-only)
-    branding/                 # logos e ativos SNOW
-    usage/                    # tokens/custo/auditoria
-  lib/{supabase,openai,validation,utils}/
-supabase/migrations/          # SQL + políticas RLS
+    (auth)/login|convite|recuperar-senha|redefinir-senha/
+    auth/confirm/              # callback de confirmação de e-mail (Supabase)
+    (app)/orcamentos/          # lista, novo, [id], gerar, duplicar
+    (app)/minha-conta/
+    admin/                     # usuarios, prompts, identidade-visual, consumo
+    api/quotes/[id]/pptx/      # download do .pptx gerado
+    design/                    # showcase interno do design system
+  components/ui/               # shadcn
+  components/                  # componentes de domínio compartilhados
+  features/                    # cada módulo com subpastas por camada:
+                                # actions|components|repository|schemas (+ specifics abaixo)
+    auth/                       # login, logout, reset/convite de senha
+    quotes/                     # formulário, attachments, hooks (autosave), repository
+    ai/                         # client, orchestration, pricing, vision (extração de imagem de voo)
+    pptx/                       # build-quote-presentation, slides/, images/, theme/ (tema por logo)
+    prompts/                    # leitura/versionamento (server-only)
+    branding/                   # logos e ativos da agência, storage
+    usage/                      # tokens/custo/auditoria, rate-limit/, model-pricing
+    users/                      # gestão de usuários (admin)
+  lib/{supabase,auth,validation,utils}/
+supabase/migrations/            # SQL + políticas RLS
+scripts/seed-users.ts           # seed de usuários de teste/dev via Admin API do Supabase
 tests/{unit,e2e}/
 docs/PRD.md
 ```
@@ -50,8 +64,8 @@ docs/PRD.md
 
 - Código, nomes e commits em **inglês**; textos de UI, mensagens e erros em **pt-BR**.
 - TS strict, sem `any`; Server Components por padrão, `"use client"` só quando necessário.
-- Sem segredos no repo: `.env.local` (`OPENAI_API_KEY`, `GOOGLE_PLACES_API_KEY` opcional, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SENTRY_DSN`); manter `.env.example`.
-- Vitest para builder PPTX, schemas e lógica de custo; Playwright para o fluxo crítico (login → criar → gerar → baixar).
+- Sem segredos no repo: `.env.local` (`OPENAI_API_KEY`, `OPENAI_BASE_URL` opcional/só e2e — aponta o SDK a um mock local em vez da API real, `GOOGLE_PLACES_API_KEY` opcional, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL` — base do link nos e-mails de convite/recuperação de senha); manter `.env.example`.
+- Vitest para builder PPTX, schemas e lógica de custo (1 arquivo de teste por módulo de feature); Playwright para o fluxo crítico (login → criar → gerar → baixar), com mock local da API da OpenAI (`tests/e2e/mock-ai-server.ts`, via `OPENAI_BASE_URL`) para rodar e2e sem custo/chamadas reais.
 - Validar cada marco antes de iniciar o próximo.
 
 ## Identidade visual (extraída de `Prompt_orcamento_SNOW.html`)
@@ -95,6 +109,8 @@ Plano detalhado (branches, entregas e commits) em [docs/PLAN.md](docs/PLAN.md). 
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run test` | Vitest (execução única); `npm run test:watch` para modo watch |
 | `npm run format` / `format:check` | Prettier (escrever / verificar) |
-| `npm run e2e` | Playwright — a configurar no M10 |
+| `npm run e2e` | Playwright |
+| `npm run db:seed` | Cria usuários de teste (consultor/admin) via Admin API do Supabase (`scripts/seed-users.ts`) |
+| `npm run db:types` | Gera os types TS do schema Supabase (`src/lib/supabase/types.ts`) |
 
 Requer Node >= 22. Copie `.env.example` para `.env.local` e preencha as variáveis.
