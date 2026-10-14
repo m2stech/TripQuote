@@ -64,7 +64,7 @@ function validOutputParsed() {
         photo: { status: "not_found", url: null, sourceUrl: null, caption: null },
       },
     ],
-    flightImageExtraction: null,
+    flightItinerary: null,
   };
 }
 

@@ -127,7 +127,7 @@ describe("composePromptInput", () => {
       PROMPT_TEMPLATE,
     );
     expect(instructions).toContain("Nenhum trecho foi digitado; extraia os trechos");
-    expect(instructions).toContain("flightImageExtraction.extractedLegs");
+    expect(instructions).toContain("flightItinerary.legs");
     expect(inventoryCounts.legs).toBe(0);
   });
 

@@ -46,9 +46,34 @@ export type QuoteRecord = Omit<QuoteRecordParsed, "form"> & {
   form: ReturnType<typeof normalizeQuoteDraft>;
 };
 
+/**
+ * Preenche `aiOutput.flightItinerary` como `null` em registros gravados
+ * antes da migração de `flightImageExtraction` (M7) para `flightItinerary`
+ * (estruturação de voos sempre via IA, não só com imagem) — sem isso, todo
+ * orçamento já concluído antes dessa mudança falhava ao ser lido do banco
+ * (`invalid_type: expected object, received undefined`). O schema em si
+ * mantém o campo obrigatório porque `generationOutputSchema` também é usado
+ * para validar a resposta da Responses API (`strict: true` exige todos os
+ * campos presentes), então a migração acontece aqui, só na leitura.
+ */
+function migrateLegacyAiOutput(raw: unknown): unknown {
+  if (typeof raw !== "object" || raw === null) return raw;
+  const record = raw as Record<string, unknown>;
+  const aiOutput = record.aiOutput;
+  if (typeof aiOutput !== "object" || aiOutput === null) return raw;
+
+  const aiOutputRecord = aiOutput as Record<string, unknown>;
+  if ("flightItinerary" in aiOutputRecord) return raw;
+
+  return {
+    ...record,
+    aiOutput: { ...aiOutputRecord, flightItinerary: null },
+  };
+}
+
 /** Valida e normaliza um registro bruto (ex.: linha do banco) em `QuoteRecord`. */
 export function parseQuoteRecord(raw: unknown): QuoteRecord {
-  const parsed = quoteRecordSchema.parse(raw);
+  const parsed = quoteRecordSchema.parse(migrateLegacyAiOutput(raw));
   return { ...parsed, form: normalizeQuoteDraft(parsed.form) };
 }
 

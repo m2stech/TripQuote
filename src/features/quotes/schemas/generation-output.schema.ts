@@ -59,20 +59,43 @@ export const generatedHotelSchema = z.object({
 
 export type GeneratedHotel = z.infer<typeof generatedHotelSchema>;
 
-export const extractedFlightLegSchema = z.object({
-  // Mesmo limite de `flightFieldsSchema.legs` (quote-form.schema.ts): texto
-  // digitado e texto extraído da imagem convergem no mesmo slide
-  // (`resolveFlightLegs`), por isso recebem o mesmo tratamento.
-  description: z.string().trim().max(200),
+export const flightDirectionSchema = z.enum(["outbound", "return"]);
+
+export type FlightDirection = z.infer<typeof flightDirectionSchema>;
+
+export const structuredFlightLegSchema = z.object({
+  // Agrupamento dos trechos em uma viagem de ida e, se houver, uma de
+  // volta — replica a separação em slides distintos do fluxo legado
+  // (`Prompt_orcamento_SNOW.html`), que o usuário apontou como mais rica
+  // visualmente que a tabela genérica anterior.
+  direction: flightDirectionSchema,
+  airline: z.string().trim().max(80),
+  flightNumber: z.string().trim().max(20),
+  originCode: z.string().trim().max(4),
+  originCity: z.string().trim().max(80),
+  destinationCode: z.string().trim().max(4),
+  destinationCity: z.string().trim().max(80),
+  departureTime: z.string().trim().max(40),
+  arrivalTime: z.string().trim().max(40),
+  duration: z.string().trim().max(40),
 });
 
-export const flightImageExtractionSchema = z.object({
-  wasImageProvided: z.boolean(),
-  extractedLegs: z.array(extractedFlightLegSchema),
+export type StructuredFlightLeg = z.infer<typeof structuredFlightLegSchema>;
+
+/**
+ * Estruturação dos trechos de voo pela IA — a partir do texto digitado
+ * (`form.flights.legs`) e/ou da imagem de comprovante anexada. Roda sempre
+ * que `flights.enabled`, não só quando há imagem: antes, só a extração via
+ * imagem passava por aqui, o que deixava o slide de voos do texto digitado
+ * limitado a uma tabela genérica (Voo/Saída/Chegada/Origem/Destino) sem
+ * companhia aérea, duração ou nome de cidade.
+ */
+export const flightItinerarySchema = z.object({
+  legs: z.array(structuredFlightLegSchema),
   notes: z.string().nullable(),
 });
 
-export type FlightImageExtraction = z.infer<typeof flightImageExtractionSchema>;
+export type FlightItinerary = z.infer<typeof flightItinerarySchema>;
 
 export const generationOutputSchema = z.object({
   coverTagline: z.string(),
@@ -80,7 +103,7 @@ export const generationOutputSchema = z.object({
   destinationAttractions: z.array(z.string()),
   destinationPhoto: generatedPhotoSchema,
   hotels: z.array(generatedHotelSchema),
-  flightImageExtraction: flightImageExtractionSchema.nullable(),
+  flightItinerary: flightItinerarySchema.nullable(),
 });
 
 export type GenerationOutput = z.infer<typeof generationOutputSchema>;

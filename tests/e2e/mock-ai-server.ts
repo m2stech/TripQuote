@@ -53,7 +53,7 @@ function buildGenerationOutput(hotelNames: string[]) {
         caption: null,
       },
     })),
-    flightImageExtraction: null,
+    flightItinerary: null,
   };
 }
 

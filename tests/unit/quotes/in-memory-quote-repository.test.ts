@@ -86,7 +86,7 @@ describe("InMemoryQuoteRepository", () => {
       destinationAttractions: [],
       destinationPhoto: { status: "not_found" as const, url: null, sourceUrl: null, caption: null },
       hotels: [],
-      flightImageExtraction: null,
+      flightItinerary: null,
     };
     const result = await repository.updateGenerationResult(created.id, { status: "done", aiOutput });
     expect(result.status).toBe("done");

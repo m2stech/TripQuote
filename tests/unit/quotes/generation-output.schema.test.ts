@@ -28,9 +28,21 @@ function validOutput(): GenerationOutput {
         },
       },
     ],
-    flightImageExtraction: {
-      wasImageProvided: true,
-      extractedLegs: [{ description: "GRU -> SCL, 12/03 08:40 - 13:15" }],
+    flightItinerary: {
+      legs: [
+        {
+          direction: "outbound",
+          airline: "LATAM Airlines",
+          flightNumber: "LA 3555",
+          originCode: "GRU",
+          originCity: "São Paulo",
+          destinationCode: "SCL",
+          destinationCity: "Santiago",
+          departureTime: "08:40",
+          arrivalTime: "13:15",
+          duration: "3h35",
+        },
+      ],
       notes: null,
     },
   };
@@ -42,10 +54,10 @@ describe("generationOutputSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("aceita flightImageExtraction nulo quando não havia imagem de voo", () => {
+  it("aceita flightItinerary nulo quando voos não foram solicitados", () => {
     const result = generationOutputSchema.safeParse({
       ...validOutput(),
-      flightImageExtraction: null,
+      flightItinerary: null,
     });
     expect(result.success).toBe(true);
   });
@@ -115,11 +127,20 @@ describe("generationOutputSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rejeita trecho extraído com descrição acima do limite de caracteres", () => {
+  it("rejeita trecho estruturado com companhia aérea acima do limite de caracteres", () => {
     const output = validOutput();
-    output.flightImageExtraction = {
-      wasImageProvided: true,
-      extractedLegs: [{ description: "A".repeat(201) }],
+    output.flightItinerary = {
+      legs: [{ ...output.flightItinerary!.legs[0]!, airline: "A".repeat(81) }],
+      notes: null,
+    };
+    const result = generationOutputSchema.safeParse(output);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejeita direction fora do enum", () => {
+    const output = validOutput();
+    output.flightItinerary = {
+      legs: [{ ...output.flightItinerary!.legs[0]!, direction: "oneway" as never }],
       notes: null,
     };
     const result = generationOutputSchema.safeParse(output);

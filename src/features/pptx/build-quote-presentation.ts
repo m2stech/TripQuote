@@ -8,7 +8,7 @@ import { resolveDestinationPhoto } from "@/features/pptx/images/destination-phot
 import { resolveHotelPhoto } from "@/features/pptx/images/hotel-photo";
 import { resolveInstitutionalBranding } from "@/features/pptx/images/institutional-logo";
 import { matchHotelsByName } from "@/features/pptx/match-hotels";
-import { resolveFlightLegs } from "@/features/pptx/resolve-flight-legs";
+import { resolveFlightItinerary } from "@/features/pptx/resolve-flight-itinerary";
 import { buildCoverSlide } from "@/features/pptx/slides/cover-slide";
 import { buildFinalSlide } from "@/features/pptx/slides/final-slide";
 import { buildFlightsSlide } from "@/features/pptx/slides/flights-slide";
@@ -112,8 +112,10 @@ export async function buildQuotePresentation(
   }
 
   if (form.flights.enabled) {
+    const flightItinerary = resolveFlightItinerary(form.flights.legs, aiOutput.flightItinerary);
     buildFlightsSlide(pres, {
-      legs: resolveFlightLegs(form.flights.legs, aiOutput.flightImageExtraction),
+      legs: flightItinerary.legs,
+      rawLines: flightItinerary.rawLines,
       baggage: form.flights.baggage,
       seat: form.flights.seat,
       services: form.flights.services,
