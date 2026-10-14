@@ -1,7 +1,7 @@
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 
-import { resolveContainSizing } from "@/features/pptx/images/resolve-image-sizing";
+import { meetsMinimumResolution, resolveContainSizing, sizeImage } from "@/features/pptx/images/resolve-image-sizing";
 
 function createImageBuffer(width: number, height: number): Promise<Buffer> {
   return sharp({ create: { width, height, channels: 3, background: { r: 255, g: 0, b: 0 } } })
@@ -43,3 +43,37 @@ describe("resolveContainSizing", () => {
 function pt(points: number): number {
   return points / 72;
 }
+
+describe("meetsMinimumResolution", () => {
+  const box = { w: 4, h: 3 }; // precisa de >= 440x330px a 110 DPI
+
+  it("rejeita imagem abaixo da resolução mínima para a caixa", () => {
+    expect(meetsMinimumResolution(200, 150, box)).toBe(false);
+  });
+
+  it("aceita imagem na resolução mínima ou acima", () => {
+    expect(meetsMinimumResolution(800, 600, box)).toBe(true);
+  });
+});
+
+describe("sizeImage", () => {
+  const box = { w: 4, h: 3 };
+
+  it("rejeita (retorna null) uma imagem de baixa resolução para a caixa, em vez de esticá-la", async () => {
+    const buffer = await sharp({ create: { width: 200, height: 100, channels: 3, background: { r: 1, g: 1, b: 1 } } })
+      .png()
+      .toBuffer();
+
+    const result = await sizeImage({ buffer, mimeType: "image/png" }, box);
+    expect(result).toBeNull();
+  });
+
+  it("aceita uma imagem com resolução suficiente", async () => {
+    const buffer = await sharp({ create: { width: 800, height: 600, channels: 3, background: { r: 1, g: 1, b: 1 } } })
+      .png()
+      .toBuffer();
+
+    const result = await sizeImage({ buffer, mimeType: "image/png" }, box);
+    expect(result?.kind).toBe("image");
+  });
+});

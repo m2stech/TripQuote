@@ -13,9 +13,12 @@ const box = { w: 3, h: 2 };
 const hotelName = "Hotel Brasil Express";
 const location = "Balneário Camboriú, SC";
 
+// Resolução alta o bastante para passar no filtro de qualidade mínima
+// (`meetsMinimumResolution`) para `box = { w: 3, h: 2 }` — ver
+// resolve-image-sizing.ts.
 async function createPngBuffer(): Promise<Buffer> {
   const sharp = (await import("sharp")).default;
-  return sharp({ create: { width: 100, height: 60, channels: 3, background: { r: 0, g: 0, b: 0 } } })
+  return sharp({ create: { width: 600, height: 400, channels: 3, background: { r: 0, g: 0, b: 0 } } })
     .png()
     .toBuffer();
 }

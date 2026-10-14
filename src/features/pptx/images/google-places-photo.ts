@@ -3,7 +3,13 @@ import "server-only";
 import type { FetchedImage } from "@/features/pptx/images/fetch-external-image";
 
 const TIMEOUT_MS = 8000;
-const DEFAULT_MAX_WIDTH_PX = 1600;
+/**
+ * Pede a maior largura que a Places API (New) aceita (limite documentado:
+ * 4800px) — fotos em alta resolução evitam que o slide amplie uma imagem
+ * pequena e ela apareça borrada (bug relatado). O custo da chamada não
+ * varia com `maxWidthPx`; só o tamanho do arquivo retornado.
+ */
+const DEFAULT_MAX_WIDTH_PX = 4800;
 
 interface SearchTextResponse {
   places?: Array<{ photos?: Array<{ name: string }> }>;
