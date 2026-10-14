@@ -21,6 +21,14 @@ const CARD_GAP_X = 0.167;
 const CARDS_START_Y = 1.639;
 const CARD_ROW_GAP = 0.167;
 const MAX_VISIBLE_ATTRACTIONS = 6;
+const MIN_DESTINATION_BLOCK_H = 4.167;
+const SLIDE_BOTTOM_MARGIN = 0.3;
+/** Nº máximo de linhas de cards de inclusão que deixam espaço para o bloco "O destino" no mesmo slide. */
+const MAX_INCLUSION_ROWS_WITH_DESTINATION = Math.floor(
+  (7.5 - SLIDE_BOTTOM_MARGIN - 0.139 - MIN_DESTINATION_BLOCK_H - CARDS_START_Y) / (CARD_H + CARD_ROW_GAP),
+);
+/** Em um slide de continuação (só cards, sem bloco "O destino"), quantas linhas cabem até o rodapé do slide. */
+const MAX_INCLUSION_ROWS_FULL_PAGE = Math.floor((7.5 - SLIDE_BOTTOM_MARGIN - CARDS_START_Y) / (CARD_H + CARD_ROW_GAP));
 
 function renderInclusionCard(
   slide: pptxgen.Slide,
@@ -87,26 +95,27 @@ function renderInclusionCard(
   });
 }
 
-/**
- * Inclusões (grid de cards numerados, 2 colunas, crescendo em linhas
- * conforme a quantidade — "nunca omitir por falta de espaço") + bloco "O
- * destino" com descrição e atrativos pesquisados pela IA (`aiOutput`).
- */
-export function buildInclusionsSlide(pres: pptxgen, data: InclusionsSlideData): void {
-  const slide = pres.addSlide();
-  renderInternalHeader(slide, data.agencyLogo, TITLE);
-
-  data.inclusions.forEach((inclusion, index) => {
-    const column = index % 2;
-    const row = Math.floor(index / 2);
+function renderInclusionsPage(
+  slide: pptxgen.Slide,
+  inclusions: Inclusion[],
+  startIndex: number,
+): void {
+  inclusions.forEach((inclusion, offset) => {
+    const index = startIndex + offset;
+    const column = offset % 2;
+    const row = Math.floor(offset / 2);
     const x = CONTENT_MARGIN_X + column * (CARD_W + CARD_GAP_X);
     const y = CARDS_START_Y + row * (CARD_H + CARD_ROW_GAP);
     renderInclusionCard(slide, inclusion, index, x, y);
   });
+}
 
-  const rows = Math.ceil(data.inclusions.length / 2);
-  const destinationBlockY = CARDS_START_Y + rows * (CARD_H + CARD_ROW_GAP) + 0.139;
-  const destinationBlockH = Math.max(4.167, 7.5 - destinationBlockY - 0.3);
+function renderDestinationBlock(
+  slide: pptxgen.Slide,
+  data: Pick<InclusionsSlideData, "destinationTitle" | "destinationDescription" | "destinationAttractions">,
+  destinationBlockY: number,
+): void {
+  const destinationBlockH = Math.max(MIN_DESTINATION_BLOCK_H, 7.5 - destinationBlockY - SLIDE_BOTTOM_MARGIN);
   const destinationBlockW = SLIDE_WIDTH_IN - CONTENT_MARGIN_X * 2;
 
   slide.addShape("roundRect", {
@@ -198,4 +207,53 @@ export function buildInclusionsSlide(pres: pptxgen, data: InclusionsSlideData): 
       color: SNOW_COLORS.white,
     });
   });
+}
+
+/**
+ * Inclusões (grid de cards numerados, 2 colunas) + bloco "O destino" com
+ * descrição e atrativos pesquisados pela IA (`aiOutput`). Usa a capacidade
+ * cheia do slide (até `MAX_INCLUSION_ROWS_FULL_PAGE` linhas) nas páginas
+ * intermediárias, reservando só a última leva de inclusões para caber junto
+ * com o bloco "O destino" no mesmo slide (`MAX_INCLUSION_ROWS_WITH_DESTINATION`,
+ * menor) — nunca omite inclusões nem corta o bloco "destino" para fora dos
+ * limites do slide, e nunca deixa poucas inclusões por página quando cabem
+ * mais (bug relatado: a paginação inicial usava o limite pequeno também nas
+ * páginas sem o bloco "destino", gerando páginas quase vazias).
+ */
+export function buildInclusionsSlide(pres: pptxgen, data: InclusionsSlideData): void {
+  const totalRows = Math.ceil(data.inclusions.length / 2);
+
+  if (totalRows <= MAX_INCLUSION_ROWS_WITH_DESTINATION) {
+    const slide = pres.addSlide();
+    renderInternalHeader(slide, data.agencyLogo, TITLE);
+    renderInclusionsPage(slide, data.inclusions, 0);
+    const destinationBlockY = CARDS_START_Y + totalRows * (CARD_H + CARD_ROW_GAP) + 0.139;
+    renderDestinationBlock(slide, data, destinationBlockY);
+    return;
+  }
+
+  // Reserva a última página para caber com o bloco "O destino": todas as
+  // páginas anteriores usam a capacidade cheia do slide (sem o bloco).
+  const rowsForLastPage = ((totalRows - 1) % MAX_INCLUSION_ROWS_WITH_DESTINATION) + 1;
+  const inclusionsForLastPage = Math.min(
+    data.inclusions.length - (totalRows - rowsForLastPage) * 2,
+    rowsForLastPage * 2,
+  );
+  const fullPagesInclusionCount = data.inclusions.length - inclusionsForLastPage;
+  const inclusionsPerFullPage = MAX_INCLUSION_ROWS_FULL_PAGE * 2;
+
+  for (let start = 0; start < fullPagesInclusionCount; start += inclusionsPerFullPage) {
+    const page = data.inclusions.slice(start, start + inclusionsPerFullPage);
+    const slide = pres.addSlide();
+    renderInternalHeader(slide, data.agencyLogo, TITLE);
+    renderInclusionsPage(slide, page, start);
+  }
+
+  const lastPage = data.inclusions.slice(fullPagesInclusionCount);
+  const lastSlide = pres.addSlide();
+  renderInternalHeader(lastSlide, data.agencyLogo, TITLE);
+  renderInclusionsPage(lastSlide, lastPage, fullPagesInclusionCount);
+  const lastPageRows = Math.ceil(lastPage.length / 2);
+  const destinationBlockY = CARDS_START_Y + lastPageRows * (CARD_H + CARD_ROW_GAP) + 0.139;
+  renderDestinationBlock(lastSlide, data, destinationBlockY);
 }

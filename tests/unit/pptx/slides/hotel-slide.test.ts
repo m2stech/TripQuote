@@ -8,6 +8,7 @@ function makeData(overrides: Partial<HotelSlideData> = {}): HotelSlideData {
   return {
     optionNumber: 1,
     name: "Hotel Plaza San Francisco",
+    city: null,
     mealPlan: "Café da manhã",
     rooms: [{ id: "1", text: "Standard | R$ 10.000,00" }],
     shortDescription: "Hotel de luxo no centro da cidade.",
@@ -18,6 +19,7 @@ function makeData(overrides: Partial<HotelSlideData> = {}): HotelSlideData {
     photo: { kind: "placeholder" },
     photoSourceUrl: null,
     agencyLogo: { kind: "placeholder" },
+    isCircuit: false,
     ...overrides,
   };
 }
@@ -94,6 +96,18 @@ describe("buildHotelSlide", () => {
     expect(texts).toContain("Standard");
     expect(texts).toContain("Luxo");
     expect(texts).toContain("Suíte");
+  });
+
+  it("modo circuito: título muda, badge é 'CIDADE N' e não exibe preço por hotel", () => {
+    const pres = new pptxgen();
+    pres.layout = "LAYOUT_WIDE";
+    buildHotelSlide(pres, makeData({ isCircuit: true, city: "Osaka" }));
+    const texts = getSlideTexts(getSlides(pres)[0]!);
+    expect(texts).toContain("Hospedagem ao longo do roteiro");
+    expect(texts).toContain("CIDADE 1");
+    expect(texts).not.toContain("OPÇÃO 1");
+    expect(texts).not.toContain("R$ 10.000,00");
+    expect(texts).toContain("Osaka");
   });
 });
 

@@ -187,6 +187,8 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
 
   useQuoteAutosave(quoteId, watch, handleDraftPersisted);
 
+  const isCircuit = watch("general.isCircuit") ?? false;
+
   const inclusionsArray = useFieldArray({ control, name: "inclusions" });
   const hotelsArray = useFieldArray({ control, name: "hotels" });
   // `itinerary` é uma união discriminada; o campo `days` só existe quando
@@ -371,6 +373,34 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
             className="sm:col-span-2"
           />
         </TwoColumnGrid>
+
+        <div className="mt-4 flex items-center gap-2">
+          <Checkbox
+            id="general.isCircuit"
+            checked={isCircuit}
+            onCheckedChange={(checked) => setValue("general.isCircuit", checked === true)}
+          />
+          <Label htmlFor="general.isCircuit">
+            Circuito com múltiplas cidades (roteiro sequencial, valor único de pacote)
+          </Label>
+        </div>
+
+        {isCircuit ? (
+          <div className="mt-3">
+            <Field
+              label="Valor total do pacote"
+              htmlFor="general.packagePriceTotal"
+              error={errors.general?.packagePriceTotal?.message}
+              helperText="Preço único do circuito completo — os hotéis da seção 04 passam a ser as cidades do roteiro, sem preço individual."
+            >
+              <Input
+                id="general.packagePriceTotal"
+                placeholder="Ex.: USD 5.000,00"
+                {...register("general.packagePriceTotal")}
+              />
+            </Field>
+          </div>
+        ) : null}
       </SectionCard>
 
       {/* 02 — Capa */}
@@ -427,7 +457,11 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
       <SectionCard
         number={4}
         title="Hotéis"
-        description="Informe os hotéis e preços. A IA pesquisará uma fotografia real e exclusiva para cada hotel."
+        description={
+          isCircuit
+            ? "Informe os hotéis na ordem do roteiro, cada um com sua cidade. A IA pesquisará uma fotografia real e exclusiva para cada hotel."
+            : "Informe os hotéis e preços. A IA pesquisará uma fotografia real e exclusiva para cada hotel."
+        }
       >
         <div className="flex flex-col gap-5">
           {hotelsArray.fields.map((hotelField, hotelIndex) => (
@@ -440,6 +474,7 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
               watch={watch}
               setValue={setValue}
               errors={errors}
+              isCircuit={isCircuit}
             />
           ))}
 
@@ -455,6 +490,7 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
               hotelsArray.append({
                 id: createId(),
                 name: "",
+                city: "",
                 mealPlan: mealPlanOptions[0],
                 rooms: [{ id: createId(), text: "" }],
               })
@@ -729,6 +765,7 @@ interface HotelBlockProps {
   watch: UseFormWatch<QuoteFormInput>;
   setValue: UseFormSetValue<QuoteFormInput>;
   errors: FieldErrors<QuoteFormInput>;
+  isCircuit: boolean;
 }
 
 function HotelBlock({
@@ -739,6 +776,7 @@ function HotelBlock({
   watch,
   setValue,
   errors,
+  isCircuit,
 }: HotelBlockProps) {
   const roomsArray = useFieldArray({ control, name: `hotels.${hotelIndex}.rooms` });
   const hotelErrors = errors.hotels?.[hotelIndex];
@@ -753,6 +791,16 @@ function HotelBlock({
         >
           <Input id={`hotels.${hotelIndex}.name`} {...register(`hotels.${hotelIndex}.name`)} />
         </Field>
+
+        {isCircuit ? (
+          <Field
+            label="Cidade"
+            htmlFor={`hotels.${hotelIndex}.city`}
+            error={hotelErrors?.city?.message}
+          >
+            <Input id={`hotels.${hotelIndex}.city`} {...register(`hotels.${hotelIndex}.city`)} />
+          </Field>
+        ) : null}
 
         <Field
           label="Plano alimentar"
@@ -780,13 +828,13 @@ function HotelBlock({
       </TwoColumnGrid>
 
       <div className="flex flex-col gap-2">
-        <Label>Acomodações e valores</Label>
+        <Label>{isCircuit ? "Acomodações" : "Acomodações e valores"}</Label>
         {roomsArray.fields.map((roomField, roomIndex) => (
           <div key={roomField.id} className="flex items-start gap-2">
             <div className="flex-1">
               <Input
                 aria-label={`Acomodação ${roomIndex + 1}`}
-                placeholder="Ex.: Standard | R$ 10.000,00"
+                placeholder={isCircuit ? "Ex.: Standard" : "Ex.: Standard | R$ 10.000,00"}
                 {...register(`hotels.${hotelIndex}.rooms.${roomIndex}.text`)}
               />
               <FormFieldError message={hotelErrors?.rooms?.[roomIndex]?.text?.message} />

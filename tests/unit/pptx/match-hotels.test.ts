@@ -5,7 +5,13 @@ import type { GeneratedHotel } from "@/features/quotes/schemas/generation-output
 import type { Hotel } from "@/features/quotes/schemas/quote-form.schema";
 
 function makeHotel(name: string): Hotel {
-  return { id: name, name, mealPlan: "Café da manhã", rooms: [{ id: "1", text: "Standard | R$ 100,00" }] };
+  return {
+    id: name,
+    name,
+    city: "",
+    mealPlan: "Café da manhã",
+    rooms: [{ id: "1", text: "Standard | R$ 100,00" }],
+  };
 }
 
 function makeGeneratedHotel(name: string): GeneratedHotel {

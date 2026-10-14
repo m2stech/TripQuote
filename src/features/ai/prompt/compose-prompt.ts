@@ -32,6 +32,23 @@ function formatDate(value: string): string {
 function formatHotelsBlock(form: QuoteFormValues): string {
   if (form.hotels.length === 0) return "Nenhum hotel informado.";
 
+  // Modo circuito: hotéis são etapas sequenciais de um mesmo roteiro
+  // (cidades diferentes), cobradas por um valor único de pacote — não
+  // opções alternativas de hospedagem com preço próprio.
+  if (form.general.isCircuit) {
+    return form.hotels
+      .map((hotel, index) => {
+        const rooms = hotel.rooms.map((room) => `  - ${room.text}`).join("\n");
+        return (
+          `CIDADE ${index + 1} — ${hotel.city || "Não informada"} — ${hotel.name}\n` +
+          `Plano alimentar: ${hotel.mealPlan}\n` +
+          `Acomodações (sem valor individual; o preço é o valor único do pacote, já informado em DADOS GERAIS):\n` +
+          `${rooms || "  (nenhuma informada)"}`
+        );
+      })
+      .join("\n\n");
+  }
+
   return form.hotels
     .map((hotel, index) => {
       const rooms = hotel.rooms.map((room) => `  - ${room.text}`).join("\n");
@@ -135,6 +152,9 @@ export function composePromptInput(
     "{{CURRENCY}}": form.general.currency,
     "{{PRICE_TYPE}}": form.general.priceType,
     "{{OCCUPANCY}}": form.general.occupancy || "Não informada",
+    "{{CIRCUIT_BLOCK}}": form.general.isCircuit
+      ? `Este orçamento é um CIRCUITO: roteiro sequencial por ${form.hotels.length} cidade(s)/hotel(éis), cobrado como um valor único de pacote de ${form.general.packagePriceTotal}. Nunca exiba nem calcule preço individual por hotel.`
+      : "Este orçamento não é um circuito: cada hotel da seção 5 é uma OPÇÃO alternativa de hospedagem, com preço próprio.",
     "{{TAGLINE}}": form.cover.tagline || "Não informada",
     "{{INCLUSIONS_LIST}}": formatInclusionsList(form),
     "{{HOTELS_BLOCK}}": formatHotelsBlock(form),

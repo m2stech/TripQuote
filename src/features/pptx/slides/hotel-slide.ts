@@ -9,6 +9,7 @@ import type { RoomOption } from "@/features/quotes/schemas/quote-form.schema";
 export interface HotelSlideData {
   optionNumber: number;
   name: string;
+  city: string | null;
   mealPlan: string;
   rooms: RoomOption[];
   shortDescription: string | null;
@@ -19,9 +20,12 @@ export interface HotelSlideData {
   photo: ResolvedImage;
   photoSourceUrl: string | null;
   agencyLogo: ResolvedImage;
+  /** Roteiro sequencial por cidade, cobrado por valor único de pacote — ver `general.isCircuit`. */
+  isCircuit: boolean;
 }
 
 const TITLE = "Escolha o hotel que melhor encaixa no seu perfil!";
+const CIRCUIT_TITLE = "Hospedagem ao longo do roteiro";
 const PHOTO_X = CONTENT_MARGIN_X;
 const PHOTO_Y = 1.611;
 const RIGHT_COL_X = 5.867;
@@ -81,7 +85,19 @@ function renderPhoto(slide: pptxgen.Slide, photo: ResolvedImage, sourceUrl: stri
   }
 }
 
-function renderRoomCards(slide: pptxgen.Slide, rooms: RoomOption[], priceContext: string, y: number, h: number): void {
+/**
+ * No modo circuito o preço é um valor único de pacote (seção 1), não por
+ * hotel — os cards de acomodação mostram só o tipo de quarto, sem preço
+ * nem `priceContext`, para não insinuar um preço por etapa do roteiro.
+ */
+function renderRoomCards(
+  slide: pptxgen.Slide,
+  rooms: RoomOption[],
+  priceContext: string,
+  y: number,
+  h: number,
+  isCircuit: boolean,
+): void {
   const gap = 0.139;
   const cardW = (RIGHT_COL_W - gap * (rooms.length - 1)) / rooms.length;
 
@@ -119,25 +135,27 @@ function renderRoomCards(slide: pptxgen.Slide, rooms: RoomOption[], priceContext
       bold: true,
       color: SNOW_COLORS.navy,
     });
-    slide.addText(parsed.price || "Consulte valores", {
-      x: x + 0.15,
-      y: y + 0.58,
-      w: cardW - 0.3,
-      h: 0.4,
-      fontFace: FONT_SERIF,
-      fontSize: 21,
-      bold: true,
-      color: SNOW_COLORS.navy,
-    });
-    slide.addText(priceContext, {
-      x: x + 0.15,
-      y: y + h - 0.35,
-      w: cardW - 0.3,
-      h: 0.3,
-      fontFace: FONT_SANS,
-      fontSize: 9.5,
-      color: SNOW_COLORS.body,
-    });
+    if (!isCircuit) {
+      slide.addText(parsed.price || "Consulte valores", {
+        x: x + 0.15,
+        y: y + 0.58,
+        w: cardW - 0.3,
+        h: 0.4,
+        fontFace: FONT_SERIF,
+        fontSize: 21,
+        bold: true,
+        color: SNOW_COLORS.navy,
+      });
+      slide.addText(priceContext, {
+        x: x + 0.15,
+        y: y + h - 0.35,
+        w: cardW - 0.3,
+        h: 0.3,
+        fontFace: FONT_SANS,
+        fontSize: 9.5,
+        color: SNOW_COLORS.body,
+      });
+    }
   });
 }
 
@@ -201,26 +219,33 @@ function renderInfoCards(
  * quantidade de rooms) + 4 cards de info com larguras desiguais
  * (localização/categoria/plano alimentar/tripadvisor). Hotéis com muitas
  * acomodações geram slide(s) de continuação via `buildHotelSlides`.
+ *
+ * Modo circuito (`data.isCircuit`): hotéis são etapas sequenciais de um
+ * roteiro por cidades diferentes, não opções alternativas — o badge muda
+ * para "CIDADE N" e os cards de acomodação não exibem preço (o valor é
+ * único para o pacote, informado na seção 1 do formulário).
  */
 export function buildHotelSlide(pres: pptxgen, data: HotelSlideData, isContinuation = false): void {
   const slide = pres.addSlide();
-  renderInternalHeader(slide, data.agencyLogo, TITLE);
+  renderInternalHeader(slide, data.agencyLogo, data.isCircuit ? CIRCUIT_TITLE : TITLE);
 
   renderPhoto(slide, isContinuation ? { kind: "placeholder" } : data.photo, data.photoSourceUrl);
 
+  const badgeLabel = data.isCircuit ? `CIDADE ${data.optionNumber}` : `OPÇÃO ${data.optionNumber}`;
+  const badgeW = data.isCircuit ? 1.1 : 0.917;
   slide.addShape("roundRect", {
     x: RIGHT_COL_X,
     y: PHOTO_Y,
-    w: 0.917,
+    w: badgeW,
     h: 0.25,
     rectRadius: 0.5,
     fill: { color: SNOW_COLORS.navy },
     line: { type: "none" },
   });
-  slide.addText(`OPÇÃO ${data.optionNumber}`, {
+  slide.addText(badgeLabel, {
     x: RIGHT_COL_X,
     y: PHOTO_Y,
-    w: 0.917,
+    w: badgeW,
     h: 0.25,
     fontFace: FONT_SANS,
     fontSize: 8.5,
@@ -259,14 +284,14 @@ export function buildHotelSlide(pres: pptxgen, data: HotelSlideData, isContinuat
   const roomsY = PHOTO_Y + 2.311;
   const roomsH = 1.639;
   if (data.rooms.length > 0) {
-    renderRoomCards(slide, data.rooms, data.priceContext, roomsY, roomsH);
+    renderRoomCards(slide, data.rooms, data.priceContext, roomsY, roomsH, data.isCircuit);
   }
 
   if (!isContinuation) {
     renderInfoCards(
       slide,
       {
-        location: data.location ?? "Não informada",
+        location: data.city || data.location || "Não informada",
         category: data.category ?? "Não informada",
         mealPlan: data.mealPlan,
         tripadvisor: data.tripadvisorRating ?? "Avaliação não verificada",

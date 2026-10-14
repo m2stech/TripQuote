@@ -21,6 +21,8 @@ const form = normalizeQuoteDraft({
     currency: "Real brasileiro (R$)",
     priceType: "Por família",
     occupancy: "Duplo",
+    isCircuit: false,
+    packagePriceTotal: "",
   },
   cover: { tagline: "" },
   inclusions: [{ id: "1", text: "Traslado IN/OUT" }],
@@ -28,6 +30,7 @@ const form = normalizeQuoteDraft({
     {
       id: "1",
       name: "Mandarin Oriental, Santiago",
+      city: "",
       mealPlan: "Café da manhã",
       rooms: [{ id: "1", text: "Standard | R$ 10.000,00" }],
     },

@@ -17,17 +17,33 @@ export const priceTypeOptions = [
   "Valor total do grupo",
 ] as const;
 
-export const generalDataSchema = z.object({
-  agency: requiredText("Informe o nome da agência."),
-  consultant: z.string().trim().optional().default(""),
-  destination: requiredText("Informe o destino."),
-  startDate: requiredText("Informe a data de início da viagem."),
-  endDate: requiredText("Informe a data de fim da viagem."),
-  travelers: z.string().trim().optional().default(""),
-  currency: requiredText("Informe a moeda."),
-  priceType: z.enum(priceTypeOptions),
-  occupancy: z.string().trim().optional().default(""),
-});
+export const generalDataSchema = z
+  .object({
+    agency: requiredText("Informe o nome da agência."),
+    consultant: z.string().trim().optional().default(""),
+    destination: requiredText("Informe o destino."),
+    startDate: requiredText("Informe a data de início da viagem."),
+    endDate: requiredText("Informe a data de fim da viagem."),
+    travelers: z.string().trim().optional().default(""),
+    currency: requiredText("Informe a moeda."),
+    priceType: z.enum(priceTypeOptions),
+    occupancy: z.string().trim().optional().default(""),
+    // Circuito: roteiro sequencial por várias cidades/hotéis, cobrado como um
+    // valor único de pacote — diferente do modo padrão, em que cada hotel da
+    // seção 04 é uma OPÇÃO alternativa com preço próprio. Ver `hotelSchema.city`
+    // e `packagePriceTotal` (exigido só quando este campo é `true`).
+    isCircuit: z.boolean().optional().default(false),
+    packagePriceTotal: z.string().trim().optional().default(""),
+  })
+  .superRefine((data, ctx) => {
+    if (data.isCircuit && !data.packagePriceTotal) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["packagePriceTotal"],
+        message: "Informe o valor total do pacote (circuito).",
+      });
+    }
+  });
 
 export type GeneralData = z.infer<typeof generalDataSchema>;
 
@@ -71,6 +87,10 @@ export type RoomOption = z.infer<typeof roomOptionSchema>;
 export const hotelSchema = z.object({
   id: z.string(),
   name: requiredText("Informe o nome oficial do hotel."),
+  // Cidade onde fica este hotel — só exibida no formulário e no builder
+  // quando `general.isCircuit` é `true` (roteiro sequencial por cidade, não
+  // opções alternativas de hospedagem).
+  city: z.string().trim().optional().default(""),
   mealPlan: z.enum(mealPlanOptions, {
     error: "Selecione o plano alimentar.",
   }),
@@ -250,6 +270,8 @@ const generalDataDraftSchema = z.object({
   currency: z.string().trim().optional().default(""),
   priceType: z.enum(priceTypeOptions).optional().default(priceTypeOptions[0]),
   occupancy: z.string().trim().optional().default(""),
+  isCircuit: z.boolean().optional().default(false),
+  packagePriceTotal: z.string().trim().optional().default(""),
 });
 
 export const quoteDraftSchema = z.object({
@@ -298,6 +320,8 @@ export const quoteFormDefaultValues: QuoteFormValues = {
     currency: "Real brasileiro (R$)",
     priceType: "Por família",
     occupancy: "",
+    isCircuit: false,
+    packagePriceTotal: "",
   },
   cover: { tagline: "" },
   inclusions: [],

@@ -52,6 +52,28 @@ describe("generalDataSchema", () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it("isCircuit padrão é false e não exige packagePriceTotal", () => {
+    const result = generalDataSchema.safeParse(valid);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.isCircuit).toBe(false);
+    }
+  });
+
+  it("com isCircuit=true, exige packagePriceTotal", () => {
+    const result = generalDataSchema.safeParse({ ...valid, isCircuit: true });
+    expect(result.success).toBe(false);
+  });
+
+  it("com isCircuit=true e packagePriceTotal informado, é válido", () => {
+    const result = generalDataSchema.safeParse({
+      ...valid,
+      isCircuit: true,
+      packagePriceTotal: "USD 5.000,00",
+    });
+    expect(result.success).toBe(true);
+  });
 });
 
 describe("inclusionsSchema", () => {
@@ -94,6 +116,22 @@ describe("hotelSchema / hotelsSchema", () => {
 
   it("rejeita lista de hotéis vazia", () => {
     expect(hotelsSchema.safeParse([]).success).toBe(false);
+  });
+
+  it("city é opcional e tem default vazio (modo circuito)", () => {
+    const result = hotelSchema.safeParse(validHotel);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.city).toBe("");
+    }
+  });
+
+  it("aceita city informada", () => {
+    const result = hotelSchema.safeParse({ ...validHotel, city: "Osaka" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.city).toBe("Osaka");
+    }
   });
 });
 

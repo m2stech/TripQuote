@@ -12,6 +12,7 @@ function makeForm(overrides: Partial<typeof quoteFormDefaultValues.general> = {}
       {
         id: "hotel-1",
         name: "Hotel teste",
+        city: "",
         mealPlan: "Café da manhã" as const,
         rooms: [{ id: "room-1", text: "Duplo | R$ 1.000,00" }],
       },

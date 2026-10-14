@@ -16,6 +16,12 @@ export interface FlightsSlideData {
 const TITLE = "Voos contemplados no orçamento";
 const TABLE_Y = 1.639;
 const COLUMN_WIDTHS = [1.25, 2.083, 2.083, 3.431, 3.431];
+const ROW_H = 0.583;
+const CARDS_Y = 4.861;
+/** Nº máximo de trechos (linhas de dados, sem contar o header) que cabem no slide sem sobrepor os cards de bagagem/assento/serviços. */
+const MAX_LEGS_WITH_CARDS = Math.floor((CARDS_Y - TABLE_Y) / ROW_H) - 1;
+/** Em um slide de continuação (só tabela, sem cards), a tabela pode ocupar até o rodapé do slide. */
+const MAX_LEGS_FULL_PAGE = Math.floor((7.5 - 0.3 - TABLE_Y) / ROW_H) - 1;
 
 function buildTableRows(legs: string[]): pptxgen.TableRow[] {
   const parsedLegs = legs.map((leg, index) => parseFlightLeg(leg, index));
@@ -105,17 +111,43 @@ function renderBottomCard(
   });
 }
 
+function renderTable(slide: pptxgen.Slide, rows: pptxgen.TableRow[], isSingleColumn: boolean): void {
+  slide.addTable(rows, {
+    x: CONTENT_MARGIN_X,
+    y: TABLE_Y,
+    w: isSingleColumn ? COLUMN_WIDTHS.reduce((a, b) => a + b, 0) : undefined,
+    colW: isSingleColumn ? undefined : COLUMN_WIDTHS,
+    rowH: ROW_H,
+  });
+}
+
+function renderCards(slide: pptxgen.Slide, data: Pick<FlightsSlideData, "baggage" | "seat" | "services">): void {
+  const cardW = 3.98;
+  const gap = 0.333;
+  renderBottomCard(slide, CONTENT_MARGIN_X, cardW, CARDS_Y, "FRANQUIA DE BAGAGEM", data.baggage);
+  renderBottomCard(slide, CONTENT_MARGIN_X + cardW + gap, cardW, CARDS_Y, "MARCAÇÃO DE ASSENTO", data.seat);
+  renderBottomCard(
+    slide,
+    CONTENT_MARGIN_X + (cardW + gap) * 2,
+    cardW,
+    CARDS_Y,
+    "OUTROS SERVIÇOS",
+    data.services || "Nenhum informado.",
+  );
+}
+
 /**
  * Voos: tabela nativa (Voo/Saída/Chegada/Origem/Destino) parseada de
  * `form.flights.legs` (texto livre); se o texto não casar com o padrão
  * esperado, cai para uma tabela de 1 coluna com as linhas cruas — nunca
  * quebra a geração por formatação inesperada. 3 cards inferiores com
  * bagagem/assento/serviços, com "Nenhum informado." como fallback.
+ *
+ * Com muitos trechos, a tabela sobrepunha os cards inferiores (bug
+ * relatado); agora pagina em slides de continuação (só tabela) e deixa os
+ * cards apenas no último slide, onde cabem sem sobreposição.
  */
 export function buildFlightsSlide(pres: pptxgen, data: FlightsSlideData): void {
-  const slide = pres.addSlide();
-  renderInternalHeader(slide, data.agencyLogo, TITLE);
-
   const legs = data.legs
     .split(/\r?\n/)
     .map((leg) => leg.trim())
@@ -123,26 +155,35 @@ export function buildFlightsSlide(pres: pptxgen, data: FlightsSlideData): void {
 
   const rows = buildTableRows(legs);
   const isSingleColumn = rows[0]!.length === 1;
+  const headerRow = rows[0]!;
+  const dataRows = rows.slice(1);
 
-  slide.addTable(rows, {
-    x: CONTENT_MARGIN_X,
-    y: TABLE_Y,
-    w: isSingleColumn ? COLUMN_WIDTHS.reduce((a, b) => a + b, 0) : undefined,
-    colW: isSingleColumn ? undefined : COLUMN_WIDTHS,
-    rowH: 0.583,
+  if (dataRows.length <= MAX_LEGS_WITH_CARDS) {
+    const slide = pres.addSlide();
+    renderInternalHeader(slide, data.agencyLogo, TITLE);
+    renderTable(slide, rows, isSingleColumn);
+    renderCards(slide, data);
+    return;
+  }
+
+  // Reserva a última página para caber com os cards: todas as páginas
+  // anteriores usam a capacidade cheia do slide (sem cards).
+  const legsForLastPage = ((dataRows.length - 1) % MAX_LEGS_WITH_CARDS) + 1;
+  const fullPagesLegCount = dataRows.length - legsForLastPage;
+
+  const pages: pptxgen.TableRow[][] = [];
+  for (let i = 0; i < fullPagesLegCount; i += MAX_LEGS_FULL_PAGE) {
+    pages.push(dataRows.slice(i, i + MAX_LEGS_FULL_PAGE));
+  }
+  pages.push(dataRows.slice(fullPagesLegCount));
+
+  pages.forEach((page, index) => {
+    const isLastPage = index === pages.length - 1;
+    const slide = pres.addSlide();
+    renderInternalHeader(slide, data.agencyLogo, index === 0 ? TITLE : `${TITLE} (continuação)`);
+    renderTable(slide, [headerRow, ...page], isSingleColumn);
+    if (isLastPage) {
+      renderCards(slide, data);
+    }
   });
-
-  const cardsY = 4.861;
-  const cardW = 3.98;
-  const gap = 0.333;
-  renderBottomCard(slide, CONTENT_MARGIN_X, cardW, cardsY, "FRANQUIA DE BAGAGEM", data.baggage);
-  renderBottomCard(slide, CONTENT_MARGIN_X + cardW + gap, cardW, cardsY, "MARCAÇÃO DE ASSENTO", data.seat);
-  renderBottomCard(
-    slide,
-    CONTENT_MARGIN_X + (cardW + gap) * 2,
-    cardW,
-    cardsY,
-    "OUTROS SERVIÇOS",
-    data.services || "Nenhum informado.",
-  );
 }

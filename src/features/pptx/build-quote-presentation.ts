@@ -88,6 +88,7 @@ export async function buildQuotePresentation(
     buildHotelSlides(pres, {
       optionNumber: index + 1,
       name: matched.form.name,
+      city: matched.form.city || null,
       mealPlan: matched.form.mealPlan,
       rooms: matched.form.rooms,
       shortDescription: matched.ai?.shortDescription ?? null,
@@ -98,6 +99,7 @@ export async function buildQuotePresentation(
       photo,
       photoSourceUrl: matched.ai?.photo.sourceUrl ?? null,
       agencyLogo: agencyLogoInner,
+      isCircuit: form.general.isCircuit,
     });
   }
 

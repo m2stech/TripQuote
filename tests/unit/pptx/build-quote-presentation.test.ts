@@ -28,6 +28,8 @@ function makeQuote(overrides: Partial<QuoteRecord["form"]> = {}, aiOverrides: Re
       currency: "Real brasileiro (R$)",
       priceType: "Por casal",
       occupancy: "Duplo",
+      isCircuit: false,
+      packagePriceTotal: "",
     },
     cover: { tagline: "" },
     inclusions: [
@@ -38,6 +40,7 @@ function makeQuote(overrides: Partial<QuoteRecord["form"]> = {}, aiOverrides: Re
       {
         id: "1",
         name: "Hotel Brasil Express",
+        city: "",
         mealPlan: "Café da manhã",
         rooms: [{ id: "1", text: "Standard | R$ 533,18" }],
       },

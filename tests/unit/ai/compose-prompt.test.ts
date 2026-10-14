@@ -12,6 +12,7 @@ const PROMPT_TEMPLATE =
   "Moeda: {{CURRENCY}}\n" +
   "Tipo: {{PRICE_TYPE}}\n" +
   "Ocupação: {{OCCUPANCY}}\n" +
+  "Circuito: {{CIRCUIT_BLOCK}}\n" +
   "Tagline: {{TAGLINE}}\n" +
   "Inclusões:\n{{INCLUSIONS_LIST}}\n" +
   "Hotéis:\n{{HOTELS_BLOCK}}\n" +
@@ -31,6 +32,8 @@ function draft(overrides: QuoteDraftValues = {}) {
       currency: "Real brasileiro (R$)",
       priceType: "Por família",
       occupancy: "Duplo",
+      isCircuit: false,
+      packagePriceTotal: "",
     },
     cover: { tagline: "" },
     inclusions: [{ id: "1", text: "Traslado IN/OUT" }],
@@ -38,6 +41,7 @@ function draft(overrides: QuoteDraftValues = {}) {
       {
         id: "1",
         name: "Mandarin Oriental, Santiago",
+        city: "",
         mealPlan: "Café da manhã",
         rooms: [{ id: "1", text: "Standard | R$ 10.000,00" }],
       },
@@ -162,5 +166,55 @@ describe("composePromptInput", () => {
   it("nunca inclui valores monetários fora do bloco de hotéis fornecido pelo usuário", () => {
     const { instructions } = composePromptInput(draft(), PROMPT_TEMPLATE);
     expect(instructions).toContain("Standard | R$ 10.000,00");
+  });
+
+  it("modo padrão (não circuito): hotéis são OPÇÕES alternativas com preço", () => {
+    const { instructions } = composePromptInput(draft(), PROMPT_TEMPLATE);
+    expect(instructions).toContain("OPÇÃO 1 — Mandarin Oriental, Santiago");
+    expect(instructions).toContain("Acomodações e valores:");
+    expect(instructions).toContain("Este orçamento não é um circuito");
+  });
+
+  it("modo circuito: hotéis são CIDADEs sequenciais, sem preço individual, com valor único de pacote", () => {
+    const { instructions } = composePromptInput(
+      draft({
+        general: {
+          agency: "Primus Turismo",
+          consultant: "Maria Silva",
+          destination: "Japão",
+          startDate: "2026-03-12",
+          endDate: "2026-03-19",
+          travelers: "2 adultos",
+          currency: "USD",
+          priceType: "Por família",
+          occupancy: "Duplo",
+          isCircuit: true,
+          packagePriceTotal: "USD 5.000,00",
+        },
+        hotels: [
+          {
+            id: "1",
+            name: "Shinjuku Washington",
+            city: "Tóquio",
+            mealPlan: "Café da manhã",
+            rooms: [{ id: "1", text: "Standard" }],
+          },
+          {
+            id: "2",
+            name: "Osaka Marriott",
+            city: "Osaka",
+            mealPlan: "Café da manhã",
+            rooms: [{ id: "2", text: "Standard" }],
+          },
+        ],
+      }),
+      PROMPT_TEMPLATE,
+    );
+
+    expect(instructions).toContain("CIDADE 1 — Tóquio — Shinjuku Washington");
+    expect(instructions).toContain("CIDADE 2 — Osaka — Osaka Marriott");
+    expect(instructions).toContain("sem valor individual");
+    expect(instructions).toContain("valor único de pacote de USD 5.000,00");
+    expect(instructions).not.toContain("OPÇÃO 1");
   });
 });

@@ -65,4 +65,31 @@ describe("buildFlightsSlide", () => {
     expect(texts).toContain("1 peça de 23 kg por pessoa");
     expect(texts).toContain("Marcação de assento incluso");
   });
+
+  it("com muitos trechos, pagina em slides de continuação em vez de sobrepor os cards inferiores", () => {
+    const pres = new pptxgen();
+    pres.layout = "LAYOUT_WIDE";
+    const manyLegs = Array.from(
+      { length: 6 },
+      (_, i) => `0${i + 1}JAN - CNF (10:0${i}) / GRU (12:0${i})`,
+    ).join("\n");
+    buildFlightsSlide(pres, { ...baseData, legs: manyLegs });
+
+    const slides = getSlides(pres);
+    expect(slides.length).toBeGreaterThan(1);
+
+    // Nenhum slide intermediário (sem cards) deve ultrapassar o limite que
+    // cabe com cards; só o último slide tem os cards.
+    const lastSlide = slides[slides.length - 1]!;
+    const lastTexts = getSlideTexts(lastSlide);
+    expect(lastTexts).toContain("1 peça de 23 kg por pessoa");
+
+    for (const slide of slides.slice(0, -1)) {
+      expect(getSlideTexts(slide)).not.toContain("1 peça de 23 kg por pessoa");
+    }
+
+    const allTableTexts = slides.flatMap((slide) => getSlideTableTexts(slide));
+    expect(allTableTexts).toContain("CNF");
+    expect(allTableTexts).toContain("GRU");
+  });
 });
