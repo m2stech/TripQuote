@@ -3,13 +3,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import type {
   Control,
   FieldErrors,
   UseFormRegister,
   UseFormSetValue,
-  UseFormWatch,
 } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
@@ -134,7 +133,11 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
 
     let isActive = true;
 
-    setIsLoadingDraft(true);
+    // Sem `setIsLoadingDraft(true)` aqui: o estado inicial já nasce `true`
+    // quando há `initialQuoteId` (ver `useState(Boolean(initialQuoteId))`
+    // acima) — chamar de novo aqui era redundante e o React Compiler aponta
+    // `setState` síncrono dentro do corpo do efeito como um padrão a evitar
+    // (cascata de renders).
     getQuoteAction(initialQuoteId)
       .then(async (record) => {
         if (!isActive) return;
@@ -187,7 +190,14 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
 
   useQuoteAutosave(quoteId, watch, handleDraftPersisted);
 
-  const isCircuit = watch("general.isCircuit") ?? false;
+  // `useWatch` (não `watch()` direto no corpo do componente): o React
+  // Compiler do Next.js 16 não consegue memoizar com segurança valores
+  // vindos de `watch()` (função instável do RHF) e pula a memoização do
+  // componente — na prática, um toggle isolado (ex.: checkbox de voos)
+  // podia não refletir na UI até outro evento (ex.: adicionar hotel)
+  // forçar um re-render "de verdade". `useWatch` se inscreve via contexto
+  // e é compatível com o Compiler.
+  const isCircuit = useWatch({ control, name: "general.isCircuit" }) ?? false;
 
   const inclusionsArray = useFieldArray({ control, name: "inclusions" });
   const hotelsArray = useFieldArray({ control, name: "hotels" });
@@ -201,12 +211,15 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
     name: "itinerary.days",
   });
 
-  const flightsEnabled = watch("flights.enabled");
-  const itineraryEnabled = watch("itinerary.enabled");
-  const agencyLogo = watch("agencyLogo") ?? null;
-  const flightImage = watch("flightImage") ?? null;
-  const inclusionsCount = watch("inclusions")?.length ?? 0;
-  const hotelsCount = watch("hotels")?.length ?? 0;
+  const flightsEnabled = useWatch({ control, name: "flights.enabled" });
+  const itineraryEnabled = useWatch({ control, name: "itinerary.enabled" });
+  const agencyLogo = useWatch({ control, name: "agencyLogo" }) ?? null;
+  const flightImage = useWatch({ control, name: "flightImage" }) ?? null;
+  const inclusionsCount = useWatch({ control, name: "inclusions" })?.length ?? 0;
+  const hotelsCount = useWatch({ control, name: "hotels" })?.length ?? 0;
+  const priceType = useWatch({ control, name: "general.priceType" });
+  const flightsBaggage = useWatch({ control, name: "flights.baggage" });
+  const flightsSeat = useWatch({ control, name: "flights.seat" });
 
   // Erros tipados como `FieldErrors` dos ramos "habilitado" das uniões
   // discriminadas de voos e roteiro, só usados quando o respectivo `enabled`
@@ -328,7 +341,7 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
             error={errors.general?.priceType?.message}
           >
             <Select
-              value={watch("general.priceType")}
+              value={priceType}
               onValueChange={(value) =>
                 setValue("general.priceType", value as QuoteFormInput["general"]["priceType"])
               }
@@ -471,7 +484,6 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
               onRemove={() => hotelsArray.remove(hotelIndex)}
               register={register}
               control={control}
-              watch={watch}
               setValue={setValue}
               errors={errors}
               isCircuit={isCircuit}
@@ -531,7 +543,7 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
                 error={flightErrors?.baggage?.message}
               >
                 <Select
-                  value={flightsEnabled ? watch("flights.baggage") : undefined}
+                  value={flightsEnabled ? flightsBaggage : undefined}
                   onValueChange={(value) =>
                     setValue("flights.baggage", value as (typeof baggageOptions)[number])
                   }
@@ -555,7 +567,7 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
                 error={flightErrors?.seat?.message}
               >
                 <Select
-                  value={flightsEnabled ? watch("flights.seat") : undefined}
+                  value={flightsEnabled ? flightsSeat : undefined}
                   onValueChange={(value) =>
                     setValue("flights.seat", value as (typeof seatOptions)[number])
                   }
@@ -762,7 +774,6 @@ interface HotelBlockProps {
   onRemove: () => void;
   register: UseFormRegister<QuoteFormInput>;
   control: Control<QuoteFormInput>;
-  watch: UseFormWatch<QuoteFormInput>;
   setValue: UseFormSetValue<QuoteFormInput>;
   errors: FieldErrors<QuoteFormInput>;
   isCircuit: boolean;
@@ -773,12 +784,12 @@ function HotelBlock({
   onRemove,
   register,
   control,
-  watch,
   setValue,
   errors,
   isCircuit,
 }: HotelBlockProps) {
   const roomsArray = useFieldArray({ control, name: `hotels.${hotelIndex}.rooms` });
+  const mealPlan = useWatch({ control, name: `hotels.${hotelIndex}.mealPlan` });
   const hotelErrors = errors.hotels?.[hotelIndex];
 
   return (
@@ -808,7 +819,7 @@ function HotelBlock({
           error={hotelErrors?.mealPlan?.message}
         >
           <Select
-            value={watch(`hotels.${hotelIndex}.mealPlan`)}
+            value={mealPlan}
             onValueChange={(value) =>
               setValue(`hotels.${hotelIndex}.mealPlan`, value as (typeof mealPlanOptions)[number])
             }
