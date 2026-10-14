@@ -80,7 +80,7 @@ function makeQuote(overrides: Partial<QuoteRecord["form"]> = {}, aiOverrides: Re
           photo: { status: "not_found", url: null, sourceUrl: null, caption: null },
         },
       ],
-      flightImageExtraction: null,
+      flightItinerary: null,
       ...aiOverrides,
     },
   } as QuoteRecord;
@@ -145,6 +145,54 @@ describe("buildQuotePresentation", () => {
     const zip = await JSZip.loadAsync(buffer);
     const slideFiles = Object.keys(zip.files).filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name));
     expect(slideFiles).toHaveLength(6);
+  });
+
+  it("com voos estruturados em ida e volta: 1 slide para cada direção", async () => {
+    const buffer = await buildQuotePresentation(
+      supabase,
+      makeQuote(
+        {},
+        {
+          flightItinerary: {
+            legs: [
+              {
+                direction: "outbound",
+                airline: "LATAM Airlines",
+                flightNumber: "LA 3555",
+                originCode: "CNF",
+                originCity: "Belo Horizonte",
+                destinationCode: "SCL",
+                destinationCity: "Santiago",
+                departureTime: "12:00",
+                arrivalTime: "16:00",
+                duration: "4h00",
+              },
+              {
+                direction: "return",
+                airline: "LATAM Airlines",
+                flightNumber: "LA 3556",
+                originCode: "SCL",
+                originCity: "Santiago",
+                destinationCode: "CNF",
+                destinationCity: "Belo Horizonte",
+                departureTime: "17:00",
+                arrivalTime: "21:00",
+                duration: "4h00",
+              },
+            ],
+            notes: null,
+          },
+        },
+      ),
+    );
+    const zip = await JSZip.loadAsync(buffer);
+    const slideFiles = Object.keys(zip.files).filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name));
+    // Capa + inclusões + 1 hotel + voos ida + voos volta + final = 6.
+    expect(slideFiles).toHaveLength(6);
+
+    const outboundSlide = await zip.file("ppt/slides/slide4.xml")!.async("string");
+    expect(outboundSlide).toContain("LATAM Airlines");
+    expect(outboundSlide).toContain("Belo Horizonte");
   });
 
   it("com logo da agência: extrai o tema da logo e aplica a cor nos slides, em vez do navy fixo da SNOW", async () => {

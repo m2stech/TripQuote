@@ -3,10 +3,28 @@ import { describe, expect, it } from "vitest";
 
 import { buildFlightsSlide } from "@/features/pptx/slides/flights-slide";
 import { DEFAULT_THEME } from "@/features/pptx/theme/extract-theme";
+import type { StructuredFlightLeg } from "@/features/quotes/schemas/generation-output.schema";
 import { getSlides, getSlideTableCount, getSlideTableTexts, getSlideTexts } from "./test-helpers";
 
+function makeLeg(overrides: Partial<StructuredFlightLeg> = {}): StructuredFlightLeg {
+  return {
+    direction: "outbound",
+    airline: "LATAM Airlines",
+    flightNumber: "LA 3555",
+    originCode: "CNF",
+    originCity: "Belo Horizonte",
+    destinationCode: "GRU",
+    destinationCity: "São Paulo",
+    departureTime: "10h20",
+    arrivalTime: "11h40",
+    duration: "1h20",
+    ...overrides,
+  };
+}
+
 const baseData = {
-  legs: "20JUL - CNF (12:00) / SCL (16:00)\n27JUL - SCL (16:00) / CNF (20:00)",
+  legs: [] as StructuredFlightLeg[],
+  rawLines: [] as string[],
   baggage: "1 peça de 23 kg por pessoa",
   seat: "Marcação de assento incluso",
   services: "",
@@ -15,83 +33,108 @@ const baseData = {
 };
 
 describe("buildFlightsSlide", () => {
-  it("adiciona exatamente 1 slide com 1 tabela", () => {
+  it("sem trechos estruturados, cai na tabela com as linhas cruas digitadas", () => {
     const pres = new pptxgen();
     pres.layout = "LAYOUT_WIDE";
-    buildFlightsSlide(pres, baseData);
+    buildFlightsSlide(pres, { ...baseData, rawLines: ["voo de ida qualquer", "voo de volta qualquer"] });
+
     expect(getSlides(pres)).toHaveLength(1);
     expect(getSlideTableCount(getSlides(pres)[0]!)).toBe(1);
-  });
-
-  it("inclui o título fixo", () => {
-    const pres = new pptxgen();
-    pres.layout = "LAYOUT_WIDE";
-    buildFlightsSlide(pres, baseData);
-    expect(getSlideTexts(getSlides(pres)[0]!)).toContain("Voos contemplados no orçamento");
-  });
-
-  it("parseia trechos no padrão esperado em colunas Voo/Saída/Chegada/Origem/Destino", () => {
-    const pres = new pptxgen();
-    pres.layout = "LAYOUT_WIDE";
-    buildFlightsSlide(pres, baseData);
-    const tableTexts = getSlideTableTexts(getSlides(pres)[0]!);
-    expect(tableTexts).toContain("Voo");
-    expect(tableTexts).toContain("CNF");
-    expect(tableTexts).toContain("SCL");
-  });
-
-  it("fallback: texto fora do padrão vira tabela de 1 coluna 'Trecho', sem quebrar", () => {
-    const pres = new pptxgen();
-    pres.layout = "LAYOUT_WIDE";
-    expect(() =>
-      buildFlightsSlide(pres, { ...baseData, legs: "voo de ida qualquer\nvoo de volta qualquer" }),
-    ).not.toThrow();
-
     const tableTexts = getSlideTableTexts(getSlides(pres)[0]!);
     expect(tableTexts).toContain("Trecho");
     expect(tableTexts).toContain("voo de ida qualquer");
   });
 
+  it("com 1 trecho de ida: 1 slide com o card do trecho (companhia, voo, cidades, horários, duração)", () => {
+    const pres = new pptxgen();
+    pres.layout = "LAYOUT_WIDE";
+    buildFlightsSlide(pres, { ...baseData, legs: [makeLeg()] });
+
+    expect(getSlides(pres)).toHaveLength(1);
+    const texts = getSlideTexts(getSlides(pres)[0]!);
+    expect(texts).toContain("Voos contemplados no orçamento — Ida");
+    expect(texts).toContain("LATAM Airlines");
+    expect(texts).toContain("LA 3555");
+    expect(texts).toContain("CNF  →  GRU");
+    expect(texts).toContain("Belo Horizonte  →  São Paulo");
+    expect(texts.some((t) => t.includes("10h20") && t.includes("11h40"))).toBe(true);
+    expect(texts.some((t) => t.includes("1h20"))).toBe(true);
+  });
+
+  it("com ida e volta: 2 slides separados, um por direção", () => {
+    const pres = new pptxgen();
+    pres.layout = "LAYOUT_WIDE";
+    buildFlightsSlide(pres, {
+      ...baseData,
+      legs: [
+        makeLeg({ direction: "outbound" }),
+        makeLeg({
+          direction: "return",
+          originCode: "GRU",
+          originCity: "São Paulo",
+          destinationCode: "CNF",
+          destinationCity: "Belo Horizonte",
+        }),
+      ],
+    });
+
+    const slides = getSlides(pres);
+    expect(slides).toHaveLength(2);
+    expect(getSlideTexts(slides[0]!)).toContain("Voos contemplados no orçamento — Ida");
+    expect(getSlideTexts(slides[1]!)).toContain("Voos contemplados no orçamento — Retorno");
+  });
+
   it("usa 'Nenhum informado.' como fallback quando services está vazio", () => {
     const pres = new pptxgen();
     pres.layout = "LAYOUT_WIDE";
-    buildFlightsSlide(pres, baseData);
+    buildFlightsSlide(pres, { ...baseData, legs: [makeLeg()] });
     expect(getSlideTexts(getSlides(pres)[0]!)).toContain("Nenhum informado.");
   });
 
   it("inclui bagagem e assento informados", () => {
     const pres = new pptxgen();
     pres.layout = "LAYOUT_WIDE";
-    buildFlightsSlide(pres, baseData);
+    buildFlightsSlide(pres, { ...baseData, legs: [makeLeg()] });
     const texts = getSlideTexts(getSlides(pres)[0]!);
     expect(texts).toContain("1 peça de 23 kg por pessoa");
     expect(texts).toContain("Marcação de assento incluso");
   });
 
-  it("com muitos trechos, pagina em slides de continuação em vez de sobrepor os cards inferiores", () => {
+  it("com 3 trechos de ida (ex.: voo com 2 conexões), tudo cabe em 1 único slide, sem duplicar trechos", () => {
     const pres = new pptxgen();
     pres.layout = "LAYOUT_WIDE";
-    const manyLegs = Array.from(
-      { length: 6 },
-      (_, i) => `0${i + 1}JAN - CNF (10:0${i}) / GRU (12:0${i})`,
-    ).join("\n");
+    const legs = [
+      makeLeg({ flightNumber: "LA 3555", direction: "outbound" }),
+      makeLeg({ flightNumber: "TP 082", direction: "outbound" }),
+      makeLeg({ flightNumber: "TP 1452", direction: "outbound" }),
+    ];
+    buildFlightsSlide(pres, { ...baseData, legs });
+
+    const slides = getSlides(pres);
+    expect(slides).toHaveLength(1);
+    const texts = getSlideTexts(slides[0]!);
+    expect(texts).toContain("LA 3555");
+    expect(texts).toContain("TP 082");
+    expect(texts).toContain("TP 1452");
+    expect(texts).toContain("1 peça de 23 kg por pessoa");
+    // Nenhum trecho duplicado (bug anterior: paginação repetia o último trecho na continuação).
+    expect(texts.filter((t) => t === "TP 1452")).toHaveLength(1);
+  });
+
+  it("com muitos trechos de ida (8+), ainda cabe em 1 único slide, sem sobrepor os cards inferiores", () => {
+    const pres = new pptxgen();
+    pres.layout = "LAYOUT_WIDE";
+    const manyLegs = Array.from({ length: 8 }, (_, i) =>
+      makeLeg({ flightNumber: `LA 000${i}`, direction: "outbound" }),
+    );
     buildFlightsSlide(pres, { ...baseData, legs: manyLegs });
 
     const slides = getSlides(pres);
-    expect(slides.length).toBeGreaterThan(1);
-
-    // Nenhum slide intermediário (sem cards) deve ultrapassar o limite que
-    // cabe com cards; só o último slide tem os cards.
-    const lastSlide = slides[slides.length - 1]!;
-    const lastTexts = getSlideTexts(lastSlide);
-    expect(lastTexts).toContain("1 peça de 23 kg por pessoa");
-
-    for (const slide of slides.slice(0, -1)) {
-      expect(getSlideTexts(slide)).not.toContain("1 peça de 23 kg por pessoa");
-    }
-
-    const allTableTexts = slides.flatMap((slide) => getSlideTableTexts(slide));
-    expect(allTableTexts).toContain("CNF");
-    expect(allTableTexts).toContain("GRU");
+    expect(slides).toHaveLength(1);
+    const texts = getSlideTexts(slides[0]!);
+    expect(texts).toContain("1 peça de 23 kg por pessoa");
+    // Layout compacto (muitos trechos): cada trecho é 1 texto único com todos os dados, não campos separados.
+    expect(texts.some((t) => t.includes("LA 0000"))).toBe(true);
+    expect(texts.some((t) => t.includes("LA 0007"))).toBe(true);
   });
 });
