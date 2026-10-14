@@ -19,3 +19,6 @@ npm-debug.log*
 docs/reference/
 .vercel
 .env*
+
+# Sample/reference .pptx files dropped at the repo root for manual review; keep local only
+/*.pptx
