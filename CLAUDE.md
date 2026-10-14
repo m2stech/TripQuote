@@ -74,9 +74,11 @@ Referência de cores, organização e experiência — **não** copiar o HTML li
 - Botões: primário azul; secundário `#e4f3f8`/`#075775`; remover `#fff0e9`/`#a8491c`; gerar laranja 16px. Avisos `#fff5e9` com borda `#f6d8b9`. Blocos fixos/informativos: fundo `#f0f7fa` + borda esquerda 4px azul.
 - Layout: container máx. 1050px; grid de 2 colunas → 1 coluna em ≤650px.
 
+A tabela acima é a identidade visual **da interface do app** (fixa, SNOW). O **.pptx gerado** é diferente: o tema (títulos, cards de destaque) é extraído dinamicamente da logo da agência enviada (ver `src/features/pptx/theme/extract-theme.ts`); se a cor extraída não tiver contraste suficiente para leitura, cai no fallback azul/branco (`DEFAULT_THEME`).
+
 ## Seções do formulário a preservar
 
-01 Dados gerais (agência, consultor, destino, datas, base do orçamento, moeda, tipo de valor, base de acomodação) · 02 Capa · 03 Inclusões (opcional) · 04 Hotéis · 05 Voos e serviços (opcional) · 06 Programação dia a dia (opcional) · 07 Pagamento fixo · 08 Rodapé institucional · 09 Gerar. A logo da agência e a imagem de voo passam a ser **uploads** (no protótipo eram anexadas manualmente na IA). Apenas 01 Dados gerais e 04 Hotéis são obrigatórios para gerar.
+01 Dados gerais (agência, consultor, destino, datas, base do orçamento, moeda, tipo de valor, base de acomodação, modo "Circuito com múltiplas cidades" + valor total do pacote quando ativo) · 02 Capa · 03 Inclusões (opcional) · 04 Hotéis (campo "Cidade" por hotel quando circuito ativo — hotéis passam a representar etapas sequenciais do roteiro, não opções alternativas) · 05 Voos e serviços (opcional) · 06 Programação dia a dia (opcional) · 07 Pagamento fixo · 08 Rodapé institucional · 09 Gerar. A logo da agência e a imagem de voo passam a ser **uploads** (no protótipo eram anexadas manualmente na IA). Apenas 01 Dados gerais e 04 Hotéis são obrigatórios para gerar.
 
 ## Marcos
 
