@@ -52,5 +52,11 @@ export const INNER_LOGO_BOX = { w: emu(723677), h: emu(609600) };
 /** Logo institucional no rodapé do slide final. */
 export const FOOTER_LOGO_BOX = { w: emu(599056), h: emu(635000) };
 
-/** Foto de cada hotel (coluna esquerda do slide de hotel). */
-export const HOTEL_PHOTO_BOX = { w: emu(5080000), h: emu(3810000) };
+/**
+ * Foto de cada hotel (coluna esquerda do slide de hotel). Largura reduzida
+ * de 5080000 EMU (5.556") para parar 0.1" antes de `RIGHT_COL_X` (5.867"):
+ * a largura original avançava até 6.083", invadindo a coluna direita
+ * (badge "CIDADE N"/"OPÇÃO N" e texto) — bug relatado pelo usuário como
+ * "quadros e frases sobrepostos às imagens" nos slides de hotel.
+ */
+export const HOTEL_PHOTO_BOX = { w: emu(4480000), h: emu(3360000) };
