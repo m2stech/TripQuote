@@ -21,9 +21,37 @@ const MIN_ROW_H = 0.65;
 const LABEL_W = 2;
 const DESCRIPTION_X_OFFSET = 2.3;
 const DESCRIPTION_W = SLIDE_WIDTH_IN - CONTENT_MARGIN_X * 2 - 2.5;
-/** Estimativa de caracteres por linha para o corpo da descrição (fontSize 11, FONT_SANS). */
-const CHARS_PER_LINE = 95;
-const LINE_HEIGHT_IN = 0.2;
+
+/**
+ * Tamanho de fonte normal (dias com descrição curta/média) e compacto (dias
+ * muito longos, ex. roteiros detalhados de 1500+ caracteres) — reduz fonte e
+ * entrelinha só quando necessário para caber mais por página, em vez de usar
+ * sempre o mesmo tamanho independente da extensão do texto.
+ */
+const NORMAL_FONT_SIZE = 11;
+const NORMAL_LINE_HEIGHT_IN = 0.2;
+const COMPACT_FONT_SIZE = 9.5;
+const COMPACT_LINE_HEIGHT_IN = 0.175;
+/** Acima deste nº de caracteres, a descrição usa o tamanho compacto. */
+const COMPACT_THRESHOLD_CHARS = 700;
+
+/**
+ * Caracteres por linha estimados a partir da largura real disponível em
+ * polegadas (`DESCRIPTION_W`), não um número fixo arbitrário — calibrado para
+ * Calibri (FONT_SANS) a ~0.092"/caractere em fonte normal (11pt) e
+ * ~0.079"/caractere em fonte compacta (9.5pt), medido a partir de texto real
+ * de roteiro. Evita superestimar a altura necessária (texto corrido cabe mais
+ * apertado do que uma estimativa conservadora assume), que gerava páginas
+ * com só 1 dia mesmo quando um dia curto adjacente caberia junto.
+ */
+function charsPerLine(fontSize: number): number {
+  const inchesPerChar = fontSize >= NORMAL_FONT_SIZE ? 0.092 : 0.079;
+  return Math.floor(DESCRIPTION_W / inchesPerChar);
+}
+
+function isCompactDescription(description: string): boolean {
+  return description.length > COMPACT_THRESHOLD_CHARS;
+}
 
 /**
  * Estima a altura necessária para o card de um dia a partir do tamanho da
@@ -32,11 +60,16 @@ const LINE_HEIGHT_IN = 0.2;
  * texto em vez de assumir uma altura única para todo dia.
  */
 function estimateRowHeight(description: string): number {
-  const lineCount = Math.max(1, Math.ceil(description.length / CHARS_PER_LINE));
-  return Math.max(MIN_ROW_H, ROW_PADDING * 2 + lineCount * LINE_HEIGHT_IN);
+  const compact = isCompactDescription(description);
+  const fontSize = compact ? COMPACT_FONT_SIZE : NORMAL_FONT_SIZE;
+  const lineHeight = compact ? COMPACT_LINE_HEIGHT_IN : NORMAL_LINE_HEIGHT_IN;
+  const lineCount = Math.max(1, Math.ceil(description.length / charsPerLine(fontSize)));
+  return Math.max(MIN_ROW_H, ROW_PADDING * 2 + lineCount * lineHeight);
 }
 
 function renderDay(slide: pptxgen.Slide, day: ItineraryDay, y: number, rowH: number, theme: PptxTheme): void {
+  const compact = isCompactDescription(day.description);
+
   slide.addShape("roundRect", {
     x: CONTENT_MARGIN_X,
     y,
@@ -63,10 +96,10 @@ function renderDay(slide: pptxgen.Slide, day: ItineraryDay, y: number, rowH: num
     w: DESCRIPTION_W,
     h: rowH - ROW_PADDING * 2,
     fontFace: FONT_SANS,
-    fontSize: 11,
+    fontSize: compact ? COMPACT_FONT_SIZE : NORMAL_FONT_SIZE,
     color: SNOW_COLORS.body,
     valign: "top",
-    lineSpacingMultiple: 1.08,
+    lineSpacingMultiple: compact ? 1.02 : 1.08,
   });
 }
 
