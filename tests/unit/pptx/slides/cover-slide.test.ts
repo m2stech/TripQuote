@@ -3,6 +3,7 @@ import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 
 import { buildCoverSlide } from "@/features/pptx/slides/cover-slide";
+import { DEFAULT_THEME } from "@/features/pptx/theme/extract-theme";
 import type { ResolvedImage } from "@/features/pptx/types";
 import { getSlideImageCount, getSlides, getSlideTexts } from "./test-helpers";
 
@@ -23,6 +24,7 @@ const baseData = {
   priceInfo: "Por casal, em Real brasileiro (R$)",
   agencyLogo: placeholder,
   destinationPhoto: placeholder,
+  theme: DEFAULT_THEME,
 };
 
 describe("buildCoverSlide", () => {

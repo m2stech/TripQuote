@@ -2,12 +2,14 @@ import pptxgen from "pptxgenjs";
 import { describe, expect, it } from "vitest";
 
 import { buildFinalSlide } from "@/features/pptx/slides/final-slide";
+import { DEFAULT_THEME } from "@/features/pptx/theme/extract-theme";
 import { FIXED_INSTITUTIONAL_FOOTER } from "@/features/quotes/schemas/quote-form.schema";
 import { getSlideImageCount, getSlides, getSlideTexts } from "./test-helpers";
 
 const PLACEHOLDER_DATA = {
   institutionalLogo: { kind: "placeholder" as const },
   institutionalFooterText: FIXED_INSTITUTIONAL_FOOTER,
+  theme: DEFAULT_THEME,
 };
 
 describe("buildFinalSlide", () => {
@@ -68,6 +70,7 @@ describe("buildFinalSlide", () => {
     buildFinalSlide(pres2, {
       institutionalLogo: { kind: "image", data: Buffer.from("fake"), sizing: { w: 0.6, h: 0.6 } },
       institutionalFooterText: FIXED_INSTITUTIONAL_FOOTER,
+      theme: DEFAULT_THEME,
     });
     expect(getSlideImageCount(getSlides(pres2)[0]!)).toBe(1);
   });

@@ -1,6 +1,7 @@
 import type pptxgen from "pptxgenjs";
 
 import { renderInternalHeader } from "@/features/pptx/slides/internal-header";
+import type { PptxTheme } from "@/features/pptx/theme/extract-theme";
 import { CONTENT_MARGIN_X, FONT_SANS, FONT_SERIF, FOOTER_LOGO_BOX, SLIDE_HEIGHT_IN, SLIDE_WIDTH_IN, SNOW_COLORS } from "@/features/pptx/tokens";
 import type { ResolvedImage } from "@/features/pptx/types";
 import { FIXED_PAYMENT_TERMS } from "@/features/quotes/schemas/quote-form.schema";
@@ -8,6 +9,7 @@ import { FIXED_PAYMENT_TERMS } from "@/features/quotes/schemas/quote-form.schema
 export interface FinalSlideData {
   institutionalLogo: ResolvedImage;
   institutionalFooterText: string;
+  theme: PptxTheme;
 }
 
 const TITLE = "Condições de pagamento";
@@ -43,7 +45,7 @@ function parsePaymentTerms(): { title: string; description: string }[] {
  */
 export function buildFinalSlide(pres: pptxgen, data: FinalSlideData): void {
   const slide = pres.addSlide();
-  renderInternalHeader(slide, { kind: "placeholder" }, TITLE);
+  renderInternalHeader(slide, { kind: "placeholder" }, TITLE, data.theme);
 
   const terms = parsePaymentTerms();
   const paymentCards = terms.slice(0, 3);
@@ -70,7 +72,7 @@ export function buildFinalSlide(pres: pptxgen, data: FinalSlideData): void {
       y: cardsY + 0.2,
       w: 0.5,
       h: 0.042,
-      fill: { color: SNOW_COLORS.navy },
+      fill: { color: data.theme.primary },
       line: { type: "none" },
     });
     slide.addText(term.title, {
@@ -81,7 +83,7 @@ export function buildFinalSlide(pres: pptxgen, data: FinalSlideData): void {
       fontFace: FONT_SERIF,
       fontSize: 17,
       bold: true,
-      color: SNOW_COLORS.navy,
+      color: data.theme.textOnLight,
       lineSpacingMultiple: 1.1,
     });
     slide.addText(term.description, {
@@ -104,12 +106,12 @@ export function buildFinalSlide(pres: pptxgen, data: FinalSlideData): void {
     h: 0.639,
     rectRadius: 0.1,
     fill: { type: "none" },
-    line: { color: SNOW_COLORS.navy, width: 0.75 },
+    line: { color: data.theme.primary, width: 0.75 },
   });
   if (observation) {
     slide.addText(
       [
-        { text: observation.title + " ", options: { bold: true, color: SNOW_COLORS.navy } },
+        { text: observation.title + " ", options: { bold: true, color: data.theme.textOnLight } },
         { text: observation.description, options: { color: SNOW_COLORS.body } },
       ],
       {
@@ -143,7 +145,7 @@ export function buildFinalSlide(pres: pptxgen, data: FinalSlideData): void {
       y: y + 0.07,
       w: 0.111,
       h: 0.111,
-      fill: { color: SNOW_COLORS.navy },
+      fill: { color: data.theme.primary },
       line: { type: "none" },
     });
     slide.addText(note, {
@@ -193,7 +195,7 @@ export function buildFinalSlide(pres: pptxgen, data: FinalSlideData): void {
     h: 0.833,
     fontFace: FONT_SANS,
     fontSize: 11.5,
-    color: SNOW_COLORS.navy,
+    color: data.theme.textOnLight,
     valign: "middle",
   });
 }

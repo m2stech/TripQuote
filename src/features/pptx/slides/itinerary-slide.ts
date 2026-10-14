@@ -1,6 +1,7 @@
 import type pptxgen from "pptxgenjs";
 
 import { renderInternalHeader } from "@/features/pptx/slides/internal-header";
+import type { PptxTheme } from "@/features/pptx/theme/extract-theme";
 import { CONTENT_MARGIN_X, FONT_SANS, SLIDE_WIDTH_IN, SNOW_COLORS } from "@/features/pptx/tokens";
 import type { ResolvedImage } from "@/features/pptx/types";
 import type { ItineraryDay } from "@/features/quotes/schemas/quote-form.schema";
@@ -8,6 +9,7 @@ import type { ItineraryDay } from "@/features/quotes/schemas/quote-form.schema";
 export interface ItinerarySlideData {
   days: ItineraryDay[];
   agencyLogo: ResolvedImage;
+  theme: PptxTheme;
 }
 
 const TITLE = "Programação dia a dia";
@@ -34,7 +36,7 @@ function estimateRowHeight(description: string): number {
   return Math.max(MIN_ROW_H, ROW_PADDING * 2 + lineCount * LINE_HEIGHT_IN);
 }
 
-function renderDay(slide: pptxgen.Slide, day: ItineraryDay, y: number, rowH: number): void {
+function renderDay(slide: pptxgen.Slide, day: ItineraryDay, y: number, rowH: number, theme: PptxTheme): void {
   slide.addShape("roundRect", {
     x: CONTENT_MARGIN_X,
     y,
@@ -52,7 +54,7 @@ function renderDay(slide: pptxgen.Slide, day: ItineraryDay, y: number, rowH: num
     fontFace: FONT_SANS,
     fontSize: 12,
     bold: true,
-    color: SNOW_COLORS.navy,
+    color: theme.textOnLight,
     valign: "top",
   });
   slide.addText(day.description, {
@@ -97,12 +99,12 @@ function paginateDays(days: ItineraryDay[]): ItineraryDay[][] {
 
 function buildItinerarySlidePage(pres: pptxgen, data: ItinerarySlideData, days: ItineraryDay[], isContinuation: boolean): void {
   const slide = pres.addSlide();
-  renderInternalHeader(slide, data.agencyLogo, isContinuation ? `${TITLE} (continuação)` : TITLE);
+  renderInternalHeader(slide, data.agencyLogo, isContinuation ? `${TITLE} (continuação)` : TITLE, data.theme);
 
   let y = ROWS_START_Y;
   for (const day of days) {
     const rowH = estimateRowHeight(day.description);
-    renderDay(slide, day, y, rowH);
+    renderDay(slide, day, y, rowH, data.theme);
     y += rowH + ROW_GAP;
   }
 }

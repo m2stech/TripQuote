@@ -146,4 +146,35 @@ describe("buildQuotePresentation", () => {
     const slideFiles = Object.keys(zip.files).filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name));
     expect(slideFiles).toHaveLength(6);
   });
+
+  it("com logo da agência: extrai o tema da logo e aplica a cor nos slides, em vez do navy fixo da SNOW", async () => {
+    const sharp = (await import("sharp")).default;
+    const goldenLogoBuffer = await sharp({
+      create: { width: 200, height: 200, channels: 3, background: { r: 0xd4, g: 0xac, b: 0x34 } },
+    })
+      .png()
+      .toBuffer();
+
+    const supabaseWithLogo = {
+      storage: {
+        from: vi.fn().mockReturnValue({
+          download: vi.fn().mockResolvedValue({ data: new Blob([goldenLogoBuffer]), error: null }),
+        }),
+      },
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }),
+      }),
+    } as never;
+
+    const quote = makeQuote({
+      agencyLogo: { fileName: "logo.png", storagePath: "quote-1/logo.png", mimeType: "image/png", sizeBytes: 100 },
+    });
+
+    const buffer = await buildQuotePresentation(supabaseWithLogo, quote);
+    const zip = await JSZip.loadAsync(buffer);
+    const slide1Xml = await zip.file("ppt/slides/slide1.xml")!.async("string");
+
+    // Cor extraída da logo dourada sintética — não deve mais aparecer o navy fixo (091B3A) como fundo da capa.
+    expect(slide1Xml).not.toContain("091B3A");
+  });
 });

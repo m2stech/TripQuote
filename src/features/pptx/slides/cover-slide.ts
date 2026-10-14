@@ -1,7 +1,8 @@
 import type pptxgen from "pptxgenjs";
 
 import { renderGradientOverlay, COVER_GRADIENT_STOPS } from "@/features/pptx/images/render-gradient-overlay";
-import { CONTENT_MARGIN_X, COVER_LOGO_BOX, FONT_SANS, FONT_SERIF, SLIDE_HEIGHT_IN, SLIDE_WIDTH_IN, SNOW_COLORS } from "@/features/pptx/tokens";
+import type { PptxTheme } from "@/features/pptx/theme/extract-theme";
+import { CONTENT_MARGIN_X, COVER_LOGO_BOX, FONT_SANS, FONT_SERIF, SLIDE_HEIGHT_IN, SLIDE_WIDTH_IN } from "@/features/pptx/tokens";
 import type { ResolvedImage } from "@/features/pptx/types";
 
 /** DPI usado para converter a área do overlay (polegadas) em pixels ao gerar o PNG do gradiente. */
@@ -19,6 +20,7 @@ export interface CoverSlideData {
   priceInfo: string;
   agencyLogo: ResolvedImage;
   destinationPhoto: ResolvedImage;
+  theme: PptxTheme;
 }
 
 function toDataUri(buffer: Buffer, mime = "image/png"): string {
@@ -57,7 +59,7 @@ export async function buildCoverSlide(pres: pptxgen, data: CoverSlideData): Prom
     const overlayBuffer = await renderGradientOverlay(
       Math.round(SLIDE_WIDTH_IN * OVERLAY_DPI),
       Math.round(overlayHeight * OVERLAY_DPI),
-      SNOW_COLORS.navy,
+      data.theme.primary,
       COVER_GRADIENT_STOPS,
     );
     slide.addImage({
@@ -68,7 +70,7 @@ export async function buildCoverSlide(pres: pptxgen, data: CoverSlideData): Prom
       h: overlayHeight,
     });
   } else {
-    slide.background = { color: SNOW_COLORS.navy };
+    slide.background = { color: data.theme.primary };
   }
 
   if (data.agencyLogo.kind === "image") {
@@ -91,7 +93,7 @@ export async function buildCoverSlide(pres: pptxgen, data: CoverSlideData): Prom
     fontSize: 9.5,
     bold: true,
     charSpacing: 1.8,
-    color: SNOW_COLORS.card,
+    color: data.theme.onPrimary,
   });
 
   slide.addText(data.destination, {
@@ -102,7 +104,7 @@ export async function buildCoverSlide(pres: pptxgen, data: CoverSlideData): Prom
     fontFace: FONT_SERIF,
     fontSize: 44,
     bold: true,
-    color: SNOW_COLORS.white,
+    color: data.theme.onPrimary,
   });
 
   slide.addText(data.tagline, {
@@ -113,7 +115,7 @@ export async function buildCoverSlide(pres: pptxgen, data: CoverSlideData): Prom
     fontFace: FONT_SERIF,
     fontSize: 14,
     italic: true,
-    color: SNOW_COLORS.card,
+    color: data.theme.onPrimary,
   });
 
   const fields: Array<{ x: number; w: number; label: string; value: string }> = [
@@ -129,7 +131,7 @@ export async function buildCoverSlide(pres: pptxgen, data: CoverSlideData): Prom
       y: 6.194,
       w: 0.021,
       h: 0.472,
-      fill: { color: SNOW_COLORS.card },
+      fill: { color: data.theme.onPrimary },
       line: { type: "none" },
     });
     slide.addText(field.label, {
@@ -141,7 +143,7 @@ export async function buildCoverSlide(pres: pptxgen, data: CoverSlideData): Prom
       fontSize: 8,
       bold: true,
       charSpacing: 1.8,
-      color: SNOW_COLORS.card,
+      color: data.theme.onPrimary,
     });
     slide.addText(field.value, {
       x: field.x,
@@ -151,7 +153,7 @@ export async function buildCoverSlide(pres: pptxgen, data: CoverSlideData): Prom
       fontFace: FONT_SANS,
       fontSize: 12.5,
       bold: true,
-      color: SNOW_COLORS.white,
+      color: data.theme.onPrimary,
     });
   }
 }

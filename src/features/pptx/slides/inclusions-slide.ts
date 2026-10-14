@@ -1,6 +1,7 @@
 import type pptxgen from "pptxgenjs";
 
 import { renderInternalHeader } from "@/features/pptx/slides/internal-header";
+import type { PptxTheme } from "@/features/pptx/theme/extract-theme";
 import { CONTENT_MARGIN_X, FONT_SANS, FONT_SERIF, SLIDE_WIDTH_IN, SNOW_COLORS } from "@/features/pptx/tokens";
 import type { ResolvedImage } from "@/features/pptx/types";
 import type { Inclusion } from "@/features/quotes/schemas/quote-form.schema";
@@ -11,6 +12,7 @@ export interface InclusionsSlideData {
   destinationDescription: string;
   destinationAttractions: string[];
   agencyLogo: ResolvedImage;
+  theme: PptxTheme;
 }
 
 const TITLE = "A experiência inclui os seguintes itens";
@@ -36,6 +38,7 @@ function renderInclusionCard(
   index: number,
   x: number,
   y: number,
+  theme: PptxTheme,
 ): void {
   slide.addShape("roundRect", {
     x,
@@ -55,7 +58,7 @@ function renderInclusionCard(
     y: circleY,
     w: circleSize,
     h: circleSize,
-    fill: { color: SNOW_COLORS.navy },
+    fill: { color: theme.primary },
     line: { type: "none" },
   });
   slide.addText(String(index + 1).padStart(2, "0"), {
@@ -66,7 +69,7 @@ function renderInclusionCard(
     fontFace: FONT_SANS,
     fontSize: 14,
     bold: true,
-    color: SNOW_COLORS.white,
+    color: theme.onPrimary,
     align: "center",
     valign: "middle",
   });
@@ -91,7 +94,7 @@ function renderInclusionCard(
     fontFace: FONT_SANS,
     fontSize: 15,
     bold: true,
-    color: SNOW_COLORS.navy,
+    color: theme.textOnLight,
   });
 }
 
@@ -99,6 +102,7 @@ function renderInclusionsPage(
   slide: pptxgen.Slide,
   inclusions: Inclusion[],
   startIndex: number,
+  theme: PptxTheme,
 ): void {
   inclusions.forEach((inclusion, offset) => {
     const index = startIndex + offset;
@@ -106,7 +110,7 @@ function renderInclusionsPage(
     const row = Math.floor(offset / 2);
     const x = CONTENT_MARGIN_X + column * (CARD_W + CARD_GAP_X);
     const y = CARDS_START_Y + row * (CARD_H + CARD_ROW_GAP);
-    renderInclusionCard(slide, inclusion, index, x, y);
+    renderInclusionCard(slide, inclusion, index, x, y, theme);
   });
 }
 
@@ -114,6 +118,7 @@ function renderDestinationBlock(
   slide: pptxgen.Slide,
   data: Pick<InclusionsSlideData, "destinationTitle" | "destinationDescription" | "destinationAttractions">,
   destinationBlockY: number,
+  theme: PptxTheme,
 ): void {
   const destinationBlockH = Math.max(MIN_DESTINATION_BLOCK_H, 7.5 - destinationBlockY - SLIDE_BOTTOM_MARGIN);
   const destinationBlockW = SLIDE_WIDTH_IN - CONTENT_MARGIN_X * 2;
@@ -124,7 +129,7 @@ function renderDestinationBlock(
     w: destinationBlockW,
     h: destinationBlockH,
     rectRadius: 0.05,
-    fill: { color: SNOW_COLORS.navy },
+    fill: { color: theme.primary },
     line: { type: "none" },
   });
 
@@ -139,7 +144,7 @@ function renderDestinationBlock(
     y: destinationBlockY + 0.333,
     w: 0.014,
     h: destinationBlockH - 0.667,
-    fill: { color: SNOW_COLORS.hairlineDark },
+    fill: { color: theme.onPrimary },
     line: { type: "none" },
   });
 
@@ -152,7 +157,7 @@ function renderDestinationBlock(
     fontSize: 9,
     bold: true,
     charSpacing: 1.8,
-    color: SNOW_COLORS.hairline,
+    color: theme.onPrimary,
   });
   slide.addText(data.destinationTitle, {
     x: leftColX,
@@ -162,7 +167,7 @@ function renderDestinationBlock(
     fontFace: FONT_SERIF,
     fontSize: 24,
     bold: true,
-    color: SNOW_COLORS.white,
+    color: theme.onPrimary,
   });
   slide.addText(data.destinationDescription, {
     x: leftColX,
@@ -171,7 +176,7 @@ function renderDestinationBlock(
     h: destinationBlockH - 1.4,
     fontFace: FONT_SANS,
     fontSize: 11.5,
-    color: SNOW_COLORS.hairline,
+    color: theme.onPrimary,
     lineSpacingMultiple: 1.08,
   });
 
@@ -184,7 +189,7 @@ function renderDestinationBlock(
     fontSize: 9,
     bold: true,
     charSpacing: 1.8,
-    color: SNOW_COLORS.hairline,
+    color: theme.onPrimary,
   });
 
   data.destinationAttractions.slice(0, MAX_VISIBLE_ATTRACTIONS).forEach((attraction, index) => {
@@ -194,7 +199,7 @@ function renderDestinationBlock(
       y: itemY + 0.05,
       w: 0.097,
       h: 0.097,
-      fill: { color: SNOW_COLORS.hairline },
+      fill: { color: theme.onPrimary },
       line: { type: "none" },
     });
     slide.addText(attraction, {
@@ -204,7 +209,7 @@ function renderDestinationBlock(
       h: 0.4,
       fontFace: FONT_SANS,
       fontSize: 11,
-      color: SNOW_COLORS.white,
+      color: theme.onPrimary,
     });
   });
 }
@@ -225,10 +230,10 @@ export function buildInclusionsSlide(pres: pptxgen, data: InclusionsSlideData): 
 
   if (totalRows <= MAX_INCLUSION_ROWS_WITH_DESTINATION) {
     const slide = pres.addSlide();
-    renderInternalHeader(slide, data.agencyLogo, TITLE);
-    renderInclusionsPage(slide, data.inclusions, 0);
+    renderInternalHeader(slide, data.agencyLogo, TITLE, data.theme);
+    renderInclusionsPage(slide, data.inclusions, 0, data.theme);
     const destinationBlockY = CARDS_START_Y + totalRows * (CARD_H + CARD_ROW_GAP) + 0.139;
-    renderDestinationBlock(slide, data, destinationBlockY);
+    renderDestinationBlock(slide, data, destinationBlockY, data.theme);
     return;
   }
 
@@ -245,15 +250,15 @@ export function buildInclusionsSlide(pres: pptxgen, data: InclusionsSlideData): 
   for (let start = 0; start < fullPagesInclusionCount; start += inclusionsPerFullPage) {
     const page = data.inclusions.slice(start, start + inclusionsPerFullPage);
     const slide = pres.addSlide();
-    renderInternalHeader(slide, data.agencyLogo, TITLE);
-    renderInclusionsPage(slide, page, start);
+    renderInternalHeader(slide, data.agencyLogo, TITLE, data.theme);
+    renderInclusionsPage(slide, page, start, data.theme);
   }
 
   const lastPage = data.inclusions.slice(fullPagesInclusionCount);
   const lastSlide = pres.addSlide();
-  renderInternalHeader(lastSlide, data.agencyLogo, TITLE);
-  renderInclusionsPage(lastSlide, lastPage, fullPagesInclusionCount);
+  renderInternalHeader(lastSlide, data.agencyLogo, TITLE, data.theme);
+  renderInclusionsPage(lastSlide, lastPage, fullPagesInclusionCount, data.theme);
   const lastPageRows = Math.ceil(lastPage.length / 2);
   const destinationBlockY = CARDS_START_Y + lastPageRows * (CARD_H + CARD_ROW_GAP) + 0.139;
-  renderDestinationBlock(lastSlide, data, destinationBlockY);
+  renderDestinationBlock(lastSlide, data, destinationBlockY, data.theme);
 }

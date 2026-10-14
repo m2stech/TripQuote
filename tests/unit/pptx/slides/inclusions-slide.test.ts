@@ -2,6 +2,7 @@ import pptxgen from "pptxgenjs";
 import { describe, expect, it } from "vitest";
 
 import { buildInclusionsSlide } from "@/features/pptx/slides/inclusions-slide";
+import { DEFAULT_THEME } from "@/features/pptx/theme/extract-theme";
 import { getSlides, getSlideTexts } from "./test-helpers";
 
 const baseData = {
@@ -13,6 +14,7 @@ const baseData = {
   destinationDescription: "Onde o mar encontra os arranha-céus.",
   destinationAttractions: ["Praia Central", "Parque Unipraias", "Cristo Luz"],
   agencyLogo: { kind: "placeholder" as const },
+  theme: DEFAULT_THEME,
 };
 
 describe("buildInclusionsSlide", () => {

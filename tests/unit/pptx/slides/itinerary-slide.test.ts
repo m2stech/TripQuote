@@ -2,6 +2,7 @@ import pptxgen from "pptxgenjs";
 import { describe, expect, it } from "vitest";
 
 import { buildItinerarySlide } from "@/features/pptx/slides/itinerary-slide";
+import { DEFAULT_THEME } from "@/features/pptx/theme/extract-theme";
 import { getSlides, getSlideTexts } from "./test-helpers";
 
 const baseData = {
@@ -10,6 +11,7 @@ const baseData = {
     { id: "2", label: "Dia 2 — 21/07", description: "Passeio à praia" },
   ],
   agencyLogo: { kind: "placeholder" as const },
+  theme: DEFAULT_THEME,
 };
 
 describe("buildItinerarySlide", () => {

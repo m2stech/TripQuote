@@ -1,6 +1,7 @@
 import type pptxgen from "pptxgenjs";
 
 import { CONTENT_MARGIN_X, FONT_SERIF, INNER_LOGO_BOX, SLIDE_WIDTH_IN, SNOW_COLORS } from "@/features/pptx/tokens";
+import type { PptxTheme } from "@/features/pptx/theme/extract-theme";
 import type { ResolvedImage } from "@/features/pptx/types";
 
 function toDataUri(buffer: Buffer): string {
@@ -12,9 +13,16 @@ function toDataUri(buffer: Buffer): string {
  * voos, roteiro, final) — extraído de `Orcamento_modelo.pptx`: logo da
  * agência pequena no canto superior esquerdo, linha vertical fina, título
  * da seção, e uma linha horizontal fina logo abaixo. Não usado na capa
- * (tela cheia, sem este header).
+ * (tela cheia, sem este header). A linha horizontal inferior usa
+ * `theme.accent` (paleta extraída da logo da agência); a vertical ao lado
+ * da logo continua neutra (separador discreto, não um elemento de marca).
  */
-export function renderInternalHeader(slide: pptxgen.Slide, agencyLogo: ResolvedImage, title: string): void {
+export function renderInternalHeader(
+  slide: pptxgen.Slide,
+  agencyLogo: ResolvedImage,
+  title: string,
+  theme: PptxTheme,
+): void {
   if (agencyLogo.kind === "image") {
     slide.addImage({
       data: toDataUri(agencyLogo.data),
@@ -52,7 +60,7 @@ export function renderInternalHeader(slide: pptxgen.Slide, agencyLogo: ResolvedI
     y: 1.389,
     w: SLIDE_WIDTH_IN - CONTENT_MARGIN_X * 2,
     h: 0.014,
-    fill: { color: SNOW_COLORS.hairline },
+    fill: { color: theme.accent },
     line: { type: "none" },
   });
 }

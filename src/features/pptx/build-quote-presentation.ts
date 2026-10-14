@@ -3,7 +3,7 @@ import "server-only";
 import pptxgen from "pptxgenjs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { resolveAgencyLogo } from "@/features/pptx/images/agency-logo";
+import { downloadAgencyLogoBuffer, resolveAgencyLogo } from "@/features/pptx/images/agency-logo";
 import { resolveDestinationPhoto } from "@/features/pptx/images/destination-photo";
 import { resolveHotelPhoto } from "@/features/pptx/images/hotel-photo";
 import { resolveInstitutionalBranding } from "@/features/pptx/images/institutional-logo";
@@ -16,6 +16,7 @@ import { buildHotelSlides } from "@/features/pptx/slides/hotel-slide";
 import { buildInclusionsSlide } from "@/features/pptx/slides/inclusions-slide";
 import { buildItinerarySlide } from "@/features/pptx/slides/itinerary-slide";
 import { COVER_LOGO_BOX, FOOTER_LOGO_BOX, HOTEL_PHOTO_BOX, INNER_LOGO_BOX, SLIDE_HEIGHT_IN, SLIDE_WIDTH_IN } from "@/features/pptx/tokens";
+import { DEFAULT_THEME, extractThemeFromLogo } from "@/features/pptx/theme/extract-theme";
 import type { QuoteRecord } from "@/features/quotes/schemas/quote.schema";
 import type { Database } from "@/lib/supabase/types";
 
@@ -48,15 +49,19 @@ export async function buildQuotePresentation(
   const pres = new pptxgen();
   pres.layout = "LAYOUT_WIDE";
 
-  const [agencyLogoCover, agencyLogoInner, destinationPhoto, institutionalBranding] = await Promise.all([
-    resolveAgencyLogo(supabase, form.agencyLogo, COVER_LOGO_BOX),
-    resolveAgencyLogo(supabase, form.agencyLogo, INNER_LOGO_BOX),
-    resolveDestinationPhoto(form.general.destination, aiOutput.destinationPhoto, {
-      w: SLIDE_WIDTH_IN,
-      h: SLIDE_HEIGHT_IN,
-    }),
-    resolveInstitutionalBranding(supabase, FOOTER_LOGO_BOX),
-  ]);
+  const [agencyLogoBuffer, agencyLogoCover, agencyLogoInner, destinationPhoto, institutionalBranding] =
+    await Promise.all([
+      downloadAgencyLogoBuffer(supabase, form.agencyLogo),
+      resolveAgencyLogo(supabase, form.agencyLogo, COVER_LOGO_BOX),
+      resolveAgencyLogo(supabase, form.agencyLogo, INNER_LOGO_BOX),
+      resolveDestinationPhoto(form.general.destination, aiOutput.destinationPhoto, {
+        w: SLIDE_WIDTH_IN,
+        h: SLIDE_HEIGHT_IN,
+      }),
+      resolveInstitutionalBranding(supabase, FOOTER_LOGO_BOX),
+    ]);
+
+  const theme = agencyLogoBuffer ? await extractThemeFromLogo(agencyLogoBuffer) : DEFAULT_THEME;
 
   await buildCoverSlide(pres, {
     destination: form.general.destination,
@@ -67,6 +72,7 @@ export async function buildQuotePresentation(
     priceInfo: `${form.general.priceType}, em ${form.general.currency}`,
     agencyLogo: agencyLogoCover,
     destinationPhoto,
+    theme,
   });
 
   buildInclusionsSlide(pres, {
@@ -75,6 +81,7 @@ export async function buildQuotePresentation(
     destinationDescription: aiOutput.destinationDescription,
     destinationAttractions: aiOutput.destinationAttractions,
     agencyLogo: agencyLogoInner,
+    theme,
   });
 
   const matchedHotels = matchHotelsByName(form.hotels, aiOutput.hotels);
@@ -100,6 +107,7 @@ export async function buildQuotePresentation(
       photoSourceUrl: matched.ai?.photo.sourceUrl ?? null,
       agencyLogo: agencyLogoInner,
       isCircuit: form.general.isCircuit,
+      theme,
     });
   }
 
@@ -110,6 +118,7 @@ export async function buildQuotePresentation(
       seat: form.flights.seat,
       services: form.flights.services,
       agencyLogo: agencyLogoInner,
+      theme,
     });
   }
 
@@ -117,12 +126,14 @@ export async function buildQuotePresentation(
     buildItinerarySlide(pres, {
       days: form.itinerary.days,
       agencyLogo: agencyLogoInner,
+      theme,
     });
   }
 
   buildFinalSlide(pres, {
     institutionalLogo: institutionalBranding.logo,
     institutionalFooterText: institutionalBranding.footerText,
+    theme,
   });
 
   return (await pres.write({ outputType: "nodebuffer" })) as Buffer;

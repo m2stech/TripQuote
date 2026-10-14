@@ -2,6 +2,7 @@ import type pptxgen from "pptxgenjs";
 
 import { parseFlightLeg } from "@/features/pptx/parse-flight-leg";
 import { renderInternalHeader } from "@/features/pptx/slides/internal-header";
+import type { PptxTheme } from "@/features/pptx/theme/extract-theme";
 import { CONTENT_MARGIN_X, FONT_SANS, FONT_SERIF, SNOW_COLORS } from "@/features/pptx/tokens";
 import type { ResolvedImage } from "@/features/pptx/types";
 
@@ -11,6 +12,7 @@ export interface FlightsSlideData {
   seat: string;
   services: string;
   agencyLogo: ResolvedImage;
+  theme: PptxTheme;
 }
 
 const TITLE = "Voos contemplados no orçamento";
@@ -23,12 +25,12 @@ const MAX_LEGS_WITH_CARDS = Math.floor((CARDS_Y - TABLE_Y) / ROW_H) - 1;
 /** Em um slide de continuação (só tabela, sem cards), a tabela pode ocupar até o rodapé do slide. */
 const MAX_LEGS_FULL_PAGE = Math.floor((7.5 - 0.3 - TABLE_Y) / ROW_H) - 1;
 
-function buildTableRows(legs: string[]): pptxgen.TableRow[] {
+function buildTableRows(legs: string[], theme: PptxTheme): pptxgen.TableRow[] {
   const parsedLegs = legs.map((leg, index) => parseFlightLeg(leg, index));
   const allParsed = parsedLegs.every((leg) => leg !== null);
 
-  const headerFill = { color: SNOW_COLORS.navy };
-  const headerText = { color: SNOW_COLORS.white, bold: true, fontFace: FONT_SANS, fontSize: 11 };
+  const headerFill = { color: theme.primary };
+  const headerText = { color: theme.onPrimary, bold: true, fontFace: FONT_SANS, fontSize: 11 };
   const cellBorder = { type: "solid" as const, color: SNOW_COLORS.hairline, pt: 0.5 };
 
   if (!allParsed) {
@@ -68,6 +70,7 @@ function renderBottomCard(
   y: number,
   label: string,
   value: string,
+  theme: PptxTheme,
 ): void {
   const h = 1.667;
   slide.addShape("roundRect", {
@@ -76,7 +79,7 @@ function renderBottomCard(
     w,
     h,
     rectRadius: 0.06,
-    fill: { color: SNOW_COLORS.navy },
+    fill: { color: theme.primary },
     line: { type: "none" },
   });
   slide.addShape("rect", {
@@ -84,7 +87,7 @@ function renderBottomCard(
     y: y + 0.15,
     w: 0.042,
     h: h - 0.3,
-    fill: { color: SNOW_COLORS.hairline },
+    fill: { color: theme.onPrimary },
     line: { type: "none" },
   });
   slide.addText(label, {
@@ -96,7 +99,7 @@ function renderBottomCard(
     fontSize: 9,
     bold: true,
     charSpacing: 1.8,
-    color: SNOW_COLORS.hairline,
+    color: theme.onPrimary,
   });
   slide.addText(value, {
     x: x + 0.2,
@@ -106,7 +109,7 @@ function renderBottomCard(
     fontFace: FONT_SERIF,
     fontSize: 16,
     bold: true,
-    color: SNOW_COLORS.white,
+    color: theme.onPrimary,
     lineSpacingMultiple: 1.05,
   });
 }
@@ -121,11 +124,11 @@ function renderTable(slide: pptxgen.Slide, rows: pptxgen.TableRow[], isSingleCol
   });
 }
 
-function renderCards(slide: pptxgen.Slide, data: Pick<FlightsSlideData, "baggage" | "seat" | "services">): void {
+function renderCards(slide: pptxgen.Slide, data: Pick<FlightsSlideData, "baggage" | "seat" | "services" | "theme">): void {
   const cardW = 3.98;
   const gap = 0.333;
-  renderBottomCard(slide, CONTENT_MARGIN_X, cardW, CARDS_Y, "FRANQUIA DE BAGAGEM", data.baggage);
-  renderBottomCard(slide, CONTENT_MARGIN_X + cardW + gap, cardW, CARDS_Y, "MARCAÇÃO DE ASSENTO", data.seat);
+  renderBottomCard(slide, CONTENT_MARGIN_X, cardW, CARDS_Y, "FRANQUIA DE BAGAGEM", data.baggage, data.theme);
+  renderBottomCard(slide, CONTENT_MARGIN_X + cardW + gap, cardW, CARDS_Y, "MARCAÇÃO DE ASSENTO", data.seat, data.theme);
   renderBottomCard(
     slide,
     CONTENT_MARGIN_X + (cardW + gap) * 2,
@@ -133,6 +136,7 @@ function renderCards(slide: pptxgen.Slide, data: Pick<FlightsSlideData, "baggage
     CARDS_Y,
     "OUTROS SERVIÇOS",
     data.services || "Nenhum informado.",
+    data.theme,
   );
 }
 
@@ -153,14 +157,14 @@ export function buildFlightsSlide(pres: pptxgen, data: FlightsSlideData): void {
     .map((leg) => leg.trim())
     .filter(Boolean);
 
-  const rows = buildTableRows(legs);
+  const rows = buildTableRows(legs, data.theme);
   const isSingleColumn = rows[0]!.length === 1;
   const headerRow = rows[0]!;
   const dataRows = rows.slice(1);
 
   if (dataRows.length <= MAX_LEGS_WITH_CARDS) {
     const slide = pres.addSlide();
-    renderInternalHeader(slide, data.agencyLogo, TITLE);
+    renderInternalHeader(slide, data.agencyLogo, TITLE, data.theme);
     renderTable(slide, rows, isSingleColumn);
     renderCards(slide, data);
     return;
@@ -180,7 +184,7 @@ export function buildFlightsSlide(pres: pptxgen, data: FlightsSlideData): void {
   pages.forEach((page, index) => {
     const isLastPage = index === pages.length - 1;
     const slide = pres.addSlide();
-    renderInternalHeader(slide, data.agencyLogo, index === 0 ? TITLE : `${TITLE} (continuação)`);
+    renderInternalHeader(slide, data.agencyLogo, index === 0 ? TITLE : `${TITLE} (continuação)`, data.theme);
     renderTable(slide, [headerRow, ...page], isSingleColumn);
     if (isLastPage) {
       renderCards(slide, data);

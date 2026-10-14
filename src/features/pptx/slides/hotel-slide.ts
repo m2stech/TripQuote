@@ -2,6 +2,7 @@ import type pptxgen from "pptxgenjs";
 
 import { parseRoom } from "@/features/pptx/parse-room";
 import { renderInternalHeader } from "@/features/pptx/slides/internal-header";
+import type { PptxTheme } from "@/features/pptx/theme/extract-theme";
 import { CONTENT_MARGIN_X, FONT_SANS, FONT_SERIF, HOTEL_PHOTO_BOX, SLIDE_WIDTH_IN, SNOW_COLORS } from "@/features/pptx/tokens";
 import type { ResolvedImage } from "@/features/pptx/types";
 import type { RoomOption } from "@/features/quotes/schemas/quote-form.schema";
@@ -22,6 +23,7 @@ export interface HotelSlideData {
   agencyLogo: ResolvedImage;
   /** Roteiro sequencial por cidade, cobrado por valor único de pacote — ver `general.isCircuit`. */
   isCircuit: boolean;
+  theme: PptxTheme;
 }
 
 const TITLE = "Escolha o hotel que melhor encaixa no seu perfil!";
@@ -97,6 +99,7 @@ function renderRoomCards(
   y: number,
   h: number,
   isCircuit: boolean,
+  theme: PptxTheme,
 ): void {
   const gap = 0.139;
   const cardW = (RIGHT_COL_W - gap * (rooms.length - 1)) / rooms.length;
@@ -144,7 +147,7 @@ function renderRoomCards(
         fontFace: FONT_SERIF,
         fontSize: 21,
         bold: true,
-        color: SNOW_COLORS.navy,
+        color: theme.textOnLight,
       });
       slide.addText(priceContext, {
         x: x + 0.15,
@@ -163,6 +166,7 @@ function renderInfoCards(
   slide: pptxgen.Slide,
   info: { location: string; category: string; mealPlan: string; tripadvisor: string },
   y: number,
+  theme: PptxTheme,
 ): void {
   const labels = ["LOCALIZAÇÃO", "CATEGORIA", "PLANO ALIMENTAR", "TRIPADVISOR"];
   const values = [info.location, info.category, info.mealPlan, info.tripadvisor];
@@ -185,7 +189,7 @@ function renderInfoCards(
       y,
       w: 0.042,
       h,
-      fill: { color: SNOW_COLORS.navy },
+      fill: { color: theme.primary },
       line: { type: "none" },
     });
     slide.addText(labels[index]!, {
@@ -206,7 +210,7 @@ function renderInfoCards(
       h: h - 0.55,
       fontFace: FONT_SANS,
       fontSize: 10.5,
-      color: SNOW_COLORS.navy,
+      color: theme.textOnLight,
       lineSpacingMultiple: 1.05,
     });
     x += w + gap;
@@ -227,7 +231,7 @@ function renderInfoCards(
  */
 export function buildHotelSlide(pres: pptxgen, data: HotelSlideData, isContinuation = false): void {
   const slide = pres.addSlide();
-  renderInternalHeader(slide, data.agencyLogo, data.isCircuit ? CIRCUIT_TITLE : TITLE);
+  renderInternalHeader(slide, data.agencyLogo, data.isCircuit ? CIRCUIT_TITLE : TITLE, data.theme);
 
   renderPhoto(slide, isContinuation ? { kind: "placeholder" } : data.photo, data.photoSourceUrl);
 
@@ -239,7 +243,7 @@ export function buildHotelSlide(pres: pptxgen, data: HotelSlideData, isContinuat
     w: badgeW,
     h: 0.25,
     rectRadius: 0.5,
-    fill: { color: SNOW_COLORS.navy },
+    fill: { color: data.theme.primary },
     line: { type: "none" },
   });
   slide.addText(badgeLabel, {
@@ -251,7 +255,7 @@ export function buildHotelSlide(pres: pptxgen, data: HotelSlideData, isContinuat
     fontSize: 8.5,
     bold: true,
     charSpacing: 1.5,
-    color: SNOW_COLORS.white,
+    color: data.theme.onPrimary,
     align: "center",
     valign: "middle",
   });
@@ -284,7 +288,7 @@ export function buildHotelSlide(pres: pptxgen, data: HotelSlideData, isContinuat
   const roomsY = PHOTO_Y + 2.311;
   const roomsH = 1.639;
   if (data.rooms.length > 0) {
-    renderRoomCards(slide, data.rooms, data.priceContext, roomsY, roomsH, data.isCircuit);
+    renderRoomCards(slide, data.rooms, data.priceContext, roomsY, roomsH, data.isCircuit, data.theme);
   }
 
   if (!isContinuation) {
@@ -297,6 +301,7 @@ export function buildHotelSlide(pres: pptxgen, data: HotelSlideData, isContinuat
         tripadvisor: data.tripadvisorRating ?? "Avaliação não verificada",
       },
       6.083,
+      data.theme,
     );
   }
 }

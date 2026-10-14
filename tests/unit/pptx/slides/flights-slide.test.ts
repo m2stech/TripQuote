@@ -2,6 +2,7 @@ import pptxgen from "pptxgenjs";
 import { describe, expect, it } from "vitest";
 
 import { buildFlightsSlide } from "@/features/pptx/slides/flights-slide";
+import { DEFAULT_THEME } from "@/features/pptx/theme/extract-theme";
 import { getSlides, getSlideTableCount, getSlideTableTexts, getSlideTexts } from "./test-helpers";
 
 const baseData = {
@@ -10,6 +11,7 @@ const baseData = {
   seat: "Marcação de assento incluso",
   services: "",
   agencyLogo: { kind: "placeholder" as const },
+  theme: DEFAULT_THEME,
 };
 
 describe("buildFlightsSlide", () => {

@@ -2,6 +2,7 @@ import pptxgen from "pptxgenjs";
 import { describe, expect, it } from "vitest";
 
 import { buildHotelSlide, buildHotelSlides, type HotelSlideData } from "@/features/pptx/slides/hotel-slide";
+import { DEFAULT_THEME } from "@/features/pptx/theme/extract-theme";
 import { getSlideImageCount, getSlides, getSlideTexts } from "./test-helpers";
 
 function makeData(overrides: Partial<HotelSlideData> = {}): HotelSlideData {
@@ -20,6 +21,7 @@ function makeData(overrides: Partial<HotelSlideData> = {}): HotelSlideData {
     photoSourceUrl: null,
     agencyLogo: { kind: "placeholder" },
     isCircuit: false,
+    theme: DEFAULT_THEME,
     ...overrides,
   };
 }
