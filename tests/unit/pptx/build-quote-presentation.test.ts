@@ -195,6 +195,41 @@ describe("buildQuotePresentation", () => {
     expect(outboundSlide).toContain("Belo Horizonte");
   });
 
+  it("modo circuito: adiciona o slide de valor do pacote antes dos hotéis", async () => {
+    const buffer = await buildQuotePresentation(
+      supabase,
+      makeQuote({
+        general: {
+          agency: "Primus Turismo",
+          consultant: "Maria Silva",
+          destination: "Balneário Camboriú",
+          startDate: "2026-11-23",
+          endDate: "2026-11-27",
+          travelers: "2",
+          currency: "Real brasileiro (R$)",
+          priceType: "Por família",
+          occupancy: "Duplo",
+          isCircuit: true,
+          packagePriceTotal: "R$ 12.500,00",
+        },
+      }),
+    );
+    const zip = await JSZip.loadAsync(buffer);
+    const slideFiles = Object.keys(zip.files).filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name));
+    // Capa + inclusões + valor do pacote + 1 hotel + voos + final = 6.
+    expect(slideFiles).toHaveLength(6);
+
+    const packagePriceSlide = await zip.file("ppt/slides/slide3.xml")!.async("string");
+    expect(packagePriceSlide).toContain("R$ 12.500,00");
+  });
+
+  it("modo padrão (sem circuito): não adiciona o slide de valor do pacote", async () => {
+    const buffer = await buildQuotePresentation(supabase, makeQuote());
+    const zip = await JSZip.loadAsync(buffer);
+    const slideFiles = Object.keys(zip.files).filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name));
+    expect(slideFiles).toHaveLength(5);
+  });
+
   it("com logo da agência: extrai o tema da logo e aplica a cor nos slides, em vez do navy fixo da SNOW", async () => {
     const sharp = (await import("sharp")).default;
     const goldenLogoBuffer = await sharp({

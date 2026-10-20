@@ -15,6 +15,7 @@ import { buildFlightsSlide } from "@/features/pptx/slides/flights-slide";
 import { buildHotelSlides } from "@/features/pptx/slides/hotel-slide";
 import { buildInclusionsSlide } from "@/features/pptx/slides/inclusions-slide";
 import { buildItinerarySlide } from "@/features/pptx/slides/itinerary-slide";
+import { buildPackagePriceSlide } from "@/features/pptx/slides/package-price-slide";
 import { COVER_LOGO_BOX, FOOTER_LOGO_BOX, HOTEL_PHOTO_BOX, INNER_LOGO_BOX, SLIDE_HEIGHT_IN, SLIDE_WIDTH_IN } from "@/features/pptx/tokens";
 import { DEFAULT_THEME, extractThemeFromLogo } from "@/features/pptx/theme/extract-theme";
 import type { QuoteRecord } from "@/features/quotes/schemas/quote.schema";
@@ -83,6 +84,16 @@ export async function buildQuotePresentation(
     agencyLogo: agencyLogoInner,
     theme,
   });
+
+  if (form.general.isCircuit) {
+    buildPackagePriceSlide(pres, {
+      packagePriceTotal: form.general.packagePriceTotal,
+      priceType: form.general.priceType,
+      currency: form.general.currency,
+      agencyLogo: agencyLogoInner,
+      theme,
+    });
+  }
 
   const matchedHotels = matchHotelsByName(form.hotels, aiOutput.hotels);
   for (const [index, matched] of matchedHotels.entries()) {
