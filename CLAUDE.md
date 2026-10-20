@@ -12,7 +12,7 @@ Telas de admin implementadas em `src/app/admin/`: usuários, prompts (versioname
 
 Next.js (App Router) · React · TypeScript (strict) · Node.js · Tailwind CSS · shadcn/ui · React Hook Form + Zod resolver · Supabase (Auth, Postgres, Storage) · OpenAI SDK · PptxGenJS · node-vibrant (extração de cor da logo) · Zod · Sharp · Vitest · Playwright · deploy Vercel.
 
-Sentry está no PRD e planejado para o M9, mas **ainda não implementado** (sem dependência no `package.json`, sem uso em `src/`) — não tratar como já ativo.
+Sentry está no PRD, mas ficou **fora de escopo do M9 por decisão** (não essencial ao funcionamento do produto) e **não está implementado** (sem dependência no `package.json`, sem uso em `src/`) — não tratar como já ativo nem como próximo passo planejado.
 
 ## Regras de arquitetura (não negociáveis)
 
@@ -96,7 +96,7 @@ A tabela acima é a identidade visual **da interface do app** (fixa, SNOW). O **
 
 ## Marcos
 
-Plano detalhado (branches, entregas e commits) em [docs/PLAN.md](docs/PLAN.md). Ordem: M0 setup → M1–M3 interface (mock) → M4–M5 Supabase e persistência → M6 IA → M7 PPTX → M8 admin → M9 consumo/auditoria/Sentry → M10 e2e e deploy.
+Plano detalhado (branches, entregas e commits) em [docs/PLAN.md](docs/PLAN.md). Ordem: M0 setup → M1–M3 interface (mock) → M4–M5 Supabase e persistência → M6 IA → M7 PPTX → M8 admin → M9 consumo/auditoria → M10 e2e e deploy. Todos os marcos (M0–M10) estão concluídos; Sentry ficou fora de escopo por decisão (ver M9 no PLAN.md) — não implementado.
 
 ## Comandos
 

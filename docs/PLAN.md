@@ -222,13 +222,13 @@ Baseado em [CLAUDE.md](../CLAUDE.md) e [PRD.md](PRD.md). Ordem: **setup → inte
 
 - [x] Playwright: login → criar orçamento → anexar → gerar (OpenAI mockada) → baixar
 - [x] Playwright: permissões (consultor × admin) e duplicar orçamento
-- [ ] Revisão de segurança (`security-review`) e checagem de RLS
+- [x] Revisão de segurança (`security-review`) e checagem de RLS
 - [x] Projeto Vercel vinculado; variáveis de ambiente por ambiente
 - [x] Projeto Supabase de produção e migrations aplicadas
 - [x] Deploy de preview e verificação; depois produção
-- [ ] Domínio produção
-- [ ] README com setup e runbook básico
-- [ ] Smoke test em produção com geração real
+- [x] Domínio produção
+- [x] README com setup e runbook básico
+- [x] Smoke test em produção com geração real
 
 **Aceite:** E2E verde no CI; geração real em produção gera um .pptx válido.
 **Commit final:** `chore: add Playwright e2e suite and production deployment config`
