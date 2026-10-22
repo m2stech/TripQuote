@@ -34,6 +34,16 @@ describe("InMemoryQuoteRepository", () => {
     expect(result.items.every((item) => item.status === "draft")).toBe(true);
   });
 
+  it("filtra por createdBy (visibilidade 'apenas as minhas')", async () => {
+    const repository = new InMemoryQuoteRepository([]);
+    await repository.create(makeForm({ agency: "Agência Alfa" }), "user-a@test.com");
+    await repository.create(makeForm({ agency: "Agência Beta" }), "user-b@test.com");
+
+    const result = await repository.list({ createdBy: "user-a@test.com" });
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.agency).toBe("Agência Alfa");
+  });
+
   it("filtra por busca textual (agência, consultor ou destino)", async () => {
     const repository = new InMemoryQuoteRepository([]);
     await repository.create(makeForm({ agency: "Agência Alfa", destination: "Lisboa" }), "user@test.com");

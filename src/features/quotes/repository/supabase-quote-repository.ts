@@ -54,6 +54,9 @@ export class SupabaseQuoteRepository implements QuoteRepository {
       .select("*", { count: "exact" })
       .order("updated_at", { ascending: false });
 
+    if (filters.createdBy) {
+      query = query.eq("created_by", filters.createdBy);
+    }
     if (filters.status) {
       query = query.eq("status", filters.status);
     }

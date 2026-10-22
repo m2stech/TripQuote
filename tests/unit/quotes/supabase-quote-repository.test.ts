@@ -268,6 +268,15 @@ describe("SupabaseQuoteRepository", () => {
     expect(result.items[0]?.destination).toBe("Lisboa");
   });
 
+  it("lista orçamentos filtrando por createdBy (visibilidade 'apenas as minhas')", async () => {
+    await repository.create(draft({ general: { agency: "Agência A" } }), "user-1");
+    await repository.create(draft({ general: { agency: "Agência B" } }), "user-2");
+
+    const result = await repository.list({ createdBy: "user-1" });
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.agency).toBe("Agência A");
+  });
+
   it("duplica um orçamento com novo id e status 'draft'", async () => {
     const original = await repository.create(
       draft({ general: { agency: "Primus Turismo", destination: "Santiago" } }),

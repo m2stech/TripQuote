@@ -9,7 +9,10 @@ export type GenerationResult =
 
 /**
  * Filtros de listagem de orçamentos. `period` filtra pela data de início da
- * viagem (`general.startDate`).
+ * viagem (`general.startDate`). `createdBy`, quando informado, restringe aos
+ * orçamentos criados por esse usuário — usado pelo filtro "Apenas as minhas"
+ * do admin (consultor já tem essa restrição garantida pela RLS, sem precisar
+ * desse filtro).
  */
 export interface QuoteListFilters {
   search?: string;
@@ -17,6 +20,7 @@ export interface QuoteListFilters {
   destination?: string;
   periodStart?: string;
   periodEnd?: string;
+  createdBy?: string;
 }
 
 export interface QuoteListResult {

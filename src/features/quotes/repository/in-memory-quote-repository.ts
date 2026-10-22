@@ -124,6 +124,10 @@ export class InMemoryQuoteRepository implements QuoteRepository {
 
     let items = [...this.quotes];
 
+    if (filters.createdBy) {
+      items = items.filter((quote) => quote.createdBy === filters.createdBy);
+    }
+
     if (filters.status) {
       items = items.filter((quote) => quote.status === filters.status);
     }

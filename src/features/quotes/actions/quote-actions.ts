@@ -9,9 +9,25 @@ import type { QuoteListFilters } from "@/features/quotes/repository/types";
 import { quoteDraftSchema, type QuoteDraftInput } from "@/features/quotes/schemas/quote-form.schema";
 import type { QuoteRecord } from "@/features/quotes/schemas/quote.schema";
 
-export async function listQuotesAction(filters: QuoteListFilters = {}) {
+/**
+ * `onlyMine` é resolvido aqui com o usuário autenticado no servidor — nunca
+ * recebido como id direto do client — para que o filtro "apenas as minhas"
+ * do admin não possa ser usado para espiar os orçamentos de outro usuário.
+ * Para consultor, a restrição por usuário já vem da RLS independente deste
+ * parâmetro.
+ */
+export async function listQuotesAction(
+  filters: Omit<QuoteListFilters, "createdBy"> & { onlyMine?: boolean } = {},
+) {
+  const { onlyMine, ...rest } = filters;
   const repository = await getQuoteRepository();
-  return repository.list(filters);
+
+  if (onlyMine) {
+    const userId = await requireCurrentUserId();
+    return repository.list({ ...rest, createdBy: userId });
+  }
+
+  return repository.list(rest);
 }
 
 export async function getQuoteAction(id: string): Promise<QuoteRecord | null> {

@@ -25,12 +25,17 @@ import type { QuoteSummary } from "@/features/quotes/schemas/quote.schema";
 const STATUS_FILTER_ALL = "all" as const;
 type StatusFilterValue = QuoteStatus | typeof STATUS_FILTER_ALL;
 
+const VISIBILITY_MINE = "mine" as const;
+const VISIBILITY_ALL = "all" as const;
+type VisibilityFilterValue = typeof VISIBILITY_MINE | typeof VISIBILITY_ALL;
+
 interface Filters {
   search: string;
   status: StatusFilterValue;
   destination: string;
   periodStart: string;
   periodEnd: string;
+  visibility: VisibilityFilterValue;
 }
 
 const INITIAL_FILTERS: Filters = {
@@ -39,13 +44,22 @@ const INITIAL_FILTERS: Filters = {
   destination: "",
   periodStart: "",
   periodEnd: "",
+  visibility: VISIBILITY_MINE,
 };
+
+interface QuoteListScreenProps {
+  /** Só admin vê o seletor "Apenas as minhas" / "Todas as cotações". Consultor sempre vê só as próprias, via RLS. */
+  isAdmin: boolean;
+}
 
 /**
  * Tela de listagem de orçamentos: busca por texto e filtros por status,
  * destino e período, resolvidos no servidor via `listQuotesAction` (M5).
+ * Admin também tem um filtro de visibilidade ("apenas as minhas", padrão, ou
+ * "todas as cotações"); consultor nunca vê orçamentos de outro usuário,
+ * reforçado pela RLS de `quotes` independente deste filtro.
  */
-export function QuoteListScreen() {
+export function QuoteListScreen({ isAdmin }: QuoteListScreenProps) {
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
   const [items, setItems] = useState<QuoteSummary[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,6 +75,7 @@ export function QuoteListScreen() {
         destination: currentFilters.destination || undefined,
         periodStart: currentFilters.periodStart || undefined,
         periodEnd: currentFilters.periodEnd || undefined,
+        onlyMine: isAdmin ? currentFilters.visibility === VISIBILITY_MINE : undefined,
       });
       setItems(result.items);
     } catch {
@@ -68,7 +83,7 @@ export function QuoteListScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -83,7 +98,8 @@ export function QuoteListScreen() {
       filters.status !== STATUS_FILTER_ALL ||
       filters.destination !== "" ||
       filters.periodStart !== "" ||
-      filters.periodEnd !== "",
+      filters.periodEnd !== "" ||
+      filters.visibility !== VISIBILITY_MINE,
     [filters],
   );
 
@@ -134,6 +150,26 @@ export function QuoteListScreen() {
                 </SelectContent>
               </Select>
             </div>
+
+            {isAdmin ? (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="quote-visibility">Visibilidade</Label>
+                <Select
+                  value={filters.visibility}
+                  onValueChange={(value) =>
+                    setFilters((prev) => ({ ...prev, visibility: value as VisibilityFilterValue }))
+                  }
+                >
+                  <SelectTrigger id="quote-visibility" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={VISIBILITY_MINE}>Apenas as minhas</SelectItem>
+                    <SelectItem value={VISIBILITY_ALL}>Todas as cotações</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="quote-destination">Destino</Label>
