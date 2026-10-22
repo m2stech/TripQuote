@@ -128,20 +128,25 @@ function renderRoomCards(
       charSpacing: 1.8,
       color: SNOW_COLORS.label,
     });
-    slide.addText(parsed.roomType, {
-      x: x + 0.15,
-      y: y + 0.32,
-      w: cardW - 0.3,
-      h: 0.25,
-      fontFace: FONT_SANS,
-      fontSize: 13,
-      bold: true,
-      color: SNOW_COLORS.navy,
-    });
+    if (parsed.roomType) {
+      slide.addText(parsed.roomType, {
+        x: x + 0.15,
+        y: y + 0.32,
+        w: cardW - 0.3,
+        h: 0.25,
+        fontFace: FONT_SANS,
+        fontSize: 13,
+        bold: true,
+        color: SNOW_COLORS.navy,
+      });
+    }
     if (!isCircuit) {
+      // Sem tipo de quarto (texto da acomodação já era só o valor): o preço
+      // sobe para o lugar do tipo, em vez de deixar um vão vazio acima dele.
+      const priceY = parsed.roomType ? y + 0.58 : y + 0.32;
       slide.addText(parsed.price || "Consulte valores", {
         x: x + 0.15,
-        y: y + 0.58,
+        y: priceY,
         w: cardW - 0.3,
         h: 0.4,
         fontFace: FONT_SERIF,

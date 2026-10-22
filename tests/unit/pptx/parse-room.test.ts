@@ -20,4 +20,13 @@ describe("parseRoom", () => {
     expect(result.roomType).toBe("Texto livre sem separador");
     expect(result.price).toBe("");
   });
+
+  it("sem separador, mas o texto já é um valor monetário: vira price, não roomType", () => {
+    const cases = ["R$ 34.814,20", "r$34814,20", "US$ 500", "$ 1.200", "1.325 USD", "500 reais"];
+    for (const text of cases) {
+      const result = parseRoom({ id: "1", text });
+      expect(result.roomType, `roomType for "${text}"`).toBe("");
+      expect(result.price, `price for "${text}"`).toBe(text);
+    }
+  });
 });

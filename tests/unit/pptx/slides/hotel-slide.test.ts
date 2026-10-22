@@ -100,6 +100,15 @@ describe("buildHotelSlide", () => {
     expect(texts).toContain("Suíte");
   });
 
+  it("bug relatado: acomodação com só o valor (sem 'Tipo | Preço') exibe o preço, não 'Consulte valores'", () => {
+    const pres = new pptxgen();
+    pres.layout = "LAYOUT_WIDE";
+    buildHotelSlide(pres, makeData({ rooms: [{ id: "1", text: "R$ 34.814,20" }] }));
+    const texts = getSlideTexts(getSlides(pres)[0]!);
+    expect(texts).toContain("R$ 34.814,20");
+    expect(texts).not.toContain("Consulte valores");
+  });
+
   it("modo circuito: título muda, badge é 'CIDADE N' e não exibe preço por hotel", () => {
     const pres = new pptxgen();
     pres.layout = "LAYOUT_WIDE";
