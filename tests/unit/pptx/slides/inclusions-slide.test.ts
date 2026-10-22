@@ -91,6 +91,24 @@ describe("buildInclusionsSlide", () => {
     expect(lastPageTexts).toContain("Onde o mar encontra os arranha-céus.");
   });
 
+  it("bug relatado: com 7 inclusões, nenhuma aparece duplicada entre slides", () => {
+    const pres = new pptxgen();
+    pres.layout = "LAYOUT_WIDE";
+    const sevenInclusions = Array.from({ length: 7 }, (_, i) => ({ id: String(i), text: `Inclusão ${i + 1}` }));
+    buildInclusionsSlide(pres, { ...baseData, inclusions: sevenInclusions });
+
+    const slides = getSlides(pres);
+    expect(slides).toHaveLength(2);
+
+    const allTexts = slides.flatMap((slide) => getSlideTexts(slide));
+    for (let i = 1; i <= 7; i += 1) {
+      expect(allTexts.filter((text) => text === `Inclusão ${i}`)).toHaveLength(1);
+    }
+
+    const lastPageTexts = getSlideTexts(slides[1]!);
+    expect(lastPageTexts).toContain("Onde o mar encontra os arranha-céus.");
+  });
+
   it("com poucas inclusões, mantém inclusões e bloco 'O destino' no mesmo slide", () => {
     const pres = new pptxgen();
     pres.layout = "LAYOUT_WIDE";

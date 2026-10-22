@@ -214,19 +214,41 @@ function renderDestinationBlock(
   });
 }
 
+const INCLUSIONS_PER_FULL_PAGE = MAX_INCLUSION_ROWS_FULL_PAGE * 2;
+const MAX_INCLUSIONS_WITH_DESTINATION = MAX_INCLUSION_ROWS_WITH_DESTINATION * 2;
+
+/**
+ * Quantas inclusões vão na última página (a que leva o bloco "O destino"
+ * junto). Usa o resto da divisão por `INCLUSIONS_PER_FULL_PAGE` para que as
+ * páginas cheias anteriores usem sempre a capacidade máxima do slide — mas
+ * nunca deixa a última página vazia (resto 0) nem maior do que cabe junto do
+ * bloco "destino": em ambos os casos, cai para `MAX_INCLUSIONS_WITH_DESTINATION`.
+ */
+function countInclusionsForLastPage(total: number): number {
+  const remainder = total % INCLUSIONS_PER_FULL_PAGE;
+  if (remainder === 0 || remainder > MAX_INCLUSIONS_WITH_DESTINATION) {
+    return MAX_INCLUSIONS_WITH_DESTINATION;
+  }
+  return remainder;
+}
+
 /**
  * Inclusões (grid de cards numerados, 2 colunas) + bloco "O destino" com
  * descrição e atrativos pesquisados pela IA (`aiOutput`). Usa a capacidade
  * cheia do slide (até `MAX_INCLUSION_ROWS_FULL_PAGE` linhas) nas páginas
  * intermediárias, reservando só a última leva de inclusões para caber junto
- * com o bloco "O destino" no mesmo slide (`MAX_INCLUSION_ROWS_WITH_DESTINATION`,
- * menor) — nunca omite inclusões nem corta o bloco "destino" para fora dos
- * limites do slide, e nunca deixa poucas inclusões por página quando cabem
- * mais (bug relatado: a paginação inicial usava o limite pequeno também nas
- * páginas sem o bloco "destino", gerando páginas quase vazias).
+ * com o bloco "O destino" no mesmo slide (capacidade menor,
+ * `MAX_INCLUSION_ROWS_WITH_DESTINATION`) — minimiza o número de slides
+ * (nenhuma inclusão sobra para uma página própria se couber na anterior) e
+ * nunca repete nem omite inclusões entre páginas (bug corrigido: o cálculo
+ * antigo de quantas inclusões ficavam na última página usava o módulo do
+ * limite errado — sempre 1 quando esse limite era 1 — e o fatiamento das
+ * páginas cheias não respeitava esse total, fazendo a última inclusão
+ * aparecer tanto na página cheia quanto, de novo, na página com "destino").
  */
 export function buildInclusionsSlide(pres: pptxgen, data: InclusionsSlideData): void {
-  const totalRows = Math.ceil(data.inclusions.length / 2);
+  const total = data.inclusions.length;
+  const totalRows = Math.ceil(total / 2);
 
   if (totalRows <= MAX_INCLUSION_ROWS_WITH_DESTINATION) {
     const slide = pres.addSlide();
@@ -237,18 +259,12 @@ export function buildInclusionsSlide(pres: pptxgen, data: InclusionsSlideData): 
     return;
   }
 
-  // Reserva a última página para caber com o bloco "O destino": todas as
-  // páginas anteriores usam a capacidade cheia do slide (sem o bloco).
-  const rowsForLastPage = ((totalRows - 1) % MAX_INCLUSION_ROWS_WITH_DESTINATION) + 1;
-  const inclusionsForLastPage = Math.min(
-    data.inclusions.length - (totalRows - rowsForLastPage) * 2,
-    rowsForLastPage * 2,
-  );
-  const fullPagesInclusionCount = data.inclusions.length - inclusionsForLastPage;
-  const inclusionsPerFullPage = MAX_INCLUSION_ROWS_FULL_PAGE * 2;
+  const inclusionsForLastPage = countInclusionsForLastPage(total);
+  const fullPagesInclusionCount = total - inclusionsForLastPage;
 
-  for (let start = 0; start < fullPagesInclusionCount; start += inclusionsPerFullPage) {
-    const page = data.inclusions.slice(start, start + inclusionsPerFullPage);
+  for (let start = 0; start < fullPagesInclusionCount; start += INCLUSIONS_PER_FULL_PAGE) {
+    const end = Math.min(start + INCLUSIONS_PER_FULL_PAGE, fullPagesInclusionCount);
+    const page = data.inclusions.slice(start, end);
     const slide = pres.addSlide();
     renderInternalHeader(slide, data.agencyLogo, TITLE, data.theme);
     renderInclusionsPage(slide, page, start, data.theme);
