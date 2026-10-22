@@ -69,7 +69,7 @@ describe("buildInclusionsSlide", () => {
     expect(allTexts).toContain("Onde o mar encontra os arranha-céus.");
   });
 
-  it("otimiza o espaço: 8 inclusões cabem em 2 slides (6+2), não 1 por linha", () => {
+  it("todas as inclusões cabem sozinhas num slide: 'O destino' fica num slide à parte, em vez de dividir as inclusões", () => {
     const pres = new pptxgen();
     pres.layout = "LAYOUT_WIDE";
     const eightInclusions = Array.from({ length: 8 }, (_, i) => ({ id: String(i), text: `Inclusão ${i + 1}` }));
@@ -78,16 +78,34 @@ describe("buildInclusionsSlide", () => {
     const slides = getSlides(pres);
     expect(slides).toHaveLength(2);
 
-    // 1ª página usa a capacidade cheia do slide (6 inclusões = 3 linhas),
-    // não o mínimo que caberia junto com o bloco "O destino".
     const firstPageTexts = getSlideTexts(slides[0]!);
-    for (let i = 1; i <= 6; i += 1) {
+    for (let i = 1; i <= 8; i += 1) {
+      expect(firstPageTexts).toContain(`Inclusão ${i}`);
+    }
+    expect(firstPageTexts).not.toContain("Onde o mar encontra os arranha-céus.");
+
+    const lastPageTexts = getSlideTexts(slides[1]!);
+    expect(lastPageTexts).toContain("Onde o mar encontra os arranha-céus.");
+    for (let i = 1; i <= 8; i += 1) {
+      expect(lastPageTexts).not.toContain(`Inclusão ${i}`);
+    }
+  });
+
+  it("preferência do usuário: com 4 inclusões (cabem num slide só, mas não junto do destino), não divide as inclusões entre 2 slides", () => {
+    const pres = new pptxgen();
+    pres.layout = "LAYOUT_WIDE";
+    const fourInclusions = Array.from({ length: 4 }, (_, i) => ({ id: String(i), text: `Inclusão ${i + 1}` }));
+    buildInclusionsSlide(pres, { ...baseData, inclusions: fourInclusions });
+
+    const slides = getSlides(pres);
+    expect(slides).toHaveLength(2);
+
+    const firstPageTexts = getSlideTexts(slides[0]!);
+    for (let i = 1; i <= 4; i += 1) {
       expect(firstPageTexts).toContain(`Inclusão ${i}`);
     }
 
     const lastPageTexts = getSlideTexts(slides[1]!);
-    expect(lastPageTexts).toContain("Inclusão 7");
-    expect(lastPageTexts).toContain("Inclusão 8");
     expect(lastPageTexts).toContain("Onde o mar encontra os arranha-céus.");
   });
 

@@ -216,6 +216,14 @@ function renderDestinationBlock(
 
 const INCLUSIONS_PER_FULL_PAGE = MAX_INCLUSION_ROWS_FULL_PAGE * 2;
 const MAX_INCLUSIONS_WITH_DESTINATION = MAX_INCLUSION_ROWS_WITH_DESTINATION * 2;
+/** Topo do bloco "O destino" quando ele ocupa um slide próprio, sem cards de inclusão acima. */
+const DESTINATION_ONLY_BLOCK_Y = CARDS_START_Y;
+
+function renderDestinationOnlySlide(pres: pptxgen, data: InclusionsSlideData): void {
+  const slide = pres.addSlide();
+  renderInternalHeader(slide, data.agencyLogo, TITLE, data.theme);
+  renderDestinationBlock(slide, data, DESTINATION_ONLY_BLOCK_Y, data.theme);
+}
 
 /**
  * Quantas inclusões vão na última página (a que leva o bloco "O destino"
@@ -234,17 +242,23 @@ function countInclusionsForLastPage(total: number): number {
 
 /**
  * Inclusões (grid de cards numerados, 2 colunas) + bloco "O destino" com
- * descrição e atrativos pesquisados pela IA (`aiOutput`). Usa a capacidade
- * cheia do slide (até `MAX_INCLUSION_ROWS_FULL_PAGE` linhas) nas páginas
- * intermediárias, reservando só a última leva de inclusões para caber junto
- * com o bloco "O destino" no mesmo slide (capacidade menor,
- * `MAX_INCLUSION_ROWS_WITH_DESTINATION`) — minimiza o número de slides
- * (nenhuma inclusão sobra para uma página própria se couber na anterior) e
- * nunca repete nem omite inclusões entre páginas (bug corrigido: o cálculo
- * antigo de quantas inclusões ficavam na última página usava o módulo do
- * limite errado — sempre 1 quando esse limite era 1 — e o fatiamento das
- * páginas cheias não respeitava esse total, fazendo a última inclusão
- * aparecer tanto na página cheia quanto, de novo, na página com "destino").
+ * descrição e atrativos pesquisados pela IA (`aiOutput`). Três estratégias,
+ * da preferida à última opção, para minimizar slides sem espremer o layout:
+ *
+ * 1. Tudo cabe num slide só com o bloco "destino" junto (poucas inclusões).
+ * 2. Todas as inclusões cabem sozinhas num slide cheio (até
+ *    `MAX_INCLUSION_ROWS_FULL_PAGE` linhas), mas não sobra espaço para o
+ *    bloco "destino" junto — nesse caso ele fica esteticamente melhor
+ *    sozinho num slide próprio (ocupando o espaço todo) do que forçando a
+ *    divisão das inclusões para caber uma leva pequena com ele (preferência
+ *    do usuário, relatada após ver o layout anterior com poucas inclusões
+ *    espalhadas por 2 slides desnecessariamente).
+ * 3. Não cabem nem sozinhas (mais de `MAX_INCLUSION_ROWS_FULL_PAGE` linhas):
+ *    paginadas em slides cheios, com a última leva compartilhando slide com
+ *    o bloco "destino" (bug corrigido: o cálculo de quantas inclusões ficam
+ *    nessa última leva usava o módulo do limite errado — sempre 1 quando
+ *    esse limite era 1 — e o fatiamento das páginas cheias não respeitava
+ *    esse total, fazendo a última inclusão aparecer duplicada).
  */
 export function buildInclusionsSlide(pres: pptxgen, data: InclusionsSlideData): void {
   const total = data.inclusions.length;
@@ -256,6 +270,14 @@ export function buildInclusionsSlide(pres: pptxgen, data: InclusionsSlideData): 
     renderInclusionsPage(slide, data.inclusions, 0, data.theme);
     const destinationBlockY = CARDS_START_Y + totalRows * (CARD_H + CARD_ROW_GAP) + 0.139;
     renderDestinationBlock(slide, data, destinationBlockY, data.theme);
+    return;
+  }
+
+  if (totalRows <= MAX_INCLUSION_ROWS_FULL_PAGE) {
+    const slide = pres.addSlide();
+    renderInternalHeader(slide, data.agencyLogo, TITLE, data.theme);
+    renderInclusionsPage(slide, data.inclusions, 0, data.theme);
+    renderDestinationOnlySlide(pres, data);
     return;
   }
 
