@@ -34,7 +34,6 @@ export default function NewQuotePage({ searchParams }: NewQuotePageProps) {
         <Hero
           title="Novo orçamento"
           subtitle="Preencha os dados abaixo para gerar o orçamento em .pptx."
-          logoSlot={<span className="text-snow-navy text-sm font-semibold">LOGO SNOW</span>}
         />
         <Suspense fallback={null}>
           <NewQuoteContent searchParams={searchParams} />

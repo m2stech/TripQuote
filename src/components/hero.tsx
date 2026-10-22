@@ -1,20 +1,32 @@
+import Image from "next/image";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
 interface HeroProps {
-  /** Área da logo SNOW, normalmente uma imagem sobre um painel branco. */
+  /** Área da logo SNOW, normalmente uma imagem sobre um painel branco. Padrão: logo oficial da SNOW. */
   logoSlot?: ReactNode;
   title: string;
   subtitle?: string;
   className?: string;
 }
 
+const DEFAULT_LOGO_SLOT = (
+  <Image
+    src="/branding/logo-snow.png"
+    alt="Logo SNOW"
+    width={1809}
+    height={703}
+    className="h-full w-full object-contain"
+    priority
+  />
+);
+
 /**
  * Cabeçalho (hero) do padrão SNOW: gradiente navy → azul petróleo a 115°,
  * raio de 10px e um painel branco para a logo da operadora.
  */
-export function Hero({ logoSlot, title, subtitle, className }: HeroProps) {
+export function Hero({ logoSlot = DEFAULT_LOGO_SLOT, title, subtitle, className }: HeroProps) {
   return (
     <header
       className={cn(

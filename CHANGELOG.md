@@ -9,6 +9,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 ### Adicionado
 - Voos: os trechos (companhia aérea, nº do voo, aeroportos com nome da cidade, horários, duração, direção ida/volta) agora são sempre estruturados pela IA — a partir do texto digitado e/ou da imagem de comprovante — em vez de só quando havia imagem anexada. Prompt bump para v6.
 - Circuito com múltiplas cidades: novo slide "Valor do pacote" (valor total + tipo de valor/moeda), exibido sempre entre Inclusões e Hotéis quando `general.isCircuit` é `true`. Antes, o valor informado na seção 01 (`packagePriceTotal`) não aparecia em nenhum slide — os cards de hotel no modo circuito escondem o preço por hotel (correto), mas nada o substituía. Padrão de exibição definido com o cliente (BV Group) via feedback de uso real.
+- Interface: logo oficial da SNOW (`public/branding/logo-snow.png`) agora aparece por padrão no painel branco do `Hero`, em todas as telas do app (Novo orçamento, Orçamentos, Detalhe do orçamento, Gerando orçamento, Minha conta, Administração) — antes era só um placeholder de texto "LOGO SNOW".
 
 ### Corrigido
 - Voos: cards de trecho (ida/volta) agora têm altura dinâmica e cabem sempre numa única página por direção, sem paginar nem duplicar o último trecho quando há várias conexões.
