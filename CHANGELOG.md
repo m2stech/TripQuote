@@ -13,6 +13,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - Orçamentos: consultor só visualiza na listagem os orçamentos que ele mesmo criou (reforçado pela RLS de `quotes`, já existente). Admin ganhou um filtro "Visibilidade" na listagem, com "Apenas as minhas" (padrão) ou "Todas as cotações", para poder ver os orçamentos de outros consultores quando necessário.
 
 ### Corrigido
+- Orçamentos: corrigido build de produção quebrado (`Next.js encountered uncached or runtime data during prerendering`) causado pela leitura do papel do usuário direto no Server Component de `/orcamentos` — isolada em subcomponente dentro de `<Suspense>`, mesmo padrão já usado nas demais páginas autenticadas.
+- Upload de imagem (logo da agência, imagem de voo): erros agora mostram a mensagem real do problema (formato inválido, tamanho excedido, imagem corrompida, falha no Storage) via toast, em vez de sempre "Não foi possível enviar o arquivo. Tente novamente." — o usuário não tinha como saber o motivo real da falha.
 - Voos: cards de trecho (ida/volta) agora têm altura dinâmica e cabem sempre numa única página por direção, sem paginar nem duplicar o último trecho quando há várias conexões.
 - Hotéis: a foto do hotel não sobrepõe mais o badge/texto da coluna da direita (largura da caixa de foto excedia o início da coluna em 0,216").
 - Programação dia a dia: estimativa de altura por dia recalibrada e fonte compacta para descrições muito longas — reduz o número de páginas mantendo a ordem cronológica (ex.: um roteiro real de 8 dias caiu de 6 para 4 páginas).

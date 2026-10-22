@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -55,19 +56,25 @@ export function ImageUpload({
     if (!file) return;
 
     if (!quoteId) {
-      setError("Aguarde o rascunho terminar de ser criado e tente novamente.");
+      const message = "Aguarde o rascunho terminar de ser criado e tente novamente.";
+      setError(message);
+      toast.error(message);
       event.target.value = "";
       return;
     }
 
     if (!ACCEPTED_TYPES.includes(file.type)) {
-      setError("Formato inválido. Envie uma imagem PNG, JPG ou WEBP.");
+      const message = "Formato inválido. Envie uma imagem PNG, JPG ou WEBP.";
+      setError(message);
+      toast.error(message);
       event.target.value = "";
       return;
     }
 
     if (file.size > MAX_SIZE_BYTES) {
-      setError("Arquivo muito grande. O tamanho máximo é 5 MB.");
+      const message = "Arquivo muito grande. O tamanho máximo é 5 MB.";
+      setError(message);
+      toast.error(message);
       event.target.value = "";
       return;
     }
@@ -80,8 +87,13 @@ export function ImageUpload({
       formData.set("file", file);
       const result = await uploadQuoteAttachmentAction(quoteId, kind, formData);
       onChange(result.attachment, result.previewUrl);
-    } catch {
-      setError("Não foi possível enviar o arquivo. Tente novamente.");
+    } catch (uploadError) {
+      const message =
+        uploadError instanceof Error && uploadError.message
+          ? uploadError.message
+          : "Não foi possível enviar o arquivo. Tente novamente.";
+      setError(message);
+      toast.error(message);
     } finally {
       setIsUploading(false);
       event.target.value = "";

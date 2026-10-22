@@ -47,7 +47,14 @@ export async function uploadQuoteImageAttachment(
   }
 
   const originalBuffer = Buffer.from(await file.arrayBuffer());
-  const normalizedBuffer = await normalizeImage(originalBuffer);
+  let normalizedBuffer: Buffer;
+  try {
+    normalizedBuffer = await normalizeImage(originalBuffer);
+  } catch {
+    throw new AttachmentValidationError(
+      "Não foi possível processar essa imagem. Verifique se o arquivo não está corrompido e tente novamente.",
+    );
+  }
 
   const attachmentId = crypto.randomUUID();
   const storagePath = `${quoteId}/${attachmentId}-${file.name}`;
