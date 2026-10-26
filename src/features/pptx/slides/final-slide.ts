@@ -4,11 +4,12 @@ import { renderInternalHeader } from "@/features/pptx/slides/internal-header";
 import type { PptxTheme } from "@/features/pptx/theme/extract-theme";
 import { CONTENT_MARGIN_X, FONT_SANS, FONT_SERIF, FOOTER_LOGO_BOX, SLIDE_HEIGHT_IN, SLIDE_WIDTH_IN, SNOW_COLORS } from "@/features/pptx/tokens";
 import type { ResolvedImage } from "@/features/pptx/types";
-import { FIXED_PAYMENT_TERMS } from "@/features/quotes/schemas/quote-form.schema";
+import { PAYMENT_TERMS_TEXT, type PaymentTermsOption } from "@/features/quotes/schemas/quote-form.schema";
 
 export interface FinalSlideData {
   institutionalLogo: ResolvedImage;
   institutionalFooterText: string;
+  paymentTerms: PaymentTermsOption;
   theme: PptxTheme;
 }
 
@@ -24,9 +25,9 @@ function toDataUri(buffer: Buffer): string {
   return `data:image/png;base64,${buffer.toString("base64")}`;
 }
 
-/** As 4 linhas de FIXED_PAYMENT_TERMS: 3 formas de pagamento + 1 observação, no formato "Título: descrição". */
-function parsePaymentTerms(): { title: string; description: string }[] {
-  const lines = FIXED_PAYMENT_TERMS.split("\n");
+/** As 4 linhas do texto de pagamento: 3 formas de pagamento + 1 observação, no formato "Título: descrição". */
+function parsePaymentTerms(text: string): { title: string; description: string }[] {
+  const lines = text.split("\n");
   return lines.map((line) => {
     const separatorIndex = line.indexOf(":");
     if (separatorIndex === -1) return { title: "", description: line };
@@ -47,7 +48,7 @@ export function buildFinalSlide(pres: pptxgen, data: FinalSlideData): void {
   const slide = pres.addSlide();
   renderInternalHeader(slide, { kind: "placeholder" }, TITLE, data.theme);
 
-  const terms = parsePaymentTerms();
+  const terms = parsePaymentTerms(PAYMENT_TERMS_TEXT[data.paymentTerms]);
   const paymentCards = terms.slice(0, 3);
   const observation = terms[3];
 

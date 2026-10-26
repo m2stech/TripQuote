@@ -45,14 +45,15 @@ describe("buildFlightsSlide", () => {
     expect(tableTexts).toContain("voo de ida qualquer");
   });
 
-  it("com 1 trecho de ida: 1 slide com o card do trecho (companhia, voo, cidades, horários, duração)", () => {
+  it("com 1 trecho de ida: 1 slide com o card do trecho (companhia, voo, cidades, horários, duração), sem label de direção (só 1 grupo)", () => {
     const pres = new pptxgen();
     pres.layout = "LAYOUT_WIDE";
     buildFlightsSlide(pres, { ...baseData, legs: [makeLeg()] });
 
     expect(getSlides(pres)).toHaveLength(1);
     const texts = getSlideTexts(getSlides(pres)[0]!);
-    expect(texts).toContain("Voos contemplados no orçamento — Ida");
+    expect(texts).toContain("Voos contemplados no orçamento");
+    expect(texts).not.toContain("IDA");
     expect(texts).toContain("LATAM Airlines");
     expect(texts).toContain("LA 3555");
     expect(texts).toContain("CNF  →  GRU");
@@ -61,7 +62,7 @@ describe("buildFlightsSlide", () => {
     expect(texts.some((t) => t.includes("1h20"))).toBe(true);
   });
 
-  it("com ida e volta: 2 slides separados, um por direção", () => {
+  it("com ida e volta: ambos no mesmo slide, com labels 'IDA' e 'RETORNO' separando os grupos", () => {
     const pres = new pptxgen();
     pres.layout = "LAYOUT_WIDE";
     buildFlightsSlide(pres, {
@@ -79,9 +80,13 @@ describe("buildFlightsSlide", () => {
     });
 
     const slides = getSlides(pres);
-    expect(slides).toHaveLength(2);
-    expect(getSlideTexts(slides[0]!)).toContain("Voos contemplados no orçamento — Ida");
-    expect(getSlideTexts(slides[1]!)).toContain("Voos contemplados no orçamento — Retorno");
+    expect(slides).toHaveLength(1);
+    const texts = getSlideTexts(slides[0]!);
+    expect(texts).toContain("Voos contemplados no orçamento");
+    expect(texts).toContain("IDA");
+    expect(texts).toContain("RETORNO");
+    expect(texts).toContain("CNF  →  GRU");
+    expect(texts).toContain("GRU  →  CNF");
   });
 
   it("usa 'Nenhum informado.' como fallback quando services está vazio", () => {
@@ -119,6 +124,26 @@ describe("buildFlightsSlide", () => {
     expect(texts).toContain("1 peça de 23 kg por pessoa");
     // Nenhum trecho duplicado (bug anterior: paginação repetia o último trecho na continuação).
     expect(texts.filter((t) => t === "TP 1452")).toHaveLength(1);
+  });
+
+  it("com muitos trechos de ida e volta combinados, ainda cabe em 1 único slide, sem sobrepor os cards inferiores", () => {
+    const pres = new pptxgen();
+    pres.layout = "LAYOUT_WIDE";
+    const outbound = Array.from({ length: 3 }, (_, i) =>
+      makeLeg({ flightNumber: `LA 000${i}`, direction: "outbound" }),
+    );
+    const inbound = Array.from({ length: 3 }, (_, i) =>
+      makeLeg({ flightNumber: `TP 100${i}`, direction: "return" }),
+    );
+    buildFlightsSlide(pres, { ...baseData, legs: [...outbound, ...inbound] });
+
+    const slides = getSlides(pres);
+    expect(slides).toHaveLength(1);
+    const texts = getSlideTexts(slides[0]!);
+    expect(texts).toContain("IDA");
+    expect(texts).toContain("RETORNO");
+    expect(texts).toContain("1 peça de 23 kg por pessoa");
+    expect(texts.filter((t) => t.includes("TP 1002"))).toHaveLength(1);
   });
 
   it("com muitos trechos de ida (8+), ainda cabe em 1 único slide, sem sobrepor os cards inferiores", () => {

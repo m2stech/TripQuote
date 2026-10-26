@@ -10,6 +10,7 @@ import { resolveInstitutionalBranding } from "@/features/pptx/images/institution
 import { matchHotelsByName } from "@/features/pptx/match-hotels";
 import { resolveFlightItinerary } from "@/features/pptx/resolve-flight-itinerary";
 import { buildCoverSlide } from "@/features/pptx/slides/cover-slide";
+import { buildDestinationSlide } from "@/features/pptx/slides/destination-slide";
 import { buildFinalSlide } from "@/features/pptx/slides/final-slide";
 import { buildFlightsSlide } from "@/features/pptx/slides/flights-slide";
 import { buildHotelSlides } from "@/features/pptx/slides/hotel-slide";
@@ -76,11 +77,16 @@ export async function buildQuotePresentation(
     theme,
   });
 
-  buildInclusionsSlide(pres, {
-    inclusions: form.inclusions,
+  buildDestinationSlide(pres, {
     destinationTitle: form.general.destination,
     destinationDescription: aiOutput.destinationDescription,
     destinationAttractions: aiOutput.destinationAttractions,
+    agencyLogo: agencyLogoInner,
+    theme,
+  });
+
+  buildInclusionsSlide(pres, {
+    inclusions: form.inclusions,
     agencyLogo: agencyLogoInner,
     theme,
   });
@@ -146,6 +152,7 @@ export async function buildQuotePresentation(
   buildFinalSlide(pres, {
     institutionalLogo: institutionalBranding.logo,
     institutionalFooterText: institutionalBranding.footerText,
+    paymentTerms: form.paymentTerms,
     theme,
   });
 

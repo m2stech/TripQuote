@@ -26,7 +26,8 @@ export const SNOW_COLORS = {
 } as const;
 
 export const FONT_SANS = "Calibri";
-export const FONT_SERIF = "Cambria";
+/** Unificado com `FONT_SANS` por pedido do cliente (BV Group): o .pptx usava Cambria nos títulos/destaques e Calibri no corpo — mantido como alias separado (em vez de remover os usos de `FONT_SERIF`) para preservar a distinção semântica título/corpo no código, caso o cliente peça para diferenciá-las novamente no futuro. */
+export const FONT_SERIF = "Calibri";
 
 /** Converte pontos em polegadas (1pt = 1/72in). */
 export function pt(points: number): number {

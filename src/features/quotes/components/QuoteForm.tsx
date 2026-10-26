@@ -38,10 +38,12 @@ import { useQuoteAutosave } from "@/features/quotes/hooks/useQuoteAutosave";
 import {
   baggageOptions,
   FIXED_INSTITUTIONAL_FOOTER,
-  FIXED_PAYMENT_TERMS,
-  INSTITUTIONAL_LOGO_URL,
   mealPlanOptions,
+  PAYMENT_TERMS_LABELS,
+  PAYMENT_TERMS_TEXT,
+  paymentTermsOptions,
   priceTypeOptions,
+  INSTITUTIONAL_LOGO_URL,
   quoteFormDefaultValues,
   quoteFormSchema,
   seatOptions,
@@ -218,6 +220,7 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
   const inclusionsCount = useWatch({ control, name: "inclusions" })?.length ?? 0;
   const hotelsCount = useWatch({ control, name: "hotels" })?.length ?? 0;
   const priceType = useWatch({ control, name: "general.priceType" });
+  const paymentTerms = useWatch({ control, name: "paymentTerms" }) ?? quoteFormDefaultValues.paymentTerms;
   const flightsBaggage = useWatch({ control, name: "flights.baggage" });
   const flightsSeat = useWatch({ control, name: "flights.seat" });
 
@@ -695,10 +698,29 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
       <SectionCard
         number={7}
         title="Pagamento fixo"
-        description="Condições institucionais fixas, aplicadas a todos os orçamentos."
+        description="Condições institucionais fixas, aplicadas conforme o tipo de produto."
       >
+        <Field label="Condições de pagamento" htmlFor="paymentTerms">
+          <Select
+            value={paymentTerms}
+            onValueChange={(value) =>
+              setValue("paymentTerms", value as QuoteFormInput["paymentTerms"])
+            }
+          >
+            <SelectTrigger id="paymentTerms" className="w-full">
+              <SelectValue placeholder="Selecione" />
+            </SelectTrigger>
+            <SelectContent>
+              {paymentTermsOptions.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {PAYMENT_TERMS_LABELS[option]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
         <InfoBox>
-          <p className="whitespace-pre-line">{FIXED_PAYMENT_TERMS}</p>
+          <p className="whitespace-pre-line">{PAYMENT_TERMS_TEXT[paymentTerms]}</p>
         </InfoBox>
       </SectionCard>
 

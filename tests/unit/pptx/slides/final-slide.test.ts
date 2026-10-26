@@ -9,6 +9,7 @@ import { getSlideImageCount, getSlides, getSlideTexts } from "./test-helpers";
 const PLACEHOLDER_DATA = {
   institutionalLogo: { kind: "placeholder" as const },
   institutionalFooterText: FIXED_INSTITUTIONAL_FOOTER,
+  paymentTerms: "general" as const,
   theme: DEFAULT_THEME,
 };
 
@@ -30,6 +31,18 @@ describe("buildFinalSlide", () => {
     expect(texts.some((t) => t.includes("Pagamento à vista"))).toBe(true);
     expect(texts.some((t) => t.includes("Cartão de Crédito"))).toBe(true);
     expect(texts.some((t) => t.includes("Boleto Bancário"))).toBe(true);
+  });
+
+  it("com paymentTerms 'ski', inclui as condições de Ski e Outros Produtos Especiais", () => {
+    const pres = new pptxgen();
+    pres.layout = "LAYOUT_WIDE";
+    buildFinalSlide(pres, { ...PLACEHOLDER_DATA, paymentTerms: "ski" });
+    const texts = getSlideTexts(getSlides(pres)[0]!);
+
+    expect(texts.some((t) => t.includes("Pagamento à vista"))).toBe(true);
+    expect(texts.some((t) => t.includes("Cartão de Crédito ou Boleto"))).toBe(true);
+    expect(texts.some((t) => t.includes("Pagamento em USD"))).toBe(true);
+    expect(texts.some((t) => t.includes("valor mínimo por parcela"))).toBe(true);
   });
 
   it("inclui a observação de valor mínimo por parcela", () => {
@@ -70,6 +83,7 @@ describe("buildFinalSlide", () => {
     buildFinalSlide(pres2, {
       institutionalLogo: { kind: "image", data: Buffer.from("fake"), sizing: { w: 0.6, h: 0.6 } },
       institutionalFooterText: FIXED_INSTITUTIONAL_FOOTER,
+      paymentTerms: "general",
       theme: DEFAULT_THEME,
     });
     expect(getSlideImageCount(getSlides(pres2)[0]!)).toBe(1);

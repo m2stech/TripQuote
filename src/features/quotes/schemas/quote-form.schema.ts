@@ -200,13 +200,33 @@ const itineraryDraftSchema = z.discriminatedUnion("enabled", [
   }),
 ]);
 
-// 07 — Pagamento fixo (somente leitura, texto institucional fixo) ---------
+// 07 — Pagamento fixo (texto institucional fixo, escolhido por tipo de produto) ---
+
+export const paymentTermsOptions = ["general", "ski"] as const;
+
+export type PaymentTermsOption = (typeof paymentTermsOptions)[number];
+
+export const PAYMENT_TERMS_LABELS: Record<PaymentTermsOption, string> = {
+  general: "Condições gerais",
+  ski: "Produtos de Ski e Outros Produtos Especiais",
+};
 
 export const FIXED_PAYMENT_TERMS =
   "Pagamento à vista: 5% de desconto para pagamento à vista via Dinheiro, PIX ou Depósito Bancário.\n" +
   "Cartão de Crédito: até 10x sem juros, sem entrada.\n" +
   "Boleto Bancário: até 10x sem juros, sendo 25% de entrada + 9 parcelas iguais.\n" +
   "Observação importante: valor mínimo por parcela: R$ 500,00.";
+
+export const SKI_PAYMENT_TERMS =
+  "Pagamento à vista: 3% de desconto via Dinheiro, PIX ou Depósito Bancário.\n" +
+  "Cartão de Crédito ou Boleto: até 6x sem juros, sendo 25% de entrada + 5 parcelas iguais.\n" +
+  "Pagamento em USD: 3% de desconto à vista via conta global em USD; isenção de IOF; redução de custo total que pode chegar a até 8%, considerando câmbio e tributos.\n" +
+  "Observação importante: valor mínimo por parcela: R$ 500,00.";
+
+export const PAYMENT_TERMS_TEXT: Record<PaymentTermsOption, string> = {
+  general: FIXED_PAYMENT_TERMS,
+  ski: SKI_PAYMENT_TERMS,
+};
 
 // 08 — Rodapé institucional (somente leitura) -------------------------
 
@@ -235,6 +255,7 @@ export const quoteFormSchema = z
     hotels: hotelsSchema,
     flights: flightsSchema,
     itinerary: itinerarySchema,
+    paymentTerms: z.enum(paymentTermsOptions).default("general"),
     agencyLogo: uploadedAttachmentSchema.nullable().default(null),
     flightImage: uploadedAttachmentSchema.nullable().default(null),
   })
@@ -281,6 +302,7 @@ export const quoteDraftSchema = z.object({
   hotels: z.array(hotelSchema).optional(),
   flights: flightsDraftSchema.optional(),
   itinerary: itineraryDraftSchema.optional(),
+  paymentTerms: z.enum(paymentTermsOptions).optional(),
   agencyLogo: uploadedAttachmentSchema.nullable().optional(),
   flightImage: uploadedAttachmentSchema.nullable().optional(),
 });
@@ -304,6 +326,7 @@ export function normalizeQuoteDraft(draft: QuoteDraftValues): QuoteFormValues {
     hotels: draft.hotels ?? quoteFormDefaultValues.hotels,
     flights: draft.flights ?? quoteFormDefaultValues.flights,
     itinerary: draft.itinerary ?? quoteFormDefaultValues.itinerary,
+    paymentTerms: draft.paymentTerms ?? quoteFormDefaultValues.paymentTerms,
     agencyLogo: draft.agencyLogo ?? null,
     flightImage: draft.flightImage ?? null,
   };
@@ -328,6 +351,7 @@ export const quoteFormDefaultValues: QuoteFormValues = {
   hotels: [],
   flights: { enabled: false },
   itinerary: { enabled: false },
+  paymentTerms: "general",
   agencyLogo: null,
   flightImage: null,
 };

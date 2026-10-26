@@ -29,21 +29,40 @@ const MAX_CARD_H = 1.25;
 const MIN_DETAILED_CARD_H = 0.85;
 const BOTTOM_CARDS_H = 1.25;
 const BOTTOM_MARGIN = 0.3;
-/** Todos os trechos de uma direção (ida ou volta) + os 3 cards de bagagem/assento/serviços sempre numa única página — nunca paginar nem sobrepor, mesmo com várias conexões. */
+/** Altura reservada ao label "IDA"/"RETORNO" que antecede cada grupo de trechos. */
+const GROUP_LABEL_H = 0.306;
+/** Todos os trechos (ida + volta) + os 3 cards de bagagem/assento/serviços sempre numa única página — nunca paginar nem sobrepor, mesmo com várias conexões. */
 const BOTTOM_CARDS_Y = SLIDE_HEIGHT_IN - BOTTOM_MARGIN - BOTTOM_CARDS_H;
 const LEGS_AVAILABLE_HEIGHT = BOTTOM_CARDS_Y - CARD_GAP - LEGS_Y;
 
-function computeCardHeight(legCount: number): number {
-  const totalGap = CARD_GAP * (legCount - 1);
-  const rawHeight = (LEGS_AVAILABLE_HEIGHT - totalGap) / legCount;
+/** Altura de card que cabe no espaço disponível, descontando os labels de grupo (1 por direção presente) e os espaçamentos entre todos os cards. */
+function computeCardHeight(legCount: number, groupCount: number): number {
+  const totalGroupLabelsH = groupCount * GROUP_LABEL_H;
+  const totalGap = CARD_GAP * (legCount - 1 + groupCount);
+  const rawHeight = (LEGS_AVAILABLE_HEIGHT - totalGroupLabelsH - totalGap) / legCount;
   return Math.min(rawHeight, MAX_CARD_H);
 }
 
-/** Posição Y do 1º card: centraliza o bloco verticalmente quando os cards não preenchem toda a altura disponível (poucos trechos, ex. 1 ou 2). */
-function computeLegsStartY(legCount: number, cardH: number): number {
-  const totalHeight = legCount * cardH + (legCount - 1) * CARD_GAP;
+/** Posição Y do topo do bloco de trechos: centraliza verticalmente quando não preenche toda a altura disponível (poucos trechos). */
+function computeLegsStartY(legCount: number, groupCount: number, cardH: number): number {
+  const totalHeight = legCount * cardH + (legCount - 1 + groupCount) * CARD_GAP + groupCount * GROUP_LABEL_H;
   const slack = LEGS_AVAILABLE_HEIGHT - totalHeight;
   return LEGS_Y + Math.max(slack, 0) / 2;
+}
+
+function renderGroupLabel(slide: pptxgen.Slide, text: string, y: number, theme: PptxTheme): void {
+  slide.addText(text.toUpperCase(), {
+    x: CONTENT_MARGIN_X,
+    y,
+    w: SLIDE_WIDTH_IN - CONTENT_MARGIN_X * 2,
+    h: GROUP_LABEL_H,
+    fontFace: FONT_SANS,
+    fontSize: 11,
+    bold: true,
+    charSpacing: 1.8,
+    color: theme.primary,
+    valign: "middle",
+  });
 }
 
 function renderDetailedLegCard(
@@ -303,39 +322,62 @@ function renderBottomCards(slide: pptxgen.Slide, data: Pick<FlightsSlideData, "b
   );
 }
 
-function renderLegsGroup(slide: pptxgen.Slide, legs: StructuredFlightLeg[], theme: PptxTheme): void {
-  const cardH = computeCardHeight(legs.length);
-  const startY = computeLegsStartY(legs.length, cardH);
+/**
+ * Renderiza todos os grupos (ida / retorno) no mesmo slide, um label
+ * "IDA"/"RETORNO" antes de cada grupo quando há mais de um — card único
+ * (sem label) quando só uma direção está presente.
+ */
+function renderLegsGroups(
+  slide: pptxgen.Slide,
+  groups: Array<{ direction: FlightDirection; legs: StructuredFlightLeg[] }>,
+  theme: PptxTheme,
+): void {
+  const totalLegs = groups.reduce((sum, group) => sum + group.legs.length, 0);
+  const showLabels = groups.length > 1;
+  const cardH = computeCardHeight(totalLegs, showLabels ? groups.length : 0);
   const renderCard = cardH >= MIN_DETAILED_CARD_H ? renderDetailedLegCard : renderCompactLegCard;
 
-  legs.forEach((leg, index) => {
-    const y = startY + index * (cardH + CARD_GAP);
-    renderCard(slide, leg, index, y, cardH, theme);
-  });
+  let y = computeLegsStartY(totalLegs, showLabels ? groups.length : 0, cardH);
+  let legIndex = 0;
+
+  for (const group of groups) {
+    if (showLabels) {
+      renderGroupLabel(slide, TITLE_BY_DIRECTION[group.direction], y, theme);
+      y += GROUP_LABEL_H + CARD_GAP;
+    }
+    group.legs.forEach((leg) => {
+      renderCard(slide, leg, legIndex, y, cardH, theme);
+      y += cardH + CARD_GAP;
+      legIndex += 1;
+    });
+  }
 }
 
 /**
- * Voos: 1 slide por direção (ida / retorno), cada trecho num card com
- * companhia aérea, nº do voo, aeroportos com nome da cidade, horários e
- * duração — substitui a tabela genérica anterior (Voo/Saída/Chegada/
- * Origem/Destino), apontada pelo usuário como visualmente pobre comparada
- * ao fluxo legado (`Prompt_orcamento_SNOW.html`). Os trechos vêm sempre
- * estruturados pela IA (`flightItinerary`, a partir do texto digitado e/ou
- * da imagem de comprovante); sem nenhum trecho estruturado, cai numa
- * tabela com as linhas cruas digitadas, para nunca perder a informação por
- * falha da IA.
+ * Voos: ida e retorno no mesmo slide (pedido do cliente — antes cada
+ * direção tinha seu próprio slide, o que duplicava os cards de bagagem/
+ * assento/serviços e fragmentava a informação desnecessariamente), cada
+ * trecho num card com companhia aérea, nº do voo, aeroportos com nome da
+ * cidade, horários e duração — substitui a tabela genérica anterior (Voo/
+ * Saída/Chegada/Origem/Destino), apontada pelo usuário como visualmente
+ * pobre comparada ao fluxo legado (`Prompt_orcamento_SNOW.html`). Os
+ * trechos vêm sempre estruturados pela IA (`flightItinerary`, a partir do
+ * texto digitado e/ou da imagem de comprovante); sem nenhum trecho
+ * estruturado, cai numa tabela com as linhas cruas digitadas, para nunca
+ * perder a informação por falha da IA.
  *
- * Todos os trechos de uma direção + os cards de bagagem/assento/serviços
+ * Todos os trechos (ida + volta) + os cards de bagagem/assento/serviços
  * cabem sempre numa única página (nunca pagina, nunca duplica o último
  * trecho): a altura do card de trecho é calculada dinamicamente a partir da
- * quantidade de trechos (`computeCardHeight`), com um layout compacto de 1
- * linha para itinerários com muitas conexões, onde o card de 2 linhas não
- * caberia sem sobrepor texto.
+ * quantidade total de trechos e de grupos (`computeCardHeight`), com um
+ * layout compacto de 1 linha para itinerários com muitas conexões, onde o
+ * card de 2 linhas não caberia sem sobrepor texto.
  */
 export function buildFlightsSlide(pres: pptxgen, data: FlightsSlideData): void {
+  const slide = pres.addSlide();
+  renderInternalHeader(slide, data.agencyLogo, "Voos contemplados no orçamento", data.theme);
+
   if (data.legs.length === 0) {
-    const slide = pres.addSlide();
-    renderInternalHeader(slide, data.agencyLogo, "Voos contemplados no orçamento", data.theme);
     renderRawLegsTable(slide, data.rawLines);
     renderBottomCards(slide, data);
     return;
@@ -348,15 +390,6 @@ export function buildFlightsSlide(pres: pptxgen, data: FlightsSlideData): void {
     ...(returnLegs.length > 0 ? [{ direction: "return" as const, legs: returnLegs }] : []),
   ];
 
-  for (const group of groups) {
-    const slide = pres.addSlide();
-    renderInternalHeader(
-      slide,
-      data.agencyLogo,
-      `Voos contemplados no orçamento — ${TITLE_BY_DIRECTION[group.direction]}`,
-      data.theme,
-    );
-    renderLegsGroup(slide, group.legs, data.theme);
-    renderBottomCards(slide, data);
-  }
+  renderLegsGroups(slide, groups, data.theme);
+  renderBottomCards(slide, data);
 }

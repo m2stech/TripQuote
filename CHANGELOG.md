@@ -6,7 +6,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ## [Unreleased]
 
+### Corrigido
+- Tipografia: o .pptx gerado usava 2 fontes (Cambria nos títulos/destaques, Calibri no corpo) — unificado para Calibri em todo o arquivo, por pedido do cliente (BV Group).
+- Voos: ida e retorno passaram a aparecer no mesmo slide (antes cada direção tinha seu próprio slide, duplicando os cards de bagagem/assento/serviços). Quando há mais de uma direção, um label "IDA"/"RETORNO" separa os grupos de trechos; com só uma direção, nenhum label aparece. Pedido do cliente (BV Group).
+- Destino: o bloco "O destino" (descrição + principais atrativos) deixou de dividir slide com os cards de inclusão — agora é sempre a 2ª página do .pptx, logo após a capa, com título próprio "O destino" (antes aparecia ao final da seção de inclusões, às vezes sozinho, e com pouco espaço vertical entre o texto da descrição e a base do card). Pedido do cliente (BV Group).
+
 ### Adicionado
+- Pagamento fixo: seção 07 ganhou um seletor de condição de pagamento — "Condições gerais" (padrão, texto já existente) ou "Produtos de Ski e Outros Produtos Especiais" (nova, conforme página oficial da SNOW: 3% de desconto à vista, até 6x sem juros no cartão/boleto com 25% de entrada, pagamento em USD com isenção de IOF). O texto escolhido é fixo (sem edição livre) e é o que aparece no slide final do .pptx.
 - Voos: os trechos (companhia aérea, nº do voo, aeroportos com nome da cidade, horários, duração, direção ida/volta) agora são sempre estruturados pela IA — a partir do texto digitado e/ou da imagem de comprovante — em vez de só quando havia imagem anexada. Prompt bump para v6.
 - Circuito com múltiplas cidades: novo slide "Valor do pacote" (valor total + tipo de valor/moeda), exibido sempre entre Inclusões e Hotéis quando `general.isCircuit` é `true`. Antes, o valor informado na seção 01 (`packagePriceTotal`) não aparecia em nenhum slide — os cards de hotel no modo circuito escondem o preço por hotel (correto), mas nada o substituía. Padrão de exibição definido com o cliente (BV Group) via feedback de uso real.
 - Interface: logo oficial da SNOW (`public/branding/logo-snow.png`) agora aparece por padrão no painel branco do `Hero`, em todas as telas do app (Novo orçamento, Orçamentos, Detalhe do orçamento, Gerando orçamento, Minha conta, Administração) — antes era só um placeholder de texto "LOGO SNOW".

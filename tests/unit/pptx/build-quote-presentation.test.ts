@@ -118,11 +118,11 @@ describe("buildQuotePresentation", () => {
     expect(zip.file("ppt/presentation.xml")).not.toBeNull();
   });
 
-  it("contagem de slides: capa + inclusões + 1 hotel + voos + final = 5 (sem roteiro)", async () => {
+  it("contagem de slides: capa + destino + inclusões + 1 hotel + voos + final = 6 (sem roteiro)", async () => {
     const buffer = await buildQuotePresentation(supabase, makeQuote());
     const zip = await JSZip.loadAsync(buffer);
     const slideFiles = Object.keys(zip.files).filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name));
-    expect(slideFiles).toHaveLength(5);
+    expect(slideFiles).toHaveLength(6);
   });
 
   it("sem voos (flights.enabled=false): 1 slide a menos", async () => {
@@ -132,7 +132,7 @@ describe("buildQuotePresentation", () => {
     );
     const zip = await JSZip.loadAsync(buffer);
     const slideFiles = Object.keys(zip.files).filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name));
-    expect(slideFiles).toHaveLength(4);
+    expect(slideFiles).toHaveLength(5);
   });
 
   it("com roteiro habilitado: 1 slide a mais", async () => {
@@ -144,7 +144,7 @@ describe("buildQuotePresentation", () => {
     );
     const zip = await JSZip.loadAsync(buffer);
     const slideFiles = Object.keys(zip.files).filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name));
-    expect(slideFiles).toHaveLength(6);
+    expect(slideFiles).toHaveLength(7);
   });
 
   it("com voos estruturados em ida e volta: 1 slide para cada direção", async () => {
@@ -187,12 +187,12 @@ describe("buildQuotePresentation", () => {
     );
     const zip = await JSZip.loadAsync(buffer);
     const slideFiles = Object.keys(zip.files).filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name));
-    // Capa + inclusões + 1 hotel + voos ida + voos volta + final = 6.
+    // Capa + destino + inclusões + 1 hotel + voos (ida e volta no mesmo slide) + final = 6.
     expect(slideFiles).toHaveLength(6);
 
-    const outboundSlide = await zip.file("ppt/slides/slide4.xml")!.async("string");
-    expect(outboundSlide).toContain("LATAM Airlines");
-    expect(outboundSlide).toContain("Belo Horizonte");
+    const flightsSlide = await zip.file("ppt/slides/slide5.xml")!.async("string");
+    expect(flightsSlide).toContain("LATAM Airlines");
+    expect(flightsSlide).toContain("Belo Horizonte");
   });
 
   it("modo circuito: adiciona o slide de valor do pacote antes dos hotéis", async () => {
@@ -216,10 +216,10 @@ describe("buildQuotePresentation", () => {
     );
     const zip = await JSZip.loadAsync(buffer);
     const slideFiles = Object.keys(zip.files).filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name));
-    // Capa + inclusões + valor do pacote + 1 hotel + voos + final = 6.
-    expect(slideFiles).toHaveLength(6);
+    // Capa + destino + inclusões + valor do pacote + 1 hotel + voos + final = 7.
+    expect(slideFiles).toHaveLength(7);
 
-    const packagePriceSlide = await zip.file("ppt/slides/slide3.xml")!.async("string");
+    const packagePriceSlide = await zip.file("ppt/slides/slide4.xml")!.async("string");
     expect(packagePriceSlide).toContain("R$ 12.500,00");
   });
 
@@ -227,7 +227,7 @@ describe("buildQuotePresentation", () => {
     const buffer = await buildQuotePresentation(supabase, makeQuote());
     const zip = await JSZip.loadAsync(buffer);
     const slideFiles = Object.keys(zip.files).filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name));
-    expect(slideFiles).toHaveLength(5);
+    expect(slideFiles).toHaveLength(6);
   });
 
   it("com logo da agência: extrai o tema da logo e aplica a cor nos slides, em vez do navy fixo da SNOW", async () => {
