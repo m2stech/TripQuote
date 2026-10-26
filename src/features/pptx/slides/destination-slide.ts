@@ -44,8 +44,12 @@ export function buildDestinationSlide(pres: pptxgen, data: DestinationSlideData)
   });
 
   const leftColX = CONTENT_MARGIN_X + 0.333;
-  const leftColW = blockW * 0.46;
   const dividerX = CONTENT_MARGIN_X + blockW * 0.457;
+  // Respiro entre o fim do texto da coluna esquerda e o divisor — sem isso,
+  // a largura da caixa (medida a partir de CONTENT_MARGIN_X, não de leftColX)
+  // ultrapassava o divisor em 0.333" e o texto sobrepunha a linha vertical
+  // (bug relatado pelo cliente, BV Group).
+  const leftColW = dividerX - leftColX - 0.2;
   const rightColX = dividerX + 0.5;
   const rightColW = blockW - (rightColX - CONTENT_MARGIN_X) - 0.333;
 

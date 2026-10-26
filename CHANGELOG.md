@@ -7,6 +7,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 ## [Unreleased]
 
 ### Corrigido
+- Destino: a largura da coluna de texto (título + descrição) no slide "O destino" ultrapassava a linha divisória vertical em 0,333" — o texto da descrição chegava a sobrepor o divisor e invadir a coluna "Principais atrativos" em descrições mais longas. Causa: a largura da caixa era calculada a partir da margem do slide, não do início real do texto (que tem um recuo adicional). Reportado pelo cliente (BV Group) com uma nova geração de exemplo.
 - Tipografia: o .pptx gerado usava 2 fontes (Cambria nos títulos/destaques, Calibri no corpo) — unificado para Calibri em todo o arquivo, por pedido do cliente (BV Group).
 - Voos: ida e retorno passaram a aparecer no mesmo slide (antes cada direção tinha seu próprio slide, duplicando os cards de bagagem/assento/serviços). Quando há mais de uma direção, um label "IDA"/"RETORNO" separa os grupos de trechos; com só uma direção, nenhum label aparece. Pedido do cliente (BV Group).
 - Destino: o bloco "O destino" (descrição + principais atrativos) deixou de dividir slide com os cards de inclusão — agora é sempre a 2ª página do .pptx, logo após a capa, com título próprio "O destino" (antes aparecia ao final da seção de inclusões, às vezes sozinho, e com pouco espaço vertical entre o texto da descrição e a base do card). Pedido do cliente (BV Group).
