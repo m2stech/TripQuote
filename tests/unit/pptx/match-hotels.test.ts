@@ -10,7 +10,7 @@ function makeHotel(name: string): Hotel {
     name,
     city: "",
     mealPlan: "Café da manhã",
-    rooms: [{ id: "1", text: "Standard | R$ 100,00" }],
+    rooms: [{ id: "1", roomType: "Standard", price: "R$ 100,00" }],
   };
 }
 

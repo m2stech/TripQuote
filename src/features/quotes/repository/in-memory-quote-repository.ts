@@ -36,7 +36,7 @@ function buildForm(overrides: Partial<QuoteFormValues["general"]>): QuoteFormVal
         name: "Hotel exemplo",
         city: "",
         mealPlan: "Café da manhã",
-        rooms: [{ id: createId(), text: "Duplo Standard | R$ 8.500,00" }],
+        rooms: [{ id: createId(), roomType: "Duplo Standard", price: "R$ 8.500,00" }],
       },
     ],
   };

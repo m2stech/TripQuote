@@ -11,7 +11,7 @@ function makeData(overrides: Partial<HotelSlideData> = {}): HotelSlideData {
     name: "Hotel Plaza San Francisco",
     city: null,
     mealPlan: "Café da manhã",
-    rooms: [{ id: "1", text: "Standard | R$ 10.000,00" }],
+    rooms: [{ id: "1", roomType: "Standard", price: "R$ 10.000,00" }],
     shortDescription: "Hotel de luxo no centro da cidade.",
     location: "Las Condes, Santiago",
     category: "5 estrelas",
@@ -55,7 +55,7 @@ describe("buildHotelSlide", () => {
     expect(texts).toContain("4,5 de 5 (1.200 avaliações)");
   });
 
-  it("inclui tipo de quarto e preço parseados do texto livre", () => {
+  it("inclui tipo de quarto e preço", () => {
     const pres = new pptxgen();
     pres.layout = "LAYOUT_WIDE";
     buildHotelSlide(pres, makeData());
@@ -88,9 +88,9 @@ describe("buildHotelSlide", () => {
       pres,
       makeData({
         rooms: [
-          { id: "1", text: "Standard | R$ 8.000,00" },
-          { id: "2", text: "Luxo | R$ 11.000,00" },
-          { id: "3", text: "Suíte | R$ 15.000,00" },
+          { id: "1", roomType: "Standard", price: "R$ 8.000,00" },
+          { id: "2", roomType: "Luxo", price: "R$ 11.000,00" },
+          { id: "3", roomType: "Suíte", price: "R$ 15.000,00" },
         ],
       }),
     );
@@ -100,10 +100,10 @@ describe("buildHotelSlide", () => {
     expect(texts).toContain("Suíte");
   });
 
-  it("bug relatado: acomodação com só o valor (sem 'Tipo | Preço') exibe o preço, não 'Consulte valores'", () => {
+  it("acomodação sem tipo informado (só valor) exibe o preço, não 'Consulte valores'", () => {
     const pres = new pptxgen();
     pres.layout = "LAYOUT_WIDE";
-    buildHotelSlide(pres, makeData({ rooms: [{ id: "1", text: "R$ 34.814,20" }] }));
+    buildHotelSlide(pres, makeData({ rooms: [{ id: "1", roomType: "", price: "R$ 34.814,20" }] }));
     const texts = getSlideTexts(getSlides(pres)[0]!);
     expect(texts).toContain("R$ 34.814,20");
     expect(texts).not.toContain("Consulte valores");
@@ -133,7 +133,7 @@ describe("buildHotelSlides (continuação)", () => {
   it("hotel com muitas acomodações (>6) gera slides de continuação, sem omitir nenhuma", () => {
     const pres = new pptxgen();
     pres.layout = "LAYOUT_WIDE";
-    const rooms = Array.from({ length: 9 }, (_, i) => ({ id: String(i), text: `Tipo ${i + 1} | R$ ${i}00,00` }));
+    const rooms = Array.from({ length: 9 }, (_, i) => ({ id: String(i), roomType: `Tipo ${i + 1}`, price: `R$ ${i}00,00` }));
     buildHotelSlides(pres, makeData({ rooms }));
 
     expect(getSlides(pres).length).toBeGreaterThan(1);
@@ -147,7 +147,7 @@ describe("buildHotelSlides (continuação)", () => {
   it("slide de continuação usa o nome do hotel com sufixo '(continuação)'", () => {
     const pres = new pptxgen();
     pres.layout = "LAYOUT_WIDE";
-    const rooms = Array.from({ length: 7 }, (_, i) => ({ id: String(i), text: `Tipo ${i + 1} | R$ 100,00` }));
+    const rooms = Array.from({ length: 7 }, (_, i) => ({ id: String(i), roomType: `Tipo ${i + 1}`, price: "R$ 100,00" }));
     buildHotelSlides(pres, makeData({ rooms }));
 
     const allTexts = getSlides(pres).flatMap((slide) => getSlideTexts(slide));

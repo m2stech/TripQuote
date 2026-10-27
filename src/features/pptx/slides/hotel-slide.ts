@@ -1,6 +1,5 @@
 import type pptxgen from "pptxgenjs";
 
-import { parseRoom } from "@/features/pptx/parse-room";
 import { renderInternalHeader } from "@/features/pptx/slides/internal-header";
 import type { PptxTheme } from "@/features/pptx/theme/extract-theme";
 import { CONTENT_MARGIN_X, FONT_SANS, FONT_SERIF, HOTEL_PHOTO_BOX, SLIDE_WIDTH_IN, SNOW_COLORS } from "@/features/pptx/tokens";
@@ -105,7 +104,6 @@ function renderRoomCards(
   const cardW = (RIGHT_COL_W - gap * (rooms.length - 1)) / rooms.length;
 
   rooms.forEach((room, index) => {
-    const parsed = parseRoom(room);
     const x = RIGHT_COL_X + index * (cardW + gap);
 
     slide.addShape("roundRect", {
@@ -128,8 +126,8 @@ function renderRoomCards(
       charSpacing: 1.8,
       color: SNOW_COLORS.label,
     });
-    if (parsed.roomType) {
-      slide.addText(parsed.roomType, {
+    if (room.roomType) {
+      slide.addText(room.roomType, {
         x: x + 0.15,
         y: y + 0.32,
         w: cardW - 0.3,
@@ -141,10 +139,10 @@ function renderRoomCards(
       });
     }
     if (!isCircuit) {
-      // Sem tipo de quarto (texto da acomodação já era só o valor): o preço
-      // sobe para o lugar do tipo, em vez de deixar um vão vazio acima dele.
-      const priceY = parsed.roomType ? y + 0.58 : y + 0.32;
-      slide.addText(parsed.price || "Consulte valores", {
+      // Sem tipo de quarto: o preço sobe para o lugar do tipo, em vez de
+      // deixar um vão vazio acima dele.
+      const priceY = room.roomType ? y + 0.58 : y + 0.32;
+      slide.addText(room.price || "Consulte valores", {
         x: x + 0.15,
         y: priceY,
         w: cardW - 0.3,

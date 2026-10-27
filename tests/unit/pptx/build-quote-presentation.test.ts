@@ -42,7 +42,7 @@ function makeQuote(overrides: Partial<QuoteRecord["form"]> = {}, aiOverrides: Re
         name: "Hotel Brasil Express",
         city: "",
         mealPlan: "Café da manhã",
-        rooms: [{ id: "1", text: "Standard | R$ 533,18" }],
+        rooms: [{ id: "1", roomType: "Standard", price: "R$ 533,18" }],
       },
     ],
     flights: {

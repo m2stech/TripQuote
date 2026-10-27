@@ -1,7 +1,11 @@
 import { z } from "zod";
 
 import { generationOutputSchema } from "@/features/quotes/schemas/generation-output.schema";
-import { normalizeQuoteDraft, quoteDraftSchema } from "@/features/quotes/schemas/quote-form.schema";
+import {
+  migrateLegacyRoomOption,
+  normalizeQuoteDraft,
+  quoteDraftSchema,
+} from "@/features/quotes/schemas/quote-form.schema";
 
 /**
  * Schemas Zod do registro de orçamento (metadados + payload do formulário).
@@ -71,9 +75,36 @@ function migrateLegacyAiOutput(raw: unknown): unknown {
   };
 }
 
+/**
+ * Migra `hotels[].rooms[]` do formato antigo (1 campo de texto livre "Tipo |
+ * Valor") para os campos atuais `roomType`/`price` — ver `migrateLegacyRoomOption`.
+ * Só roda na leitura: orçamentos salvos antes dessa mudança têm só `text`.
+ */
+function migrateLegacyRooms(raw: unknown): unknown {
+  if (typeof raw !== "object" || raw === null) return raw;
+  const record = raw as Record<string, unknown>;
+  const form = record.form;
+  if (typeof form !== "object" || form === null) return raw;
+  const formRecord = form as Record<string, unknown>;
+  if (!Array.isArray(formRecord.hotels)) return raw;
+
+  return {
+    ...record,
+    form: {
+      ...formRecord,
+      hotels: formRecord.hotels.map((hotel) => {
+        if (typeof hotel !== "object" || hotel === null) return hotel;
+        const hotelRecord = hotel as Record<string, unknown>;
+        if (!Array.isArray(hotelRecord.rooms)) return hotel;
+        return { ...hotelRecord, rooms: hotelRecord.rooms.map(migrateLegacyRoomOption) };
+      }),
+    },
+  };
+}
+
 /** Valida e normaliza um registro bruto (ex.: linha do banco) em `QuoteRecord`. */
 export function parseQuoteRecord(raw: unknown): QuoteRecord {
-  const parsed = quoteRecordSchema.parse(migrateLegacyAiOutput(raw));
+  const parsed = quoteRecordSchema.parse(migrateLegacyRooms(migrateLegacyAiOutput(raw)));
   return { ...parsed, form: normalizeQuoteDraft(parsed.form) };
 }
 

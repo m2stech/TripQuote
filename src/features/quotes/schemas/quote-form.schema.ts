@@ -77,9 +77,38 @@ export const mealPlanOptions = [
   "All Inclusive",
 ] as const;
 
+/** Detecta um texto que já é, sozinho, um valor monetário (ex.: "R$ 34.814,20", "US$ 500", "1.325 USD"). */
+const MONETARY_VALUE_PATTERN =
+  /^(?:r\$|us\$|u\$\$|\$|€)\s*[\d.,]+$|^[\d.,]+\s*(?:r\$|us\$|u\$\$|\$|€|reais|usd|eur)$/i;
+
+/**
+ * Migra uma acomodação do formato antigo (1 campo de texto livre "Tipo |
+ * Valor" — qualquer variação sem o separador exato fazia o parser gravar o
+ * valor errado no .pptx) para os campos separados `roomType`/`price`.
+ * Rascunhos salvos antes dessa mudança têm só `text`; os novos já vêm com
+ * `roomType`/`price` e passam por aqui sem alteração.
+ */
+export function migrateLegacyRoomOption(value: unknown): unknown {
+  if (typeof value !== "object" || value === null) return value;
+  const v = value as Record<string, unknown>;
+  if (typeof v.roomType === "string" || typeof v.price === "string") return value;
+  if (typeof v.text !== "string") return value;
+
+  const parts = v.text.split("|").map((part) => part.trim());
+  if (parts.length >= 2) {
+    return { id: v.id, roomType: parts[0], price: parts.slice(1).join(" | ") };
+  }
+  const text = parts[0] ?? v.text;
+  if (MONETARY_VALUE_PATTERN.test(text)) {
+    return { id: v.id, roomType: "", price: text };
+  }
+  return { id: v.id, roomType: text, price: "" };
+}
+
 export const roomOptionSchema = z.object({
   id: z.string(),
-  text: requiredText("Informe a acomodação e o valor."),
+  roomType: z.string().trim().default(""),
+  price: z.string().trim().default(""),
 });
 
 export type RoomOption = z.infer<typeof roomOptionSchema>;
@@ -94,7 +123,13 @@ export const hotelSchema = z.object({
   mealPlan: z.enum(mealPlanOptions, {
     error: "Selecione o plano alimentar.",
   }),
-  rooms: z.array(roomOptionSchema).min(1, "Adicione ao menos uma acomodação."),
+  rooms: z
+    .array(roomOptionSchema)
+    .min(1, "Adicione ao menos uma acomodação.")
+    .refine(
+      (rooms) => rooms.every((room) => room.roomType.length > 0 || room.price.length > 0),
+      { message: "Informe a acomodação ou o valor." },
+    ),
 });
 
 export type Hotel = z.infer<typeof hotelSchema>;

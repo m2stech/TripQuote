@@ -55,4 +55,23 @@ describe("parseQuoteRecord", () => {
     const record = parseQuoteRecord(baseRawRecord(null));
     expect(record.aiOutput).toBeNull();
   });
+
+  it("migra hotels[].rooms[] do formato legado (texto único 'Tipo | Valor') para roomType/price", () => {
+    const raw = baseRawRecord(null);
+    (raw.form as Record<string, unknown>).hotels = [
+      {
+        id: "hotel-1",
+        name: "Hotel Legado",
+        mealPlan: "Café da manhã",
+        rooms: [{ id: "room-1", text: "Standard | R$ 10.000,00" }],
+      },
+    ];
+
+    const record = parseQuoteRecord(raw);
+    expect(record.form.hotels[0]?.rooms[0]).toEqual({
+      id: "room-1",
+      roomType: "Standard",
+      price: "R$ 10.000,00",
+    });
+  });
 });

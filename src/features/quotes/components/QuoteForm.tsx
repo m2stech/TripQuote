@@ -507,7 +507,7 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
                 name: "",
                 city: "",
                 mealPlan: mealPlanOptions[0],
-                rooms: [{ id: createId(), text: "" }],
+                rooms: [{ id: createId(), roomType: "", price: "" }],
               })
             }
           >
@@ -867,11 +867,19 @@ function HotelBlock({
             <div className="flex-1">
               <Input
                 aria-label={`Acomodação ${roomIndex + 1}`}
-                placeholder={isCircuit ? "Ex.: Standard" : "Ex.: Standard | R$ 10.000,00"}
-                {...register(`hotels.${hotelIndex}.rooms.${roomIndex}.text`)}
+                placeholder="Ex.: Standard"
+                {...register(`hotels.${hotelIndex}.rooms.${roomIndex}.roomType`)}
               />
-              <FormFieldError message={hotelErrors?.rooms?.[roomIndex]?.text?.message} />
             </div>
+            {!isCircuit ? (
+              <div className="flex-1">
+                <Input
+                  aria-label={`Valor ${roomIndex + 1}`}
+                  placeholder="Ex.: R$ 10.000,00"
+                  {...register(`hotels.${hotelIndex}.rooms.${roomIndex}.price`)}
+                />
+              </div>
+            ) : null}
             <Button
               type="button"
               variant="snow-remove"
@@ -890,7 +898,7 @@ function HotelBlock({
           type="button"
           variant="snow-secondary"
           className="self-start"
-          onClick={() => roomsArray.append({ id: createId(), text: "" })}
+          onClick={() => roomsArray.append({ id: createId(), roomType: "", price: "" })}
         >
           + Adicionar acomodação
         </Button>

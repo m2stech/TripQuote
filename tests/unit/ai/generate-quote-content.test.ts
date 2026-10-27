@@ -32,7 +32,7 @@ const form = normalizeQuoteDraft({
       name: "Mandarin Oriental, Santiago",
       city: "",
       mealPlan: "Café da manhã",
-      rooms: [{ id: "1", text: "Standard | R$ 10.000,00" }],
+      rooms: [{ id: "1", roomType: "Standard", price: "R$ 10.000,00" }],
     },
   ],
   flights: { enabled: false },

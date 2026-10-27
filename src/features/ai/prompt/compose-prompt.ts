@@ -38,7 +38,7 @@ function formatHotelsBlock(form: QuoteFormValues): string {
   if (form.general.isCircuit) {
     return form.hotels
       .map((hotel, index) => {
-        const rooms = hotel.rooms.map((room) => `  - ${room.text}`).join("\n");
+        const rooms = hotel.rooms.map((room) => `  - ${room.roomType}`).join("\n");
         return (
           `CIDADE ${index + 1} — ${hotel.city || "Não informada"} — ${hotel.name}\n` +
           `Plano alimentar: ${hotel.mealPlan}\n` +
@@ -51,7 +51,9 @@ function formatHotelsBlock(form: QuoteFormValues): string {
 
   return form.hotels
     .map((hotel, index) => {
-      const rooms = hotel.rooms.map((room) => `  - ${room.text}`).join("\n");
+      const rooms = hotel.rooms
+        .map((room) => `  - ${room.roomType}${room.roomType && room.price ? " | " : ""}${room.price}`)
+        .join("\n");
       return (
         `OPÇÃO ${index + 1} — ${hotel.name}\n` +
         `Plano alimentar: ${hotel.mealPlan}\n` +

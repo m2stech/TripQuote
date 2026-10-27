@@ -7,6 +7,7 @@ import {
   hotelsSchema,
   inclusionsSchema,
   itinerarySchema,
+  migrateLegacyRoomOption,
   quoteDraftSchema,
   quoteFormDefaultValues,
   quoteFormSchema,
@@ -97,7 +98,7 @@ describe("hotelSchema / hotelsSchema", () => {
     id: "1",
     name: "Mandarin Oriental, Santiago",
     mealPlan: "Café da manhã" as const,
-    rooms: [{ id: "r1", text: "Standard | R$ 10.000,00" }],
+    rooms: [{ id: "r1", roomType: "Standard", price: "R$ 10.000,00" }],
   };
 
   it("aceita hotel válido com ao menos uma acomodação", () => {
@@ -132,6 +133,45 @@ describe("hotelSchema / hotelsSchema", () => {
     if (result.success) {
       expect(result.data.city).toBe("Osaka");
     }
+  });
+
+  it("rejeita acomodação sem tipo e sem valor", () => {
+    const result = hotelSchema.safeParse({
+      ...validHotel,
+      rooms: [{ id: "r1", roomType: "", price: "" }],
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("migrateLegacyRoomOption", () => {
+  it("migra o formato legado (texto único 'Tipo | Valor') para roomType/price", () => {
+    expect(migrateLegacyRoomOption({ id: "r1", text: "Luxo | R$ 8.000,00" })).toEqual({
+      id: "r1",
+      roomType: "Luxo",
+      price: "R$ 8.000,00",
+    });
+  });
+
+  it("migra o formato legado quando o texto é só um valor monetário (sem separador)", () => {
+    expect(migrateLegacyRoomOption({ id: "r1", text: "R$ 34.814,20" })).toEqual({
+      id: "r1",
+      roomType: "",
+      price: "R$ 34.814,20",
+    });
+  });
+
+  it("migra o formato legado quando o texto é só o tipo (sem separador nem valor)", () => {
+    expect(migrateLegacyRoomOption({ id: "r1", text: "Standard" })).toEqual({
+      id: "r1",
+      roomType: "Standard",
+      price: "",
+    });
+  });
+
+  it("não altera uma acomodação já no formato novo", () => {
+    const room = { id: "r1", roomType: "Standard", price: "R$ 10.000,00" };
+    expect(migrateLegacyRoomOption(room)).toBe(room);
   });
 });
 
@@ -257,7 +297,7 @@ describe("quoteFormSchema", () => {
           id: "1",
           name: "Mandarin Oriental, Santiago",
           mealPlan: "Café da manhã",
-          rooms: [{ id: "r1", text: "Standard | R$ 10.000,00" }],
+          rooms: [{ id: "r1", roomType: "Standard", price: "R$ 10.000,00" }],
         },
       ],
     });
@@ -284,7 +324,7 @@ describe("quoteFormSchema", () => {
           id: "1",
           name: "Mandarin Oriental, Santiago",
           mealPlan: "Café da manhã",
-          rooms: [{ id: "r1", text: "Standard | R$ 10.000,00" }],
+          rooms: [{ id: "r1", roomType: "Standard", price: "R$ 10.000,00" }],
         },
       ],
     });
@@ -310,7 +350,7 @@ describe("quoteFormSchema", () => {
         id: "1",
         name: "Mandarin Oriental, Santiago",
         mealPlan: "Café da manhã" as const,
-        rooms: [{ id: "r1", text: "Standard | R$ 10.000,00" }],
+        rooms: [{ id: "r1", roomType: "Standard", price: "R$ 10.000,00" }],
       },
     ],
   };
