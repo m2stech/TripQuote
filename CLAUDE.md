@@ -104,7 +104,7 @@ Builder PPTX (`build-cruise-presentation.ts`) gera 9 slides: capa · viagem em r
 
 ## Marcos
 
-Plano detalhado (branches, entregas e commits) em [docs/PLAN.md](docs/PLAN.md). Ordem: M0 setup → M1–M3 interface (mock) → M4–M5 Supabase e persistência → M6 IA → M7 PPTX → M8 admin → M9 consumo/auditoria → M10 e2e e deploy → M11 produto Cruzeiro. M0–M10 estão concluídos; Sentry ficou fora de escopo por decisão (ver M9 no PLAN.md) — não implementado. M11 (segundo tipo de orçamento, Cruzeiro) está funcionalmente completo e em produção (migrations aplicadas) — checklist de encerramento (merge, limpeza de pendências residuais) em PLAN.md.
+Plano detalhado (branches, entregas e commits) em [docs/PLAN.md](docs/PLAN.md). Ordem: M0 setup → M1–M3 interface (mock) → M4–M5 Supabase e persistência → M6 IA → M7 PPTX → M8 admin → M9 consumo/auditoria → M10 e2e e deploy → M11 produto Cruzeiro. Todos os marcos (M0–M11) estão concluídos e mergeados em `main`; Sentry ficou fora de escopo por decisão (ver M9 no PLAN.md) — não implementado.
 
 ## Comandos
 

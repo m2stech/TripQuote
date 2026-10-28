@@ -284,7 +284,7 @@ Campos obrigatórios (mínimo para gerar, espelhando "01 Dados gerais + 04 Hoté
 - [x] Testes Vitest: schema do formulário de cruzeiro, builder PPTX de cruzeiro (8 testes), composição do prompt, geração de conteúdo via IA
 - [x] Revisão com `ai-prompt-guard` (sem achados) e `pptx-builder` (1 bug real encontrado e corrigido: paginação do slide de inclusões)
 - [x] Atualizar CLAUDE.md (seção "Produto Cruzeiro (M11)" com formulário, builder e seletor de tipo)
-- [ ] Merge em `main`
+- [x] Merge em `main` (8 commits em `feat/m11-cruise-product`, merge `--no-ff`, push de `main` e da branch)
 
 **Aceite:** criar um orçamento de cruzeiro ponta a ponta (formulário → gerar → baixar) produz um .pptx 16:9 editável com os 8 slides; orçamento terrestre existente continua funcionando sem alteração de comportamento; admin gerencia as duas linhas de prompt (terrestre e cruzeiro) separadamente.
 **Commit final:** `feat(cruise): add cruise quote product with dedicated form, prompt and pptx builder`
