@@ -3,7 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/lib/supabase/types";
-import type { QuoteDraftValues } from "@/features/quotes/schemas/quote-form.schema";
+import type { AnyQuoteDraftValues } from "@/features/quotes/schemas/product.schema";
 import { parseQuoteRecord, toQuoteSummary, type QuoteRecord } from "@/features/quotes/schemas/quote.schema";
 import type {
   GenerationResult,
@@ -28,13 +28,24 @@ function rowToRecord(row: QuoteRow): QuoteRecord {
   });
 }
 
-function formToColumns(form: QuoteDraftValues) {
+/**
+ * Projeta o rascunho (terrestre ou cruzeiro) nas colunas desnormalizadas de
+ * `quotes` (usadas por filtros/índices da listagem — ver migration init).
+ * No cruzeiro, `start_date`/`end_date` mapeiam para embarque/desembarque;
+ * `destination` para destino/região do cruzeiro (ver `cruiseGeneralDataSchema`).
+ */
+function formToColumns(form: AnyQuoteDraftValues | Record<string, never>) {
+  const productType = "productType" in form ? form.productType : "terrestre";
+  const general = "general" in form ? form.general : undefined;
+  const isCruise = productType === "cruzeiro";
+
   return {
-    agency: form.general?.agency || "",
-    consultant: form.general?.consultant || "",
-    destination: form.general?.destination || "",
-    start_date: form.general?.startDate || null,
-    end_date: form.general?.endDate || null,
+    product_type: productType,
+    agency: general?.agency || "",
+    consultant: general?.consultant || "",
+    destination: general?.destination || "",
+    start_date: (isCruise ? (general as { embarkationDate?: string })?.embarkationDate : (general as { startDate?: string })?.startDate) || null,
+    end_date: (isCruise ? (general as { disembarkationDate?: string })?.disembarkationDate : (general as { endDate?: string })?.endDate) || null,
     form: form as unknown as Database["public"]["Tables"]["quotes"]["Row"]["form"],
   };
 }
@@ -89,7 +100,7 @@ export class SupabaseQuoteRepository implements QuoteRepository {
     return data ? rowToRecord(data) : null;
   }
 
-  async create(form: QuoteDraftValues, createdBy: string): Promise<QuoteRecord> {
+  async create(form: AnyQuoteDraftValues, createdBy: string): Promise<QuoteRecord> {
     const { data, error } = await this.supabase
       .from("quotes")
       .insert({ ...formToColumns(form), created_by: createdBy, status: "draft" })
@@ -99,7 +110,7 @@ export class SupabaseQuoteRepository implements QuoteRepository {
     return rowToRecord(data);
   }
 
-  async upsertDraft(id: string, form: QuoteDraftValues, createdBy: string): Promise<QuoteRecord> {
+  async upsertDraft(id: string, form: AnyQuoteDraftValues, createdBy: string): Promise<QuoteRecord> {
     const { data, error } = await this.supabase
       .from("quotes")
       .upsert(
@@ -123,7 +134,7 @@ export class SupabaseQuoteRepository implements QuoteRepository {
     const { data, error } = await this.supabase
       .from("quotes")
       .upsert(
-        { id, ...formToColumns({}), created_by: createdBy, status: "draft" },
+        { id, ...formToColumns({} as Record<string, never>), created_by: createdBy, status: "draft" },
         { onConflict: "id", ignoreDuplicates: true },
       )
       .select("*");
@@ -136,7 +147,7 @@ export class SupabaseQuoteRepository implements QuoteRepository {
     return existing;
   }
 
-  async update(id: string, form: QuoteDraftValues): Promise<QuoteRecord> {
+  async update(id: string, form: AnyQuoteDraftValues): Promise<QuoteRecord> {
     const { data, error } = await this.supabase
       .from("quotes")
       .update(formToColumns(form))
@@ -172,9 +183,16 @@ export class SupabaseQuoteRepository implements QuoteRepository {
       throw new Error(`Não foi possível duplicar os anexos: ${attachmentsError.message}`);
     }
 
+    const BUCKET_BY_KIND: Record<string, string> = {
+      agency_logo: "agency-logos",
+      flight_image: "flight-images",
+      cruise_itinerary_image: "cruise-photos",
+      cruise_photo: "cruise-photos",
+    };
+
     for (const attachment of attachments ?? []) {
       const newStoragePath = attachment.storage_path.replace(id, duplicated.id);
-      const bucket = attachment.kind === "flight_image" ? "flight-images" : "agency-logos";
+      const bucket = BUCKET_BY_KIND[attachment.kind] ?? "agency-logos";
 
       const { data: copied, error: copyError } = await this.supabase.storage
         .from(bucket)

@@ -1,10 +1,9 @@
-import type { GenerationOutput } from "@/features/quotes/schemas/generation-output.schema";
-import type { QuoteDraftValues } from "@/features/quotes/schemas/quote-form.schema";
+import type { AnyGenerationOutput, AnyQuoteDraftValues } from "@/features/quotes/schemas/product.schema";
 import type { QuoteRecord, QuoteStatus, QuoteSummary } from "@/features/quotes/schemas/quote.schema";
 
 /** Resultado final de uma geração via IA, gravado pelo orquestrador (M6). */
 export type GenerationResult =
-  | { status: "done"; aiOutput: GenerationOutput }
+  | { status: "done"; aiOutput: AnyGenerationOutput }
   | { status: "error"; errorMessage: string };
 
 /**
@@ -36,7 +35,7 @@ export interface QuoteListResult {
 export interface QuoteRepository {
   list(filters?: QuoteListFilters): Promise<QuoteListResult>;
   getById(id: string): Promise<QuoteRecord | null>;
-  create(form: QuoteDraftValues, createdBy: string): Promise<QuoteRecord>;
+  create(form: AnyQuoteDraftValues, createdBy: string): Promise<QuoteRecord>;
   /**
    * Cria (com o `id` e o conteúdo informados) ou atualiza um rascunho,
    * conforme ele já exista ou não — idempotente por `id` (chamadas
@@ -46,7 +45,7 @@ export interface QuoteRepository {
    * `useQuoteAutosave`/`uploadQuoteAttachmentAction`), nunca só por visitar
    * a página de novo orçamento.
    */
-  upsertDraft(id: string, form: QuoteDraftValues, createdBy: string): Promise<QuoteRecord>;
+  upsertDraft(id: string, form: AnyQuoteDraftValues, createdBy: string): Promise<QuoteRecord>;
   /**
    * Garante que existe uma linha com esse `id`, sem alterar o conteúdo se ela
    * já existir — usado pelo upload de anexo, que só precisa satisfazer a FK
@@ -54,7 +53,7 @@ export interface QuoteRepository {
    * (ex.: logo enviada depois de outros campos já preenchidos).
    */
   ensureDraftExists(id: string, createdBy: string): Promise<QuoteRecord>;
-  update(id: string, form: QuoteDraftValues): Promise<QuoteRecord>;
+  update(id: string, form: AnyQuoteDraftValues): Promise<QuoteRecord>;
   duplicate(id: string): Promise<QuoteRecord>;
   remove(id: string): Promise<void>;
   /**

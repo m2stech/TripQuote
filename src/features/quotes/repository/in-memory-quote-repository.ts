@@ -1,6 +1,25 @@
-import type { QuoteDraftValues, QuoteFormValues } from "@/features/quotes/schemas/quote-form.schema";
+import { normalizeCruiseDraft } from "@/features/quotes/schemas/cruise-form.schema";
+import type { AnyQuoteDraftValues } from "@/features/quotes/schemas/product.schema";
+import type { QuoteFormValues } from "@/features/quotes/schemas/quote-form.schema";
 import { normalizeQuoteDraft, quoteFormDefaultValues } from "@/features/quotes/schemas/quote-form.schema";
 import { toQuoteSummary, type QuoteRecord } from "@/features/quotes/schemas/quote.schema";
+
+function normalizeAnyDraft(form: AnyQuoteDraftValues): QuoteRecord["form"] {
+  if (form.productType === "cruzeiro") return normalizeCruiseDraft(form);
+  return normalizeQuoteDraft(form);
+}
+
+/** Período de viagem do rascunho — embarque/desembarque no cruzeiro, início/fim no terrestre. */
+function tripPeriod(form: QuoteRecord["form"]): { destination: string; startDate: string; endDate: string } {
+  if (form.productType === "cruzeiro") {
+    return {
+      destination: form.general.destination,
+      startDate: form.general.embarkationDate,
+      endDate: form.general.disembarkationDate,
+    };
+  }
+  return { destination: form.general.destination, startDate: form.general.startDate, endDate: form.general.endDate };
+}
 import type {
   GenerationResult,
   QuoteListFilters,
@@ -134,22 +153,22 @@ export class InMemoryQuoteRepository implements QuoteRepository {
 
     if (filters.destination) {
       const term = filters.destination.trim().toLowerCase();
-      items = items.filter((quote) => quote.form.general.destination.toLowerCase().includes(term));
+      items = items.filter((quote) => tripPeriod(quote.form).destination.toLowerCase().includes(term));
     }
 
     if (filters.periodStart) {
-      items = items.filter((quote) => quote.form.general.startDate >= filters.periodStart!);
+      items = items.filter((quote) => tripPeriod(quote.form).startDate >= filters.periodStart!);
     }
 
     if (filters.periodEnd) {
-      items = items.filter((quote) => quote.form.general.endDate <= filters.periodEnd!);
+      items = items.filter((quote) => tripPeriod(quote.form).endDate <= filters.periodEnd!);
     }
 
     if (filters.search) {
       const term = filters.search.trim().toLowerCase();
       items = items.filter((quote) => {
         const haystack =
-          `${quote.form.general.agency} ${quote.form.general.consultant} ${quote.form.general.destination}`.toLowerCase();
+          `${quote.form.general.agency} ${quote.form.general.consultant} ${tripPeriod(quote.form).destination}`.toLowerCase();
         return haystack.includes(term);
       });
     }
@@ -164,7 +183,7 @@ export class InMemoryQuoteRepository implements QuoteRepository {
     return this.quotes.find((quote) => quote.id === id) ?? null;
   }
 
-  async create(form: QuoteDraftValues, createdBy: string): Promise<QuoteRecord> {
+  async create(form: AnyQuoteDraftValues, createdBy: string): Promise<QuoteRecord> {
     await wait(SIMULATED_LATENCY_MS);
     const now = new Date().toISOString();
     const record: QuoteRecord = {
@@ -173,19 +192,19 @@ export class InMemoryQuoteRepository implements QuoteRepository {
       createdAt: now,
       updatedAt: now,
       createdBy,
-      form: normalizeQuoteDraft(form),
+      form: normalizeAnyDraft(form),
     };
     this.quotes = [record, ...this.quotes];
     return record;
   }
 
-  async upsertDraft(id: string, form: QuoteDraftValues, createdBy: string): Promise<QuoteRecord> {
+  async upsertDraft(id: string, form: AnyQuoteDraftValues, createdBy: string): Promise<QuoteRecord> {
     await wait(SIMULATED_LATENCY_MS);
     const existing = this.quotes.find((quote) => quote.id === id);
     if (existing) {
       const updated: QuoteRecord = {
         ...existing,
-        form: normalizeQuoteDraft(form),
+        form: normalizeAnyDraft(form),
         updatedAt: new Date().toISOString(),
       };
       this.quotes = this.quotes.map((quote) => (quote.id === id ? updated : quote));
@@ -199,7 +218,7 @@ export class InMemoryQuoteRepository implements QuoteRepository {
       createdAt: now,
       updatedAt: now,
       createdBy,
-      form: normalizeQuoteDraft(form),
+      form: normalizeAnyDraft(form),
     };
     this.quotes = [record, ...this.quotes];
     return record;
@@ -217,13 +236,13 @@ export class InMemoryQuoteRepository implements QuoteRepository {
       createdAt: now,
       updatedAt: now,
       createdBy,
-      form: normalizeQuoteDraft({}),
+      form: normalizeQuoteDraft({ productType: "terrestre" }),
     };
     this.quotes = [record, ...this.quotes];
     return record;
   }
 
-  async update(id: string, form: QuoteDraftValues): Promise<QuoteRecord> {
+  async update(id: string, form: AnyQuoteDraftValues): Promise<QuoteRecord> {
     await wait(SIMULATED_LATENCY_MS);
     const existing = this.quotes.find((quote) => quote.id === id);
     if (!existing) {
@@ -231,7 +250,7 @@ export class InMemoryQuoteRepository implements QuoteRepository {
     }
     const updated: QuoteRecord = {
       ...existing,
-      form: normalizeQuoteDraft(form),
+      form: normalizeAnyDraft(form),
       updatedAt: new Date().toISOString(),
     };
     this.quotes = this.quotes.map((quote) => (quote.id === id ? updated : quote));

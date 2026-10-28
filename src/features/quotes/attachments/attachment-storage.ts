@@ -15,9 +15,18 @@ export { ACCEPTED_IMAGE_MIME_TYPES, MAX_IMAGE_SIZE_BYTES };
 
 export type AttachmentKind = Database["public"]["Enums"]["attachment_kind"];
 
-const BUCKET_BY_KIND: Record<"agency_logo" | "flight_image", string> = {
+/** Kinds de anexo enviados pelo usuário via upload (exclui `institutional_logo`, que não passa por aqui). */
+export type UploadableAttachmentKind =
+  | "agency_logo"
+  | "flight_image"
+  | "cruise_itinerary_image"
+  | "cruise_photo";
+
+const BUCKET_BY_KIND: Record<UploadableAttachmentKind, string> = {
   agency_logo: "agency-logos",
   flight_image: "flight-images",
+  cruise_itinerary_image: "cruise-photos",
+  cruise_photo: "cruise-photos",
 };
 
 export class AttachmentValidationError extends Error {}
@@ -32,7 +41,7 @@ export async function uploadQuoteImageAttachment(
   supabase: SupabaseClient<Database>,
   params: {
     quoteId: string;
-    kind: "agency_logo" | "flight_image";
+    kind: UploadableAttachmentKind;
     file: File;
   },
 ): Promise<UploadedAttachment> {
@@ -92,7 +101,7 @@ export async function uploadQuoteImageAttachment(
 /** Remove um anexo do Storage e do registro em `quote_attachments`. */
 export async function removeQuoteImageAttachment(
   supabase: SupabaseClient<Database>,
-  params: { kind: "agency_logo" | "flight_image"; storagePath: string },
+  params: { kind: UploadableAttachmentKind; storagePath: string },
 ): Promise<void> {
   const bucket = BUCKET_BY_KIND[params.kind];
   await supabase.storage.from(bucket).remove([params.storagePath]);
@@ -102,7 +111,7 @@ export async function removeQuoteImageAttachment(
 /** Gera uma URL assinada (acesso temporário) para preview de um anexo. */
 export async function createSignedAttachmentUrl(
   supabase: SupabaseClient<Database>,
-  params: { kind: "agency_logo" | "flight_image"; storagePath: string },
+  params: { kind: UploadableAttachmentKind; storagePath: string },
   expiresInSeconds = 300,
 ): Promise<string | null> {
   const bucket = BUCKET_BY_KIND[params.kind];
