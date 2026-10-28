@@ -22,17 +22,22 @@ const actorId = "admin-1";
 /** Fake mínimo de `prompt_versions`: suporta select/update/insert encadeados como usados pelas actions. */
 function createPromptVersionsTableMock(options: { latestVersion: number | null }) {
   const selectLatest = vi.fn().mockReturnValue({
-    order: vi.fn().mockReturnValue({
-      limit: vi.fn().mockReturnValue({
-        maybeSingle: vi.fn().mockResolvedValue({
-          data: options.latestVersion !== null ? { version: options.latestVersion } : null,
-          error: null,
+    eq: vi.fn().mockReturnValue({
+      order: vi.fn().mockReturnValue({
+        limit: vi.fn().mockReturnValue({
+          maybeSingle: vi.fn().mockResolvedValue({
+            data: options.latestVersion !== null ? { version: options.latestVersion } : null,
+            error: null,
+          }),
         }),
       }),
     }),
   });
 
-  const deactivateEq = vi.fn().mockResolvedValue({ error: null });
+  // Desativação encadeia dois `.eq()` (product_type + is_active); ativação
+  // usa só um (`.eq("id", ...)`) — ver `prompt-version-actions.ts`.
+  const deactivateIsActiveEq = vi.fn().mockResolvedValue({ error: null });
+  const deactivateEq = vi.fn().mockReturnValue({ eq: deactivateIsActiveEq });
   const activateEq = vi.fn().mockResolvedValue({ error: null });
 
   const update = vi.fn().mockImplementation((patch: { is_active: boolean }) => ({
@@ -42,7 +47,7 @@ function createPromptVersionsTableMock(options: { latestVersion: number | null }
   const insertSingle = vi.fn().mockResolvedValue({ data: { id: "prompt-new" }, error: null });
   const insert = vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single: insertSingle }) });
 
-  return { selectLatest, update, insert, deactivateEq, activateEq, insertSingle };
+  return { selectLatest, update, insert, deactivateEq, deactivateIsActiveEq, activateEq, insertSingle };
 }
 
 describe("prompt-version-actions", () => {
@@ -65,7 +70,7 @@ describe("prompt-version-actions", () => {
       vi.mocked(createClient).mockResolvedValue({ from } as never);
 
       await expect(
-        createPromptVersionAction({ content: "novo texto", activate: false }),
+        createPromptVersionAction({ productType: "terrestre", content: "novo texto", activate: false }),
       ).rejects.toThrow("Apenas administradores");
       expect(from).not.toHaveBeenCalled();
     });
@@ -79,9 +84,10 @@ describe("prompt-version-actions", () => {
       });
       vi.mocked(createClient).mockResolvedValue({ from } as never);
 
-      await createPromptVersionAction({ content: "novo texto", activate: false });
+      await createPromptVersionAction({ productType: "terrestre", content: "novo texto", activate: false });
 
       expect(table.insert).toHaveBeenCalledWith({
+        product_type: "terrestre",
         version: 4,
         content: "novo texto",
         is_active: false,
@@ -102,7 +108,7 @@ describe("prompt-version-actions", () => {
       });
       vi.mocked(createClient).mockResolvedValue({ from } as never);
 
-      await createPromptVersionAction({ content: "primeira versão", activate: true });
+      await createPromptVersionAction({ productType: "terrestre", content: "primeira versão", activate: true });
 
       expect(table.insert).toHaveBeenCalledWith(
         expect.objectContaining({ version: 1, is_active: true }),
@@ -118,9 +124,10 @@ describe("prompt-version-actions", () => {
       });
       vi.mocked(createClient).mockResolvedValue({ from } as never);
 
-      await createPromptVersionAction({ content: "nova versão ativa", activate: true });
+      await createPromptVersionAction({ productType: "terrestre", content: "nova versão ativa", activate: true });
 
-      expect(table.deactivateEq).toHaveBeenCalledWith("is_active", true);
+      expect(table.deactivateEq).toHaveBeenCalledWith("product_type", "terrestre");
+      expect(table.deactivateIsActiveEq).toHaveBeenCalledWith("is_active", true);
       expect(table.insert).toHaveBeenCalledWith(
         expect.objectContaining({ version: 2, is_active: true }),
       );
@@ -133,7 +140,7 @@ describe("prompt-version-actions", () => {
       const from = vi.fn();
       vi.mocked(createClient).mockResolvedValue({ from } as never);
 
-      await expect(createPromptVersionAction({ content: "   ", activate: false })).rejects.toThrow();
+      await expect(createPromptVersionAction({ productType: "terrestre", content: "   ", activate: false })).rejects.toThrow();
       expect(from).not.toHaveBeenCalled();
     });
   });
@@ -144,9 +151,10 @@ describe("prompt-version-actions", () => {
       const from = vi.fn().mockReturnValue({ update: table.update });
       vi.mocked(createClient).mockResolvedValue({ from } as never);
 
-      await activatePromptVersionAction("prompt-2");
+      await activatePromptVersionAction("prompt-2", "terrestre");
 
-      expect(table.deactivateEq).toHaveBeenCalledWith("is_active", true);
+      expect(table.deactivateEq).toHaveBeenCalledWith("product_type", "terrestre");
+      expect(table.deactivateIsActiveEq).toHaveBeenCalledWith("is_active", true);
       expect(table.activateEq).toHaveBeenCalledWith("id", "prompt-2");
       expect(auditInsert).toHaveBeenCalledWith(
         expect.objectContaining({ action: "prompt.activated", entity_id: "prompt-2" }),
@@ -160,7 +168,7 @@ describe("prompt-version-actions", () => {
       const from = vi.fn();
       vi.mocked(createClient).mockResolvedValue({ from } as never);
 
-      await expect(activatePromptVersionAction("prompt-2")).rejects.toThrow("Apenas administradores");
+      await expect(activatePromptVersionAction("prompt-2", "terrestre")).rejects.toThrow("Apenas administradores");
       expect(from).not.toHaveBeenCalled();
     });
   });
