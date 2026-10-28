@@ -3,14 +3,19 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { AiGenerationError } from "@/features/ai/orchestration/errors";
+import { generateCruiseContent } from "@/features/ai/orchestration/generate-cruise-content";
 import { generateQuoteContent } from "@/features/ai/orchestration/generate-quote-content";
+import { buildCruiseItineraryImagePart } from "@/features/ai/vision/cruise-itinerary-image-input";
 import { buildFlightImagePart } from "@/features/ai/vision/flight-image-input";
 import { estimateCostUsd } from "@/features/ai/pricing/estimate-cost";
-import { buildQuotePresentation } from "@/features/pptx/build-quote-presentation";
+import { buildCruisePresentation, type CruiseQuoteRecord } from "@/features/pptx/build-cruise-presentation";
+import { buildQuotePresentation, type TerrestrialQuoteRecord } from "@/features/pptx/build-quote-presentation";
 import { uploadGeneratedPptx } from "@/features/pptx/storage";
 import { getActivePromptVersion } from "@/features/prompts/repository/prompt-version-repository";
+import type { PromptVersionRecord } from "@/features/prompts/schemas/prompt-version.schema";
 import { getQuoteRepository } from "@/features/quotes/repository";
 import type { QuoteRepository } from "@/features/quotes/repository/types";
+import type { AnyGenerationOutput } from "@/features/quotes/schemas/product.schema";
 import type { QuoteRecord } from "@/features/quotes/schemas/quote.schema";
 import {
   enforceGenerationRateLimit,
@@ -57,7 +62,7 @@ export async function runQuoteGeneration(quoteId: string, userId: string): Promi
 
   let promptVersion;
   try {
-    promptVersion = await getActivePromptVersion(adminSupabase);
+    promptVersion = await getActivePromptVersion(adminSupabase, quote.form.productType);
   } catch (error) {
     throw await logPreflightFailureAndGetGenericError(adminSupabase, userId, quoteId, error);
   }
@@ -91,42 +96,64 @@ export async function runQuoteGeneration(quoteId: string, userId: string): Promi
   }
   const generationId = generationRow.id;
 
-  const flightImagePart = await buildFlightImagePart(supabase, quote.form.flightImage);
-
   try {
+    if (quote.form.productType === "cruzeiro") {
+      const itineraryImagePart = await buildCruiseItineraryImagePart(supabase, quote.form.itineraryImage);
+      const result = await generateCruiseContent({ form: quote.form, promptVersion, itineraryImagePart });
+      const doneQuote = await finishGeneration(result, promptVersion, {
+        adminSupabase,
+        supabase,
+        repository,
+        userId,
+        quoteId,
+        generationId,
+      });
+      // O guard de `productType` acima já garantiu o ramo cruzeiro;
+      // `updateGenerationResult` só altera `status`/`aiOutput`, não o tipo de
+      // produto do `form` já carregado.
+      if (doneQuote.form.productType !== "cruzeiro") {
+        throw new Error("Estado inesperado: orçamento terrestre no fluxo de cruzeiro.");
+      }
+      const cruiseQuote = doneQuote as CruiseQuoteRecord;
+
+      return await buildAndStorePptx(
+        cruiseQuote,
+        (sb, q) => buildCruisePresentation(sb, q),
+        supabase,
+        adminSupabase,
+        repository,
+        userId,
+        quoteId,
+      );
+    }
+
+    const flightImagePart = await buildFlightImagePart(supabase, quote.form.flightImage);
     const result = await generateQuoteContent({ form: quote.form, promptVersion, flightImagePart });
-    const estimatedCostUsd = await estimateCostUsd(
+    const doneQuote = await finishGeneration(result, promptVersion, {
       adminSupabase,
-      result.model,
-      result.promptTokens,
-      result.completionTokens,
+      supabase,
+      repository,
+      userId,
+      quoteId,
+      generationId,
+    });
+    // O guard de `productType` acima já garantiu o ramo terrestre;
+    // `updateGenerationResult` só altera `status`/`aiOutput`, não o tipo de
+    // produto do `form` já carregado.
+    if (doneQuote.form.productType !== "terrestre") {
+      throw new Error("Estado inesperado: orçamento de cruzeiro no fluxo terrestre.");
+    }
+    const terrestrialQuote = doneQuote as TerrestrialQuoteRecord;
+
+    return await buildAndStorePptx(
+      terrestrialQuote,
+      (sb, q) => buildQuotePresentation(sb, q),
+      supabase,
+      adminSupabase,
+      repository,
+      userId,
+      quoteId,
     );
-
-    await adminSupabase
-      .from("generations")
-      .update({
-        model: result.model,
-        prompt_tokens: result.promptTokens,
-        completion_tokens: result.completionTokens,
-        estimated_cost_usd: estimatedCostUsd,
-        status: "done",
-      })
-      .eq("id", generationId);
-
-    await adminSupabase.from("audit_log").insert({
-      actor_id: userId,
-      action: "quote.generation.completed",
-      entity_type: "quote",
-      entity_id: quoteId,
-      metadata: { generationId, model: result.model, promptVersionId: promptVersion.id },
-    });
-
-    const doneQuote = await repository.updateGenerationResult(quoteId, {
-      status: "done",
-      aiOutput: result.output,
-    });
-
-    return await buildAndStorePptx(doneQuote, supabase, adminSupabase, repository, userId, quoteId);
   } catch (error) {
     const technicalReason =
       error instanceof AiGenerationError || error instanceof Error ? error.message : "Erro desconhecido.";
@@ -149,6 +176,61 @@ export async function runQuoteGeneration(quoteId: string, userId: string): Promi
       errorMessage: GENERIC_ERROR_MESSAGE,
     });
   }
+}
+
+interface FinishGenerationContext {
+  adminSupabase: SupabaseClient<Database>;
+  supabase: SupabaseClient<Database>;
+  repository: QuoteRepository;
+  userId: string;
+  quoteId: string;
+  generationId: string;
+}
+
+/**
+ * Grava o resultado comum a qualquer tipo de produto (modelo, tokens, custo
+ * em `generations`; auditoria de sucesso; `status: "done"` + `aiOutput` no
+ * orçamento) — compartilhado pelos ramos terrestre e cruzeiro de
+ * `runQuoteGeneration`, que diferem só na chamada à IA e na montagem do
+ * .pptx (específica por tipo, feita pelo chamador).
+ */
+async function finishGeneration(
+  result: { model: string; promptTokens: number; completionTokens: number; output: unknown },
+  promptVersion: PromptVersionRecord,
+  context: FinishGenerationContext,
+): Promise<QuoteRecord> {
+  const { adminSupabase, repository, userId, quoteId, generationId } = context;
+
+  const estimatedCostUsd = await estimateCostUsd(
+    adminSupabase,
+    result.model,
+    result.promptTokens,
+    result.completionTokens,
+  );
+
+  await adminSupabase
+    .from("generations")
+    .update({
+      model: result.model,
+      prompt_tokens: result.promptTokens,
+      completion_tokens: result.completionTokens,
+      estimated_cost_usd: estimatedCostUsd,
+      status: "done",
+    })
+    .eq("id", generationId);
+
+  await adminSupabase.from("audit_log").insert({
+    actor_id: userId,
+    action: "quote.generation.completed",
+    entity_type: "quote",
+    entity_id: quoteId,
+    metadata: { generationId, model: result.model, promptVersionId: promptVersion.id },
+  });
+
+  return repository.updateGenerationResult(quoteId, {
+    status: "done",
+    aiOutput: result.output as AnyGenerationOutput,
+  });
 }
 
 /**
@@ -185,8 +267,9 @@ async function logPreflightFailureAndGetGenericError(
  * retorna o quote com `pptxStoragePath` ainda nulo (usuário pode tentar
  * gerar novamente).
  */
-async function buildAndStorePptx(
-  doneQuote: QuoteRecord,
+async function buildAndStorePptx<T extends TerrestrialQuoteRecord | CruiseQuoteRecord>(
+  doneQuote: T,
+  buildPresentation: (supabase: SupabaseClient<Database>, quote: T) => Promise<Buffer>,
   supabase: SupabaseClient<Database>,
   adminSupabase: SupabaseClient<Database>,
   repository: QuoteRepository,
@@ -194,7 +277,7 @@ async function buildAndStorePptx(
   quoteId: string,
 ): Promise<QuoteRecord> {
   try {
-    const pptxBuffer = await buildQuotePresentation(supabase, doneQuote);
+    const pptxBuffer = await buildPresentation(supabase, doneQuote);
     const storagePath = await uploadGeneratedPptx(supabase, quoteId, pptxBuffer);
     return await repository.updatePptxStoragePath(quoteId, storagePath);
   } catch (pptxError) {
