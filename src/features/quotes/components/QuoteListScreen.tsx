@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { Hero } from "@/components/hero";
 import { LoadingState } from "@/components/loading-state";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { listQuotesAction } from "@/features/quotes/actions/quote-actions";
 import { QuoteStatusBadge } from "@/features/quotes/components/QuoteStatusBadge";
+import { PRODUCT_TYPE_LABELS } from "@/features/prompts/schemas/product-type.schema";
 import { quoteStatusLabels, quoteStatusValues, type QuoteStatus } from "@/features/quotes/schemas/quote.schema";
 import type { QuoteSummary } from "@/features/quotes/schemas/quote.schema";
 
@@ -270,7 +272,10 @@ export function QuoteListScreen({ isAdmin }: QuoteListScreenProps) {
                     className="rounded-snow-card border-border bg-card shadow-snow-card hover:border-snow-blue focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-snow-blue flex flex-col gap-2 border p-5 transition-colors sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="flex flex-col gap-1">
-                      <p className="text-foreground font-semibold">{quote.agency}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-foreground font-semibold">{quote.agency}</p>
+                        <Badge variant="outline">{PRODUCT_TYPE_LABELS[quote.productType]}</Badge>
+                      </div>
                       <p className="text-muted-foreground text-sm">
                         {quote.destination} · Consultor: {quote.consultant}
                       </p>

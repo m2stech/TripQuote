@@ -22,12 +22,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   activatePromptVersionAction,
   createPromptVersionAction,
   listPromptVersionsAction,
 } from "@/features/prompts/actions/prompt-version-actions";
+import { PRODUCT_TYPE_LABELS, productTypeValues, type ProductType } from "@/features/prompts/schemas/product-type.schema";
 import type { PromptVersionRecord } from "@/features/prompts/schemas/prompt-version.schema";
 
 const PREVIEW_LENGTH = 220;
@@ -53,6 +55,7 @@ function formatDate(isoDate: string): string {
  * autenticação/cookies de sessão.
  */
 export function PromptVersionManagementScreen() {
+  const [productType, setProductType] = useState<ProductType>("terrestre");
   const [versions, setVersions] = useState<PromptVersionRecord[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,11 +72,11 @@ export function PromptVersionManagementScreen() {
 
   const sortedVersions = versions ? [...versions].sort((a, b) => b.version - a.version) : [];
 
-  const loadVersions = useCallback(async () => {
+  const loadVersions = useCallback(async (type: ProductType) => {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await listPromptVersionsAction();
+      const result = await listPromptVersionsAction(type);
       setVersions(result);
     } catch {
       setError("Não foi possível carregar a lista de versões.");
@@ -85,27 +88,27 @@ export function PromptVersionManagementScreen() {
   const refreshVersions = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      const updated = await listPromptVersionsAction();
+      const updated = await listPromptVersionsAction(productType);
       setVersions(updated);
     } catch {
       toast.error("Não foi possível atualizar a lista de versões.");
     } finally {
       setIsRefreshing(false);
     }
-  }, []);
+  }, [productType]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      void loadVersions();
+      void loadVersions(productType);
     }, 0);
     return () => clearTimeout(timeout);
-  }, [loadVersions]);
+  }, [loadVersions, productType]);
 
   async function handleConfirmActivation() {
     if (!pendingActivation) return;
     setIsActivating(true);
     try {
-      await activatePromptVersionAction(pendingActivation.id);
+      await activatePromptVersionAction(pendingActivation.id, productType);
       toast.success(`Versão ${pendingActivation.version} ativada.`);
       setPendingActivation(null);
       await refreshVersions();
@@ -119,7 +122,7 @@ export function PromptVersionManagementScreen() {
   async function handleCreateSubmit() {
     setIsCreating(true);
     try {
-      await createPromptVersionAction({ content: newContent, activate: activateImmediately });
+      await createPromptVersionAction({ productType, content: newContent, activate: activateImmediately });
       toast.success("Nova versão do prompt criada.");
       setIsCreateDialogOpen(false);
       setNewContent("");
@@ -148,7 +151,23 @@ export function PromptVersionManagementScreen() {
         </AlertDescription>
       </Alert>
 
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="prompt-product-type">Tipo de produto</Label>
+          <Select value={productType} onValueChange={(value) => setProductType(value as ProductType)}>
+            <SelectTrigger id="prompt-product-type" className="w-56">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {productTypeValues.map((type) => (
+                <SelectItem key={type} value={type}>
+                  {PRODUCT_TYPE_LABELS[type]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger
             render={
@@ -205,7 +224,7 @@ export function PromptVersionManagementScreen() {
       {isLoading ? <LoadingState label="Carregando versões…" /> : null}
 
       {!isLoading && error ? (
-        <ErrorState description={error} onRetry={() => void loadVersions()} />
+        <ErrorState description={error} onRetry={() => void loadVersions(productType)} />
       ) : null}
 
       {!isLoading && !error && sortedVersions.length === 0 ? (

@@ -29,7 +29,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { getQuoteAction, updateQuoteAction } from "@/features/quotes/actions/quote-actions";
+import {
+  getQuoteAction,
+  updateQuoteAction,
+  type QuoteDraftActionInput,
+} from "@/features/quotes/actions/quote-actions";
 import { getAttachmentPreviewUrlAction } from "@/features/quotes/actions/attachment-actions";
 import { getInstitutionalFooterAction } from "@/features/branding/actions/branding-actions";
 import { FormFieldError } from "@/features/quotes/components/FormFieldError";
@@ -47,7 +51,6 @@ import {
   quoteFormDefaultValues,
   quoteFormSchema,
   seatOptions,
-  type QuoteDraftInput,
 } from "@/features/quotes/schemas/quote-form.schema";
 
 function createId() {
@@ -147,6 +150,10 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
           toast.error("Orçamento não encontrado. Iniciando um novo rascunho.");
           return;
         }
+        if (record.form.productType !== "terrestre") {
+          toast.error("Este orçamento é de outro tipo de produto e não pode ser aberto aqui.");
+          return;
+        }
         setQuoteId(record.id);
         setIsDraftPersisted(true);
         reset(record.form);
@@ -190,7 +197,7 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
     });
   }, [quoteId, router]);
 
-  useQuoteAutosave(quoteId, watch, handleDraftPersisted);
+  useQuoteAutosave(quoteId, "terrestre", watch, handleDraftPersisted);
 
   // `useWatch` (não `watch()` direto no corpo do componente): o React
   // Compiler do Next.js 16 não consegue memoizar com segurança valores
@@ -240,7 +247,10 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
   async function onSubmit(values: QuoteFormInput) {
     if (!quoteId) return;
     try {
-      await updateQuoteAction(quoteId, values as QuoteDraftInput);
+      await updateQuoteAction(quoteId, {
+        ...values,
+        productType: "terrestre",
+      } as unknown as QuoteDraftActionInput);
       handleDraftPersisted();
       router.push(`/orcamentos/${quoteId}/gerar`);
     } catch {

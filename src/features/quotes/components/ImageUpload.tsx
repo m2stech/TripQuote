@@ -10,6 +10,7 @@ import {
   removeQuoteAttachmentAction,
   uploadQuoteAttachmentAction,
 } from "@/features/quotes/actions/attachment-actions";
+import type { UploadableAttachmentKind } from "@/features/quotes/attachments/attachment-storage";
 import type { UploadedAttachment } from "@/features/quotes/schemas/quote-form.schema";
 
 interface ImageUploadProps {
@@ -20,7 +21,7 @@ interface ImageUploadProps {
   onChange: (value: UploadedAttachment | null, previewUrl: string | null) => void;
   /** Orçamento (rascunho) ao qual o anexo pertence; define o path no Storage. */
   quoteId: string | null;
-  kind: "agency_logo" | "flight_image";
+  kind: UploadableAttachmentKind;
   disabled?: boolean;
   className?: string;
 }

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { Hero } from "@/components/hero";
-import { QuoteForm } from "@/features/quotes/components/QuoteForm";
+import { NewQuoteContent } from "@/features/quotes/components/NewQuoteContent";
 
 export const metadata: Metadata = {
   title: "Novo orçamento — SnowQuote",
@@ -12,9 +12,9 @@ interface NewQuotePageProps {
   searchParams: Promise<{ duplicar?: string; id?: string }>;
 }
 
-async function NewQuoteContent({ searchParams }: NewQuotePageProps) {
+async function NewQuoteContentServer({ searchParams }: NewQuotePageProps) {
   const { duplicar, id } = await searchParams;
-  return <QuoteForm quoteId={id ?? duplicar} />;
+  return <NewQuoteContent quoteId={id ?? duplicar} isDuplicating={Boolean(duplicar && !id)} />;
 }
 
 /**
@@ -36,7 +36,7 @@ export default function NewQuotePage({ searchParams }: NewQuotePageProps) {
           subtitle="Preencha os dados abaixo para gerar o orçamento em .pptx."
         />
         <Suspense fallback={null}>
-          <NewQuoteContent searchParams={searchParams} />
+          <NewQuoteContentServer searchParams={searchParams} />
         </Suspense>
       </div>
     </main>
