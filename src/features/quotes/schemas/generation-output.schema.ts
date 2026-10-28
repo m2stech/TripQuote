@@ -107,3 +107,37 @@ export const generationOutputSchema = z.object({
 });
 
 export type GenerationOutput = z.infer<typeof generationOutputSchema>;
+
+/**
+ * Resposta estruturada da IA para o produto Cruzeiro (M11) — mesma fronteira
+ * e mesmas regras de `generationOutputSchema` (`.nullable()` em vez de
+ * `.optional()`, sem `z.string().url()`), para a mesma resposta `strict`
+ * da Responses API. Contém só o que a IA pesquisa/redige: dados do navio,
+ * descrições, fotos — nunca preço, cabine ou dado comercial (vêm do form).
+ */
+export const generatedPortSchema = z.object({
+  name: z.string(),
+  shortDescription: z.string(),
+  photo: generatedPhotoSchema,
+});
+
+export type GeneratedPort = z.infer<typeof generatedPortSchema>;
+
+export const generatedShipProfileSchema = z.object({
+  shipClass: z.string(),
+  capacity: z.string(),
+  highlights: z.array(z.string()),
+});
+
+export type GeneratedShipProfile = z.infer<typeof generatedShipProfileSchema>;
+
+export const cruiseGenerationOutputSchema = z.object({
+  coverTagline: z.string(),
+  tripSummary: z.string(),
+  shipProfile: generatedShipProfileSchema,
+  onboardExperience: z.string(),
+  ports: z.array(generatedPortSchema),
+  shipPhoto: generatedPhotoSchema,
+});
+
+export type CruiseGenerationOutput = z.infer<typeof cruiseGenerationOutputSchema>;

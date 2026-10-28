@@ -1,11 +1,13 @@
 import { z } from "zod";
 
-import { generationOutputSchema } from "@/features/quotes/schemas/generation-output.schema";
+import { normalizeCruiseDraft } from "@/features/quotes/schemas/cruise-form.schema";
 import {
-  migrateLegacyRoomOption,
-  normalizeQuoteDraft,
-  quoteDraftSchema,
-} from "@/features/quotes/schemas/quote-form.schema";
+  anyGenerationOutputSchema,
+  anyQuoteDraftSchema,
+  type AnyQuoteDraftValues,
+  type AnyQuoteFormValues,
+} from "@/features/quotes/schemas/product.schema";
+import { migrateLegacyRoomOption, normalizeQuoteDraft } from "@/features/quotes/schemas/quote-form.schema";
 
 /**
  * Schemas Zod do registro de orçamento (metadados + payload do formulário).
@@ -33,21 +35,25 @@ export const quoteRecordSchema = z.object({
   updatedAt: z.string(),
   createdBy: z.string(),
   errorMessage: z.string().optional(),
-  form: quoteDraftSchema,
-  aiOutput: generationOutputSchema.nullable().optional(),
+  form: anyQuoteDraftSchema,
+  aiOutput: anyGenerationOutputSchema.nullable().optional(),
   pptxStoragePath: z.string().nullable().optional(),
 });
 
 type QuoteRecordParsed = z.infer<typeof quoteRecordSchema>;
 
+function normalizeAnyQuoteDraft(draft: AnyQuoteDraftValues): AnyQuoteFormValues {
+  return draft.productType === "cruzeiro" ? normalizeCruiseDraft(draft) : normalizeQuoteDraft(draft);
+}
+
 /**
- * Registro de orçamento. `form` é sempre normalizado (`normalizeQuoteDraft`)
- * para `QuoteFormValues` completo, mesmo quando o rascunho no banco está
+ * Registro de orçamento. `form` é sempre normalizado (por tipo de produto)
+ * para sua forma completa, mesmo quando o rascunho no banco está
  * parcialmente preenchido — telas como `toQuoteSummary` podem acessar os
  * campos sem checagem extra.
  */
 export type QuoteRecord = Omit<QuoteRecordParsed, "form"> & {
-  form: ReturnType<typeof normalizeQuoteDraft>;
+  form: AnyQuoteFormValues;
 };
 
 /**
@@ -102,19 +108,38 @@ function migrateLegacyRooms(raw: unknown): unknown {
   };
 }
 
+/**
+ * Registros gravados antes do M11 não têm `productType` em `form` (coluna
+ * nova) — tratá-los como `"terrestre"` antes do parse evita que o
+ * discriminated union rejeite todo orçamento já existente no banco.
+ */
+function withDefaultProductType(raw: unknown): unknown {
+  if (typeof raw !== "object" || raw === null) return raw;
+  const record = raw as Record<string, unknown>;
+  const form = record.form;
+  if (typeof form !== "object" || form === null) return raw;
+  const formRecord = form as Record<string, unknown>;
+  if (typeof formRecord.productType === "string") return raw;
+
+  return { ...record, form: { ...formRecord, productType: "terrestre" } };
+}
+
 /** Valida e normaliza um registro bruto (ex.: linha do banco) em `QuoteRecord`. */
 export function parseQuoteRecord(raw: unknown): QuoteRecord {
-  const parsed = quoteRecordSchema.parse(migrateLegacyRooms(migrateLegacyAiOutput(raw)));
-  return { ...parsed, form: normalizeQuoteDraft(parsed.form) };
+  const withProductType = withDefaultProductType(raw);
+  const parsed = quoteRecordSchema.parse(migrateLegacyRooms(migrateLegacyAiOutput(withProductType)));
+  return { ...parsed, form: normalizeAnyQuoteDraft(parsed.form) };
 }
 
 /**
  * Resumo usado em listagens (evita carregar o formulário completo quando não
- * é necessário).
+ * é necessário). Campos de período (`startDate`/`endDate`) mapeiam, no
+ * cruzeiro, para embarque/desembarque.
  */
 export interface QuoteSummary {
   id: string;
   status: QuoteStatus;
+  productType: AnyQuoteFormValues["productType"];
   agency: string;
   consultant: string;
   destination: string;
@@ -125,14 +150,18 @@ export interface QuoteSummary {
 }
 
 export function toQuoteSummary(record: QuoteRecord): QuoteSummary {
+  const { form } = record;
+  const isCruise = form.productType === "cruzeiro";
+
   return {
     id: record.id,
     status: record.status,
-    agency: record.form.general.agency,
-    consultant: record.form.general.consultant || "—",
-    destination: record.form.general.destination,
-    startDate: record.form.general.startDate,
-    endDate: record.form.general.endDate,
+    productType: form.productType,
+    agency: form.general.agency,
+    consultant: form.general.consultant || "—",
+    destination: form.general.destination,
+    startDate: isCruise ? form.general.embarkationDate : form.general.startDate,
+    endDate: isCruise ? form.general.disembarkationDate : form.general.endDate,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
   };
