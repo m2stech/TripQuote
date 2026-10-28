@@ -25,6 +25,7 @@ Baseado em [CLAUDE.md](../CLAUDE.md) e [PRD.md](PRD.md). Ordem: **setup → inte
 | M8 | Admin | `feat/m8-admin` | Usuários, prompts versionados, branding |
 | M9 | Consumo, auditoria e observabilidade | `feat/m9-usage-audit-sentry` | Tokens/custo, auditoria, Sentry |
 | M10 | Testes E2E e deploy | `feat/m10-e2e-deploy` | Playwright, Vercel, produção |
+| M11 | Produto Cruzeiro | `feat/m11-cruise-product` | Segundo tipo de orçamento (formulário, prompt, PPTX) |
 
 ---
 
@@ -232,3 +233,58 @@ Baseado em [CLAUDE.md](../CLAUDE.md) e [PRD.md](PRD.md). Ordem: **setup → inte
 
 **Aceite:** E2E verde no CI; geração real em produção gera um .pptx válido.
 **Commit final:** `chore: add Playwright e2e suite and production deployment config`
+
+## M11 — Produto Cruzeiro
+
+**Branch:** `feat/m11-cruise-product`
+**Objetivo:** adicionar "Cruzeiro" como segundo tipo de orçamento, ao lado do terrestre existente, reaproveitando toda a infraestrutura pós-M10 (auth, listagem, status, rate limit, auditoria, consumo) em vez de duplicá-la.
+
+Origem: protótipo de referência `Gerador de Orcamentos Cruzeiros SNOW.html` (mover para `docs/reference/`, junto do `Prompt_orcamento_SNOW.html`), que gera um .docx com instruções + imagens embutidas para uso manual no Copilot. O TripQuote não replica esse mecanismo de entrega — só a estrutura de dados e as regras de conteúdo por slide, adaptadas ao pipeline já existente (prompt no backend + PptxGenJS determinístico).
+
+**Decisões de modelagem (não negociáveis para este marco):**
+- `quotes` ganha coluna `product_type` (`'terrestre' | 'cruzeiro'`, default `'terrestre'`) em vez de uma tabela/produto separado — reaproveita repository, listagem, duplicar, status, rate limit, `generations`, `audit_log`.
+- `QuoteFormValues`, `QuoteDraftValues` e `GenerationOutput` passam a ser discriminated unions por `productType`. A forma terrestre atual vira o branch `productType: "terrestre"` sem alteração de conteúdo — nenhuma migração de dados é necessária (registros existentes já teriam esse valor via default).
+- As colunas desnormalizadas já existentes em `quotes` (`agency`, `destination`, `start_date`, `end_date`) são reaproveitadas para cruzeiro (destino/região do cruzeiro, data de embarque/desembarque) — não criar colunas duplicadas.
+- `prompt_versions` ganha coluna `product_type`; a constraint de "única versão ativa" passa a ser por tipo de produto (`unique (product_type) where is_active`). Cruzeiro começa em v1, **sem** tocar no histórico v1-v6 do terrestre.
+- `build-quote-presentation.ts` (terrestre) não ganha `if`s de cruzeiro: builder paralelo `build-cruise-presentation.ts`, despachado por `form.productType` no único ponto que hoje chama `buildQuotePresentation` (`buildAndStorePptx` em `generation-orchestrator.ts`).
+- Bucket de Storage novo `cruise-photos` (fotos de navio, cabine, porto), mesmo padrão RLS fail-closed via `owns_quote_storage_object`.
+
+**Seções do formulário de Cruzeiro** (mesma numeração 01-09, Zod própria em `features/quotes/schemas/cruise-form.schema.ts` ou arquivo equivalente):
+- 01 Agência e cruzeiro: agência, logo da agência, consultor, companhia marítima (datalist), logo da companhia (opcional), nome do navio, destino/região, data de embarque/desembarque, porto de embarque/desembarque, perfil da viagem (opcional), ocupação considerada, moeda
+- 02 Capa: frase de efeito (opcional)
+- 03 Roteiro: tabela dia a dia (data, porto/destino, operação — embarque/atracado/ancorado/navegação/desembarque —, chegada, saída) e/ou print do roteiro (upload, opcional — IA extrai via visão, mesmo padrão da imagem de voo no terrestre)
+- 04 Navio e experiência a bordo: fotos do navio (até 8, upload), destaques que a equipe quer citar (opcional)
+- 05 Cabines e tarifas: lista dinâmica de cabines (categoria, tipo — garantida GTY ou numerada —, ocupação específica se diferente da geral, valor total por cabine, foto opcional), taxas portuárias e gorjetas (incluídas/não incluídas/não informar, com valor condicional), regras da tarifa (opcional)
+- 06 Forma de pagamento: texto fixo (mesmo padrão do terrestre — reaproveitar seletor de condição se aplicável ao produto)
+- 07 Incluído, não incluído e opcionais: três listas + informações importantes
+- 08 Rodapé institucional (mesmo texto fixo do terrestre)
+- 09 Gerar
+
+Campos obrigatórios (mínimo para gerar, espelhando "01 Dados gerais + 04 Hotéis são obrigatórios" do terrestre): agência, companhia marítima, nome do navio, destino/região, porto de embarque, ocupação considerada, datas de embarque/desembarque (desembarque após embarque), roteiro (tabela ou print) e ao menos uma cabine com valor.
+
+**Estrutura de slides do .pptx de Cruzeiro** (builder determinístico, mesmo padrão 16:9 editável do terrestre):
+1. Capa (foto do navio ou do destino, logos, frase de efeito)
+2. A viagem em resumo (cartões: navio/companhia, período/duração, portos, destino, perfil, ocupação)
+3. Roteiro dia a dia (tabela Dia/Data/Porto/Operação/Chegada/Saída + fotos dos portos de escala)
+4. Conheça o navio (pesquisa da IA: classe, capacidade, diferenciais — `web_search`, mesmo padrão do terrestre)
+5. A experiência a bordo (entretenimento, gastronomia, lazer, espaço infantil, experiências exclusivas)
+6. Cabines e tarifas (cards por cabine, até 3 por slide, valor em destaque, sem cálculo — transcrição exata do valor informado)
+7. O que está incluído (três colunas: incluído / não incluído / opcionais)
+8. Pagamento, informações importantes e rodapé institucional
+
+- [x] Mover `Gerador de Orcamentos Cruzeiros SNOW.html` (e `SNOW_Cruzeiros_sem_imagem_v2.html`) para `docs/reference/`
+- [x] Migration: `quotes.product_type`, `prompt_versions.product_type` + ajuste da constraint de versão única ativa, seed da v1 do prompt de cruzeiro, bucket `cruise-photos` (aplicadas no banco de produção)
+- [x] Schemas Zod: `cruiseFormSchema`/`cruiseDraftSchema`, `AnyQuoteFormValues`/`AnyQuoteDraftValues` como discriminated union por `productType` (`features/quotes/schemas/product.schema.ts`), `generationOutputSchema` de cruzeiro
+- [x] UI: seletor de tipo de orçamento ao criar (`/orcamentos/novo`, com opção de trocar o tipo), formulário de cruzeiro (`CruiseQuoteForm.tsx`, seções 01-09), reaproveitando componentes de upload, autosave e navegação
+- [x] Repository/actions: `QuoteRepository` sem alteração de interface; `upsertDraft`/`create` aceitam a união
+- [x] Listagem (`QuoteListScreen`) com badge de tipo de produto (Terrestre/Cruzeiro) ao lado da agência
+- [x] IA: `composeCruisePromptInput`, extração de roteiro via imagem (`buildCruiseItineraryImagePart`), `getActivePromptVersion`/`generateCruiseContent` por tipo
+- [x] PPTX: `build-cruise-presentation.ts` com 9 slides (capa, resumo, roteiro, galeria de portos, navio, a bordo, cabines, incluído, final), fotos de navio/porto com fallback de busca
+- [x] Despacho por `productType` em `runQuoteGeneration` (`generation-orchestrator.ts`)
+- [x] Testes Vitest: schema do formulário de cruzeiro, builder PPTX de cruzeiro (8 testes), composição do prompt, geração de conteúdo via IA
+- [x] Revisão com `ai-prompt-guard` (sem achados) e `pptx-builder` (1 bug real encontrado e corrigido: paginação do slide de inclusões)
+- [x] Atualizar CLAUDE.md (seção "Produto Cruzeiro (M11)" com formulário, builder e seletor de tipo)
+- [ ] Merge em `main`
+
+**Aceite:** criar um orçamento de cruzeiro ponta a ponta (formulário → gerar → baixar) produz um .pptx 16:9 editável com os 8 slides; orçamento terrestre existente continua funcionando sem alteração de comportamento; admin gerencia as duas linhas de prompt (terrestre e cruzeiro) separadamente.
+**Commit final:** `feat(cruise): add cruise quote product with dedicated form, prompt and pptx builder`

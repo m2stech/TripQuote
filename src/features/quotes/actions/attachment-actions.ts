@@ -8,6 +8,7 @@ import {
   createSignedAttachmentUrl,
   removeQuoteImageAttachment,
   uploadQuoteImageAttachment,
+  type UploadableAttachmentKind,
 } from "@/features/quotes/attachments/attachment-storage";
 import type { UploadedAttachment } from "@/features/quotes/schemas/quote-form.schema";
 
@@ -26,7 +27,7 @@ export interface UploadAttachmentResult {
  */
 export async function uploadQuoteAttachmentAction(
   quoteId: string,
-  kind: "agency_logo" | "flight_image",
+  kind: UploadableAttachmentKind,
   formData: FormData,
 ): Promise<UploadAttachmentResult> {
   const file = formData.get("file");
@@ -56,7 +57,7 @@ export async function uploadQuoteAttachmentAction(
 }
 
 export async function removeQuoteAttachmentAction(
-  kind: "agency_logo" | "flight_image",
+  kind: UploadableAttachmentKind,
   storagePath: string,
 ): Promise<void> {
   const supabase = await createClient();
@@ -64,7 +65,7 @@ export async function removeQuoteAttachmentAction(
 }
 
 export async function getAttachmentPreviewUrlAction(
-  kind: "agency_logo" | "flight_image",
+  kind: UploadableAttachmentKind,
   storagePath: string,
 ): Promise<string | null> {
   const supabase = await createClient();

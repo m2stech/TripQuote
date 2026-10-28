@@ -41,11 +41,12 @@ const quote: QuoteRecord = {
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   createdBy: userId,
-  form: normalizeQuoteDraft({}),
+  form: normalizeQuoteDraft({ productType: "terrestre" }),
 };
 
 const promptVersion = {
   id: "prompt-1",
+  productType: "terrestre" as const,
   version: 1,
   content: "texto",
   isActive: true,

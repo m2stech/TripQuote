@@ -284,6 +284,7 @@ export type UploadedAttachment = z.infer<typeof uploadedAttachmentSchema>;
 
 export const quoteFormSchema = z
   .object({
+    productType: z.literal("terrestre").default("terrestre"),
     general: generalDataSchema,
     cover: coverSchema,
     inclusions: inclusionsSchema,
@@ -331,6 +332,7 @@ const generalDataDraftSchema = z.object({
 });
 
 export const quoteDraftSchema = z.object({
+  productType: z.literal("terrestre").optional().default("terrestre"),
   general: generalDataDraftSchema.optional(),
   cover: coverSchema.optional(),
   inclusions: z.array(inclusionSchema).optional(),
@@ -355,6 +357,7 @@ export type QuoteDraftInput = z.input<typeof quoteDraftSchema>;
  */
 export function normalizeQuoteDraft(draft: QuoteDraftValues): QuoteFormValues {
   return {
+    productType: "terrestre",
     general: { ...quoteFormDefaultValues.general, ...draft.general },
     cover: { ...quoteFormDefaultValues.cover, ...draft.cover },
     inclusions: draft.inclusions ?? quoteFormDefaultValues.inclusions,
@@ -368,6 +371,7 @@ export function normalizeQuoteDraft(draft: QuoteDraftValues): QuoteFormValues {
 }
 
 export const quoteFormDefaultValues: QuoteFormValues = {
+  productType: "terrestre",
   general: {
     agency: "",
     consultant: "",

@@ -11,6 +11,7 @@ import { normalizeQuoteDraft } from "@/features/quotes/schemas/quote-form.schema
 import type { PromptVersionRecord } from "@/features/prompts/schemas/prompt-version.schema";
 
 const form = normalizeQuoteDraft({
+  productType: "terrestre",
   general: {
     agency: "Primus Turismo",
     consultant: "Maria Silva",
@@ -41,6 +42,7 @@ const form = normalizeQuoteDraft({
 
 const promptVersion: PromptVersionRecord = {
   id: "prompt-1",
+  productType: "terrestre",
   version: 1,
   content: "Destino: {{DESTINATION}}\n{{HOTELS_BLOCK}}",
   isActive: true,

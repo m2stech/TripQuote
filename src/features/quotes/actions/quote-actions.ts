@@ -6,8 +6,11 @@ import { requireCurrentUserId } from "@/lib/auth/require-current-user-id";
 import { getQuoteRepository } from "@/features/quotes/repository";
 import { runQuoteGeneration } from "@/features/quotes/actions/generation-orchestrator";
 import type { QuoteListFilters } from "@/features/quotes/repository/types";
-import { quoteDraftSchema, type QuoteDraftInput } from "@/features/quotes/schemas/quote-form.schema";
+import { anyQuoteDraftSchema, type AnyQuoteDraftValues } from "@/features/quotes/schemas/product.schema";
 import type { QuoteRecord } from "@/features/quotes/schemas/quote.schema";
+
+/** Entrada aceita pelas actions, antes da validação Zod (une os dois tipos de produto). */
+export type QuoteDraftActionInput = AnyQuoteDraftValues;
 
 /**
  * `onlyMine` é resolvido aqui com o usuário autenticado no servidor — nunca
@@ -35,8 +38,8 @@ export async function getQuoteAction(id: string): Promise<QuoteRecord | null> {
   return repository.getById(id);
 }
 
-export async function createQuoteAction(form: QuoteDraftInput): Promise<QuoteRecord> {
-  const parsed = quoteDraftSchema.parse(form);
+export async function createQuoteAction(form: QuoteDraftActionInput): Promise<QuoteRecord> {
+  const parsed = anyQuoteDraftSchema.parse(form);
   const userId = await requireCurrentUserId();
   const repository = await getQuoteRepository();
   const record = await repository.create(parsed, userId);
@@ -51,8 +54,8 @@ export async function createQuoteAction(form: QuoteDraftInput): Promise<QuoteRec
  * formulário). Propositalmente **não** há criação no mount da tela: visitar
  * "/orcamentos/novo" sem preencher nada não deve gravar nenhuma linha.
  */
-export async function updateQuoteAction(id: string, form: QuoteDraftInput): Promise<QuoteRecord> {
-  const parsed = quoteDraftSchema.parse(form);
+export async function updateQuoteAction(id: string, form: QuoteDraftActionInput): Promise<QuoteRecord> {
+  const parsed = anyQuoteDraftSchema.parse(form);
   const userId = await requireCurrentUserId();
   const repository = await getQuoteRepository();
   const record = await repository.upsertDraft(id, parsed, userId);

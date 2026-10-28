@@ -248,6 +248,7 @@ export type Database = {
           created_by: string
           id: string
           is_active: boolean
+          product_type: Database["public"]["Enums"]["product_type"]
           version: number
         }
         Insert: {
@@ -256,6 +257,7 @@ export type Database = {
           created_by: string
           id?: string
           is_active?: boolean
+          product_type?: Database["public"]["Enums"]["product_type"]
           version: number
         }
         Update: {
@@ -264,6 +266,7 @@ export type Database = {
           created_by?: string
           id?: string
           is_active?: boolean
+          product_type?: Database["public"]["Enums"]["product_type"]
           version?: number
         }
         Relationships: [
@@ -330,6 +333,7 @@ export type Database = {
           form: Json
           id: string
           pptx_storage_path: string | null
+          product_type: Database["public"]["Enums"]["product_type"]
           start_date: string | null
           status: Database["public"]["Enums"]["quote_status"]
           updated_at: string
@@ -346,6 +350,7 @@ export type Database = {
           form: Json
           id?: string
           pptx_storage_path?: string | null
+          product_type?: Database["public"]["Enums"]["product_type"]
           start_date?: string | null
           status?: Database["public"]["Enums"]["quote_status"]
           updated_at?: string
@@ -362,6 +367,7 @@ export type Database = {
           form?: Json
           id?: string
           pptx_storage_path?: string | null
+          product_type?: Database["public"]["Enums"]["product_type"]
           start_date?: string | null
           status?: Database["public"]["Enums"]["quote_status"]
           updated_at?: string
@@ -392,7 +398,13 @@ export type Database = {
       }
     }
     Enums: {
-      attachment_kind: "agency_logo" | "flight_image" | "institutional_logo"
+      attachment_kind:
+        | "agency_logo"
+        | "flight_image"
+        | "institutional_logo"
+        | "cruise_itinerary_image"
+        | "cruise_photo"
+      product_type: "terrestre" | "cruzeiro"
       quote_status: "draft" | "processing" | "done" | "error"
       user_role: "consultant" | "admin"
     }
@@ -525,7 +537,14 @@ export const Constants = {
   },
   public: {
     Enums: {
-      attachment_kind: ["agency_logo", "flight_image", "institutional_logo"],
+      attachment_kind: [
+        "agency_logo",
+        "flight_image",
+        "institutional_logo",
+        "cruise_itinerary_image",
+        "cruise_photo",
+      ],
+      product_type: ["terrestre", "cruzeiro"],
       quote_status: ["draft", "processing", "done", "error"],
       user_role: ["consultant", "admin"],
     },

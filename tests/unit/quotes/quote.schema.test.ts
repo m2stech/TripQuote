@@ -35,7 +35,9 @@ const modernAiOutput = {
 describe("parseQuoteRecord", () => {
   it("aceita um registro atual, já com flightItinerary", () => {
     const record = parseQuoteRecord(baseRawRecord(modernAiOutput));
-    expect(record.aiOutput?.flightItinerary).toBeNull();
+    const aiOutput = record.aiOutput;
+    if (!aiOutput || !("flightItinerary" in aiOutput)) throw new Error("aiOutput terrestre esperado.");
+    expect(aiOutput.flightItinerary).toBeNull();
   });
 
   it("migra um registro legado sem flightItinerary (de antes da M7), preenchendo null", () => {
@@ -48,7 +50,9 @@ describe("parseQuoteRecord", () => {
     });
 
     const record = parseQuoteRecord(raw);
-    expect(record.aiOutput?.flightItinerary).toBeNull();
+    const aiOutput = record.aiOutput;
+    if (!aiOutput || !("flightItinerary" in aiOutput)) throw new Error("aiOutput terrestre esperado.");
+    expect(aiOutput.flightItinerary).toBeNull();
   });
 
   it("aiOutput nulo (orçamento ainda não gerado) continua aceito", () => {
@@ -68,6 +72,7 @@ describe("parseQuoteRecord", () => {
     ];
 
     const record = parseQuoteRecord(raw);
+    if (record.form.productType !== "terrestre") throw new Error("form terrestre esperado.");
     expect(record.form.hotels[0]?.rooms[0]).toEqual({
       id: "room-1",
       roomType: "Standard",

@@ -12,12 +12,15 @@ vi.mock("@/features/pptx/images/google-places-photo", () => ({
   fetchGooglePlacesPhoto: vi.fn().mockResolvedValue(null),
 }));
 
-import { buildQuotePresentation } from "@/features/pptx/build-quote-presentation";
-import { normalizeQuoteDraft } from "@/features/quotes/schemas/quote-form.schema";
-import type { QuoteRecord } from "@/features/quotes/schemas/quote.schema";
+import { buildQuotePresentation, type TerrestrialQuoteRecord } from "@/features/pptx/build-quote-presentation";
+import { normalizeQuoteDraft, type QuoteFormValues } from "@/features/quotes/schemas/quote-form.schema";
 
-function makeQuote(overrides: Partial<QuoteRecord["form"]> = {}, aiOverrides: Record<string, unknown> = {}): QuoteRecord {
+function makeQuote(
+  overrides: Partial<QuoteFormValues> = {},
+  aiOverrides: Record<string, unknown> = {},
+): TerrestrialQuoteRecord {
   const form = normalizeQuoteDraft({
+    productType: "terrestre",
     general: {
       agency: "Primus Turismo",
       consultant: "Maria Silva",
@@ -83,7 +86,7 @@ function makeQuote(overrides: Partial<QuoteRecord["form"]> = {}, aiOverrides: Re
       flightItinerary: null,
       ...aiOverrides,
     },
-  } as QuoteRecord;
+  } as TerrestrialQuoteRecord;
 }
 
 const supabase = {
@@ -99,12 +102,12 @@ describe("buildQuotePresentation", () => {
   });
 
   it("lança erro se o status não for 'done'", async () => {
-    const quote = { ...makeQuote(), status: "processing" } as QuoteRecord;
+    const quote = { ...makeQuote(), status: "processing" } as TerrestrialQuoteRecord;
     await expect(buildQuotePresentation(supabase, quote)).rejects.toThrow("sem geração concluída");
   });
 
   it("lança erro se aiOutput for nulo", async () => {
-    const quote = { ...makeQuote(), aiOutput: null } as unknown as QuoteRecord;
+    const quote = { ...makeQuote(), aiOutput: null } as unknown as TerrestrialQuoteRecord;
     await expect(buildQuotePresentation(supabase, quote)).rejects.toThrow("sem geração concluída");
   });
 

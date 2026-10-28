@@ -131,35 +131,68 @@ export function QuoteDetailScreen({ quoteId }: QuoteDetailScreenProps) {
                 />
               ) : null}
 
-              <dl className="snow-grid-2 text-sm">
-                <DetailItem label="Agência" value={quote.form.general.agency} />
-                <DetailItem label="Consultor" value={quote.form.general.consultant || "—"} />
-                <DetailItem label="Destino" value={quote.form.general.destination} />
-                <DetailItem
-                  label="Período"
-                  value={`${formatDate(quote.form.general.startDate)} – ${formatDate(quote.form.general.endDate)}`}
-                />
-                <DetailItem label="Viajantes" value={quote.form.general.travelers || "—"} />
-                <DetailItem label="Moeda" value={quote.form.general.currency} />
-                <DetailItem label="Tipo de valor" value={quote.form.general.priceType} />
-                <DetailItem label="Base de acomodação" value={quote.form.general.occupancy || "—"} />
-              </dl>
-            </SectionCard>
-
-            <SectionCard number={2} title="Hotéis" description="Hotéis incluídos neste orçamento.">
-              {quote.form.hotels.length === 0 ? (
-                <p className="text-muted-foreground text-sm">Nenhum hotel adicionado.</p>
+              {quote.form.productType === "terrestre" ? (
+                <dl className="snow-grid-2 text-sm">
+                  <DetailItem label="Agência" value={quote.form.general.agency} />
+                  <DetailItem label="Consultor" value={quote.form.general.consultant || "—"} />
+                  <DetailItem label="Destino" value={quote.form.general.destination} />
+                  <DetailItem
+                    label="Período"
+                    value={`${formatDate(quote.form.general.startDate)} – ${formatDate(quote.form.general.endDate)}`}
+                  />
+                  <DetailItem label="Viajantes" value={quote.form.general.travelers || "—"} />
+                  <DetailItem label="Moeda" value={quote.form.general.currency} />
+                  <DetailItem label="Tipo de valor" value={quote.form.general.priceType} />
+                  <DetailItem label="Base de acomodação" value={quote.form.general.occupancy || "—"} />
+                </dl>
               ) : (
-                <ul className="flex flex-col gap-2">
-                  {quote.form.hotels.map((hotel) => (
-                    <li key={hotel.id} className="border-snow-input-border rounded-[9px] border p-3 text-sm">
-                      <p className="text-foreground font-medium">{hotel.name}</p>
-                      <p className="text-muted-foreground">{hotel.mealPlan}</p>
-                    </li>
-                  ))}
-                </ul>
+                <dl className="snow-grid-2 text-sm">
+                  <DetailItem label="Agência" value={quote.form.general.agency} />
+                  <DetailItem label="Consultor" value={quote.form.general.consultant || "—"} />
+                  <DetailItem label="Companhia marítima" value={quote.form.general.cruiseLine} />
+                  <DetailItem label="Navio" value={quote.form.general.shipName} />
+                  <DetailItem label="Destino/região" value={quote.form.general.destination} />
+                  <DetailItem
+                    label="Embarque – Desembarque"
+                    value={`${formatDate(quote.form.general.embarkationDate)} – ${formatDate(quote.form.general.disembarkationDate)}`}
+                  />
+                  <DetailItem label="Moeda" value={quote.form.general.currency} />
+                  <DetailItem label="Ocupação" value={quote.form.general.occupancy || "—"} />
+                </dl>
               )}
             </SectionCard>
+
+            {quote.form.productType === "terrestre" ? (
+              <SectionCard number={2} title="Hotéis" description="Hotéis incluídos neste orçamento.">
+                {quote.form.hotels.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">Nenhum hotel adicionado.</p>
+                ) : (
+                  <ul className="flex flex-col gap-2">
+                    {quote.form.hotels.map((hotel) => (
+                      <li key={hotel.id} className="border-snow-input-border rounded-[9px] border p-3 text-sm">
+                        <p className="text-foreground font-medium">{hotel.name}</p>
+                        <p className="text-muted-foreground">{hotel.mealPlan}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </SectionCard>
+            ) : (
+              <SectionCard number={2} title="Cabines" description="Cabines incluídas neste orçamento.">
+                {quote.form.fare.cabins.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">Nenhuma cabine adicionada.</p>
+                ) : (
+                  <ul className="flex flex-col gap-2">
+                    {quote.form.fare.cabins.map((cabin) => (
+                      <li key={cabin.id} className="border-snow-input-border rounded-[9px] border p-3 text-sm">
+                        <p className="text-foreground font-medium">{cabin.category}</p>
+                        <p className="text-muted-foreground">{cabin.type}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </SectionCard>
+            )}
 
             <SectionCard number={3} title="Ações">
               <div className="flex flex-wrap gap-3">

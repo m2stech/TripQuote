@@ -19,8 +19,16 @@ import { buildItinerarySlide } from "@/features/pptx/slides/itinerary-slide";
 import { buildPackagePriceSlide } from "@/features/pptx/slides/package-price-slide";
 import { COVER_LOGO_BOX, FOOTER_LOGO_BOX, HOTEL_PHOTO_BOX, INNER_LOGO_BOX, SLIDE_HEIGHT_IN, SLIDE_WIDTH_IN } from "@/features/pptx/tokens";
 import { DEFAULT_THEME, extractThemeFromLogo } from "@/features/pptx/theme/extract-theme";
+import type { GenerationOutput } from "@/features/quotes/schemas/generation-output.schema";
+import type { QuoteFormValues } from "@/features/quotes/schemas/quote-form.schema";
 import type { QuoteRecord } from "@/features/quotes/schemas/quote.schema";
 import type { Database } from "@/lib/supabase/types";
+
+/** `QuoteRecord` restrito ao orçamento terrestre (despachado por `generation-orchestrator.ts`). */
+export type TerrestrialQuoteRecord = Omit<QuoteRecord, "form" | "aiOutput"> & {
+  form: QuoteFormValues;
+  aiOutput?: GenerationOutput | null;
+};
 
 function formatPeriod(startDate: string, endDate: string): string {
   const format = (value: string) => {
@@ -40,7 +48,7 @@ function formatPeriod(startDate: string, endDate: string): string {
  */
 export async function buildQuotePresentation(
   supabase: SupabaseClient<Database>,
-  quote: QuoteRecord,
+  quote: TerrestrialQuoteRecord,
 ): Promise<Buffer> {
   if (quote.status !== "done" || !quote.aiOutput) {
     throw new Error("Orçamento sem geração concluída.");

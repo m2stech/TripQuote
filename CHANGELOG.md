@@ -32,6 +32,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 - Formulário: checkbox "Incluir slide de voos" (e demais campos lidos via `watch()` no corpo do componente) deixavam de refletir o clique até outro evento forçar um re-render — causado por incompatibilidade entre `watch()` do React Hook Form e o React Compiler (ativo por padrão no Next.js 16). Corrigido trocando para `useWatch`.
 - Leitura de orçamentos já gerados antes da mudança de voos estruturados (sem o campo novo no `aiOutput`) voltou a funcionar — a listagem quebrava com erro de validação Zod.
 
+### Adicionado
+- **Produto Cruzeiro (M11)**: segundo tipo de orçamento, ao lado do terrestre existente, reaproveitando toda a infraestrutura pós-M10 (auth, listagem, status, rate limit, auditoria, consumo). Formulário próprio (agência/cruzeiro, capa, roteiro, navio, cabines e tarifas, pagamento, incluído/não incluído/opcionais, rodapé, gerar) e builder PPTX dedicado (capa, resumo da viagem, roteiro dia a dia, galeria de portos de escala, perfil do navio pesquisado pela IA, experiência a bordo, cabines, incluído/não incluído/opcionais, pagamento/rodapé). Prompt próprio versionado (`prompt_versions.product_type`), independente do histórico v1-v6 do terrestre. Seletor de tipo ao criar um novo orçamento, com opção de trocar o tipo antes de preencher dados reais.
+
+### Corrigido
+- Cruzeiro: o slide "O que está incluído" (seção 07, opcional) era gerado mesmo sem nenhum item preenchido em incluído/não incluído/opcionais, mostrando "Nenhum item informado." nas três colunas — agora o slide é omitido por completo quando a seção não foi preenchida. Reportado pelo cliente (Primus Turismo) num teste do orçamento Mediterrâneo Ocidental.
+- Cruzeiro: upload de foto por cabine (seção 05) adicionado ao formulário — o campo já existia no schema mas nunca era exibido na UI nem lido pelo builder, então o slide "Cabines e tarifas" sempre mostrava o placeholder "Foto da cabine", mesmo quando uma foto fazia sentido ser anexada. Diferente de navio/porto/destino, não há busca automática de foto de cabine (não existe fonte pública de imagens por categoria de cabine) — só o upload manual. Reportado pelo cliente (Primus Turismo) no mesmo teste.
+- Build quebrava ao abrir a listagem de orçamentos (`/orcamentos`) logo após login: um módulo `server-only` (`prompt-version.schema.ts`) foi importado por valor em componentes client (listagem, seletor de tipo, autosave) ao adicionar o badge de tipo de produto — os valores compartilhados (enum e rótulos de tipo) foram movidos para um arquivo próprio sem `server-only` (`product-type.schema.ts`).
+
 ## [1.0.0] — 2026-10-08
 
 Fechamento dos marcos M0–M10 (ver [docs/PLAN.md](docs/PLAN.md)): produto completo, dos marcos de setup até testes E2E e deploy em produção.

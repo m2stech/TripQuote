@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { composePromptInput } from "@/features/ai/prompt/compose-prompt";
-import { normalizeQuoteDraft, type QuoteDraftValues } from "@/features/quotes/schemas/quote-form.schema";
+import {
+  normalizeQuoteDraft,
+  type QuoteDraftInput,
+  type QuoteDraftValues,
+} from "@/features/quotes/schemas/quote-form.schema";
 
 const PROMPT_TEMPLATE =
   "Agência: {{AGENCY}}\n" +
@@ -20,8 +24,9 @@ const PROMPT_TEMPLATE =
   "Roteiro:\n{{ITINERARY_BLOCK}}\n" +
   "Inventário: {{INVENTORY_COUNTS}}";
 
-function draft(overrides: QuoteDraftValues = {}) {
+function draft(overrides: QuoteDraftInput = {}) {
   return normalizeQuoteDraft({
+    productType: "terrestre",
     general: {
       agency: "Primus Turismo",
       consultant: "Maria Silva",
@@ -49,7 +54,7 @@ function draft(overrides: QuoteDraftValues = {}) {
     flights: { enabled: false },
     itinerary: { enabled: false },
     ...overrides,
-  });
+  } as QuoteDraftValues);
 }
 
 describe("composePromptInput", () => {
