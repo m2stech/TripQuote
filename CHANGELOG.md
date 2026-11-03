@@ -6,6 +6,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ## [Unreleased]
 
+### Adicionado
+- Dados gerais: dropdown "Tipo de valor" (seção 01) ganhou a opção "Por apartamento", ao lado de "Por família", "Por pessoa", "Por casal" e "Valor total do grupo".
+- Orçamentos: cada card da listagem passou a exibir "Criado por {nome} em {data/hora}" — antes só havia o campo "Consultor" (texto livre do formulário, nem sempre igual ao usuário logado que de fato criou o registro). O nome vem de `profiles.full_name`, resolvido a partir de `created_by` (join feito em `SupabaseQuoteRepository.list`, respeitando a RLS existente de `profiles`).
+
 ### ⚠️ Pendência (aguardando decisão de negócio)
 - Geração falha repetidamente com "A resposta não cobriu todos os hotéis informados no formulário" quando o nome do hotel no formulário é incomum (ex.: "Uyuni no Hotel Hotel Jardines de Uyuni", "Ojo de Perdiz no Hotel Tayka del Desierto" — parecem ter o campo "Cidade" concatenado dentro do nome, em vez de usar o campo `city` dedicado). `hasCompleteHotelCoverage` (`src/features/ai/orchestration/generate-quote-content.ts`) exige nome idêntico (string exata) entre formulário e resposta da IA; a IA provavelmente normaliza o texto ao reescrevê-lo, quebrando o match mesmo com a instrução do prompt de preservar o nome literal. Correção discutida com o usuário (2026-10-29): tornar a comparação tolerante (por posição/contagem, já que o prompt garante mesma ordem, em vez de string exata) é a opção recomendada, mas o usuário quer confirmar antes algumas regras de negócio com o cliente (como o campo "Cidade" deve ser preenchido em hotéis de circuito) antes de decidir a correção. Caso de teste: orçamento "Rangel · Atacama com Salar de Uyuni" (quote id `7c5f2226-787f-4de2-8f57-109551fdd27e`).
 

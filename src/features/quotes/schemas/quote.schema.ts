@@ -147,9 +147,15 @@ export interface QuoteSummary {
   endDate: string;
   createdAt: string;
   updatedAt: string;
+  createdByName: string;
 }
 
-export function toQuoteSummary(record: QuoteRecord): QuoteSummary {
+/**
+ * `createdByName` é resolvido fora deste módulo (join com `profiles`, que
+ * schemas de domínio puro não fazem) — quando não informado, cai para o
+ * identificador bruto de `createdBy` (e-mail/UUID), nunca ficando em branco.
+ */
+export function toQuoteSummary(record: QuoteRecord, createdByName?: string): QuoteSummary {
   const { form } = record;
   const isCruise = form.productType === "cruzeiro";
 
@@ -164,5 +170,6 @@ export function toQuoteSummary(record: QuoteRecord): QuoteSummary {
     endDate: isCruise ? form.general.disembarkationDate : form.general.endDate,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
+    createdByName: createdByName || record.createdBy,
   };
 }

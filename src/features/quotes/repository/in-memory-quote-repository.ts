@@ -175,7 +175,7 @@ export class InMemoryQuoteRepository implements QuoteRepository {
 
     items.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
 
-    return { items: items.map(toQuoteSummary), total: items.length };
+    return { items: items.map((quote) => toQuoteSummary(quote)), total: items.length };
   }
 
   async getById(id: string): Promise<QuoteRecord | null> {

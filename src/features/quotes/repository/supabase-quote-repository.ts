@@ -91,7 +91,31 @@ export class SupabaseQuoteRepository implements QuoteRepository {
     if (error) throw new Error(`Não foi possível listar os orçamentos: ${error.message}`);
 
     const records = (data ?? []).map(rowToRecord);
-    return { items: records.map(toQuoteSummary), total: count ?? records.length };
+    const namesByUserId = await this.loadCreatorNames(records.map((record) => record.createdBy));
+    return {
+      items: records.map((record) => toQuoteSummary(record, namesByUserId.get(record.createdBy))),
+      total: count ?? records.length,
+    };
+  }
+
+  /**
+   * Resolve `created_by` (UUID) para o nome exibido na listagem. RLS de
+   * `profiles` só permite ler o próprio perfil ou, se admin, qualquer um —
+   * suficiente aqui: um consultor só lista os próprios orçamentos (todos com
+   * o mesmo `created_by`), e só o admin vê orçamentos de outros usuários.
+   */
+  private async loadCreatorNames(userIds: string[]): Promise<Map<string, string>> {
+    const uniqueIds = Array.from(new Set(userIds));
+    if (uniqueIds.length === 0) return new Map();
+
+    const { data, error } = await this.supabase.from("profiles").select("id, full_name").in("id", uniqueIds);
+    if (error) throw new Error(`Não foi possível carregar os responsáveis pelos orçamentos: ${error.message}`);
+
+    return new Map(
+      (data ?? [])
+        .filter((profile): profile is { id: string; full_name: string } => Boolean(profile.full_name))
+        .map((profile) => [profile.id, profile.full_name]),
+    );
   }
 
   async getById(id: string): Promise<QuoteRecord | null> {

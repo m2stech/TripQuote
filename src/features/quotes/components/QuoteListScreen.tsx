@@ -282,6 +282,9 @@ export function QuoteListScreen({ isAdmin }: QuoteListScreenProps) {
                       <p className="text-muted-foreground text-xs">
                         {formatDate(quote.startDate)} – {formatDate(quote.endDate)}
                       </p>
+                      <p className="text-muted-foreground text-xs">
+                        Criado por {quote.createdByName} em {formatDateTime(quote.createdAt)}
+                      </p>
                     </div>
                     <QuoteStatusBadge status={quote.status} />
                   </Link>
@@ -300,4 +303,16 @@ function formatDate(isoDate: string): string {
   const [year, month, day] = isoDate.split("-");
   if (!year || !month || !day) return isoDate;
   return `${day}/${month}/${year}`;
+}
+
+function formatDateTime(isoDateTime: string): string {
+  const date = new Date(isoDateTime);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }

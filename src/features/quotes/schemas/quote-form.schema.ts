@@ -14,6 +14,7 @@ export const priceTypeOptions = [
   "Por família",
   "Por pessoa",
   "Por casal",
+  "Por apartamento",
   "Valor total do grupo",
 ] as const;
 
