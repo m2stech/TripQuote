@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { listQuotesAction } from "@/features/quotes/actions/quote-actions";
+import { getCurrentUserRoleAction, listQuotesAction } from "@/features/quotes/actions/quote-actions";
 import { QuoteStatusBadge } from "@/features/quotes/components/QuoteStatusBadge";
 import { PRODUCT_TYPE_LABELS } from "@/features/prompts/schemas/product-type.schema";
 import { quoteStatusLabels, quoteStatusValues, type QuoteStatus } from "@/features/quotes/schemas/quote.schema";
@@ -49,25 +49,37 @@ const INITIAL_FILTERS: Filters = {
   visibility: VISIBILITY_MINE,
 };
 
-interface QuoteListScreenProps {
-  /** Só admin vê o seletor "Apenas as minhas" / "Todas as cotações". Consultor sempre vê só as próprias, via RLS. */
-  isAdmin: boolean;
-}
-
 /**
  * Tela de listagem de orçamentos: busca por texto e filtros por status,
- * destino e período, resolvidos no servidor via `listQuotesAction` (M5).
- * Admin também tem um filtro de visibilidade ("apenas as minhas", padrão, ou
- * "todas as cotações"); consultor nunca vê orçamentos de outro usuário,
- * reforçado pela RLS de `quotes` independente deste filtro.
+ * destino e período, resolvidos no servidor via `listQuotesAction` (M5). O
+ * papel do usuário é resolvido aqui no client (`getCurrentUserRoleAction`),
+ * não recebido via prop do Server Component da página — ver comentário em
+ * `(app)/orcamentos/page.tsx`. Admin tem um filtro de visibilidade ("apenas
+ * as minhas", padrão, ou "todas as cotações"); consultor nunca vê orçamentos
+ * de outro usuário, reforçado pela RLS de `quotes` independente deste filtro.
  */
-export function QuoteListScreen({ isAdmin }: QuoteListScreenProps) {
+export function QuoteListScreen() {
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS);
   const [items, setItems] = useState<QuoteSummary[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadQuotes = useCallback(async (currentFilters: Filters) => {
+  useEffect(() => {
+    let isActive = true;
+    getCurrentUserRoleAction()
+      .then((role) => {
+        if (isActive) setIsAdmin(role === "admin");
+      })
+      .catch(() => {
+        if (isActive) setIsAdmin(false);
+      });
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  const loadQuotes = useCallback(async (currentFilters: Filters, currentIsAdmin: boolean | null) => {
     setIsLoading(true);
     setError(null);
     try {
@@ -77,7 +89,7 @@ export function QuoteListScreen({ isAdmin }: QuoteListScreenProps) {
         destination: currentFilters.destination || undefined,
         periodStart: currentFilters.periodStart || undefined,
         periodEnd: currentFilters.periodEnd || undefined,
-        onlyMine: isAdmin ? currentFilters.visibility === VISIBILITY_MINE : undefined,
+        onlyMine: currentIsAdmin ? currentFilters.visibility === VISIBILITY_MINE : undefined,
       });
       setItems(result.items);
     } catch {
@@ -85,14 +97,18 @@ export function QuoteListScreen({ isAdmin }: QuoteListScreenProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [isAdmin]);
+  }, []);
 
   useEffect(() => {
+    // Aguarda `isAdmin` ser resolvido (não-null) antes da primeira busca:
+    // evita carregar a lista duas vezes (uma sem saber o papel, outra depois)
+    // e garante que `onlyMine` já reflita o papel correto desde o início.
+    if (isAdmin === null) return;
     const timeout = setTimeout(() => {
-      void loadQuotes(filters);
+      void loadQuotes(filters, isAdmin);
     }, 250);
     return () => clearTimeout(timeout);
-  }, [filters, loadQuotes]);
+  }, [filters, isAdmin, loadQuotes]);
 
   const hasActiveFilters = useMemo(
     () =>
@@ -229,7 +245,7 @@ export function QuoteListScreen({ isAdmin }: QuoteListScreenProps) {
             <ErrorState
               description={error}
               onRetry={() => {
-                void loadQuotes(filters);
+                void loadQuotes(filters, isAdmin);
               }}
             />
           ) : null}

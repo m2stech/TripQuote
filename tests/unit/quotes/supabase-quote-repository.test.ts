@@ -211,11 +211,25 @@ function createFakeSupabase() {
     return builder;
   }
 
+  function profilesTable() {
+    const builder = {
+      select() {
+        return builder;
+      },
+      in() {
+        return Promise.resolve({ data: [], error: null });
+      },
+    };
+    return builder;
+  }
+
   return {
     rows,
     attachments,
-    from(table: "quotes" | "quote_attachments") {
-      return table === "quotes" ? quotesTable() : attachmentsTable();
+    from(table: "quotes" | "quote_attachments" | "profiles") {
+      if (table === "quotes") return quotesTable();
+      if (table === "profiles") return profilesTable();
+      return attachmentsTable();
     },
     storage: {
       from() {

@@ -2,15 +2,29 @@
 
 import { revalidatePath } from "next/cache";
 
+import { getCurrentUserRole } from "@/lib/auth/get-current-user-role";
 import { requireCurrentUserId } from "@/lib/auth/require-current-user-id";
 import { getQuoteRepository } from "@/features/quotes/repository";
 import { runQuoteGeneration } from "@/features/quotes/actions/generation-orchestrator";
 import type { QuoteListFilters } from "@/features/quotes/repository/types";
 import { anyQuoteDraftSchema, type AnyQuoteDraftValues } from "@/features/quotes/schemas/product.schema";
 import type { QuoteRecord } from "@/features/quotes/schemas/quote.schema";
+import type { Database } from "@/lib/supabase/types";
 
 /** Entrada aceita pelas actions, antes da validação Zod (une os dois tipos de produto). */
 export type QuoteDraftActionInput = AnyQuoteDraftValues;
+
+/**
+ * Papel do usuário autenticado, resolvido client-side (ver `QuoteListScreen`)
+ * em vez de no Server Component da página — chamar `getCurrentUserRole`
+ * (acesso dinâmico: cookies + consulta ao Supabase) direto em `page.tsx`,
+ * mesmo dentro de `<Suspense>`, já causou "Next.js encountered the unstable
+ * value `Date.now()` while prerendering" sob Cache Components (Next 16).
+ * Mesmo padrão de `UserManagementScreen`, que também resolve tudo no client.
+ */
+export async function getCurrentUserRoleAction(): Promise<Database["public"]["Enums"]["user_role"]> {
+  return getCurrentUserRole();
+}
 
 /**
  * `onlyMine` é resolvido aqui com o usuário autenticado no servidor — nunca
