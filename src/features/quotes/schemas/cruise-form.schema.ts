@@ -70,7 +70,7 @@ export const cruiseItinerarySchema = z.array(cruiseItineraryStopSchema);
 // 04 — Navio e experiência a bordo ------------------------------------------
 
 export const cruiseShipSchema = z.object({
-  photos: z.array(uploadedAttachmentSchema).max(8, "No máximo 8 fotos do navio."),
+  photo: uploadedAttachmentSchema.nullable().default(null),
   highlights: z.string().trim().optional().default(""),
 });
 
@@ -276,7 +276,7 @@ export const cruiseFormDefaultValues: CruiseFormValues = {
   },
   cover: { tagline: "" },
   itinerary: [],
-  ship: { photos: [], highlights: "" },
+  ship: { photo: null, highlights: "" },
   fare: { cabins: [], portFeesOption: "not_informed", portFeesValue: "", fareRules: "" },
   paymentTerms: "general",
   inclusions: { included: [], notIncluded: [], optional: [], importantInfo: "" },

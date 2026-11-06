@@ -62,6 +62,7 @@ export function CruiseQuoteForm({ quoteId: initialQuoteId }: CruiseQuoteFormProp
   const [isLoadingDraft, setIsLoadingDraft] = useState(Boolean(initialQuoteId));
   const [agencyLogoPreview, setAgencyLogoPreview] = useState<string | null>(null);
   const [itineraryImagePreview, setItineraryImagePreview] = useState<string | null>(null);
+  const [shipPhotoPreview, setShipPhotoPreview] = useState<string | null>(null);
   const [institutionalFooter, setInstitutionalFooter] = useState({
     logoUrl: INSTITUTIONAL_LOGO_URL,
     footerText: FIXED_INSTITUTIONAL_FOOTER,
@@ -109,17 +110,21 @@ export function CruiseQuoteForm({ quoteId: initialQuoteId }: CruiseQuoteFormProp
         setIsDraftPersisted(true);
         reset(record.form);
 
-        const [agencyPreview, itineraryPreview] = await Promise.all([
+        const [agencyPreview, itineraryPreview, shipPreview] = await Promise.all([
           record.form.agencyLogo
             ? getAttachmentPreviewUrlAction("agency_logo", record.form.agencyLogo.storagePath)
             : Promise.resolve(null),
           record.form.itineraryImage
             ? getAttachmentPreviewUrlAction("cruise_itinerary_image", record.form.itineraryImage.storagePath)
             : Promise.resolve(null),
+          record.form.ship?.photo
+            ? getAttachmentPreviewUrlAction("cruise_photo", record.form.ship.photo.storagePath)
+            : Promise.resolve(null),
         ]);
         if (!isActive) return;
         setAgencyLogoPreview(agencyPreview);
         setItineraryImagePreview(itineraryPreview);
+        setShipPhotoPreview(shipPreview);
       })
       .catch(() => {
         if (isActive) toast.error("Não foi possível carregar o orçamento.");
@@ -148,6 +153,7 @@ export function CruiseQuoteForm({ quoteId: initialQuoteId }: CruiseQuoteFormProp
 
   const agencyLogo = useWatch({ control, name: "agencyLogo" }) ?? null;
   const itineraryImage = useWatch({ control, name: "itineraryImage" }) ?? null;
+  const shipPhoto = useWatch({ control, name: "ship.photo" }) ?? null;
   const itineraryCount = useWatch({ control, name: "itinerary" })?.length ?? 0;
   const cabinsCount = useWatch({ control, name: "fare.cabins" })?.length ?? 0;
   const portFeesOption = useWatch({ control, name: "fare.portFeesOption" }) ?? "not_informed";
@@ -411,6 +417,19 @@ export function CruiseQuoteForm({ quoteId: initialQuoteId }: CruiseQuoteFormProp
         >
           <Textarea id="ship.highlights" rows={3} {...register("ship.highlights")} />
         </Field>
+
+        <ImageUpload
+          label="Foto do navio (opcional)"
+          helperText="A IA busca uma foto real do navio automaticamente. Envie aqui só se a geração não encontrar uma foto ou se ela não for adequada — a foto enviada tem prioridade sobre a busca automática."
+          value={shipPhoto}
+          previewUrl={shipPhotoPreview}
+          onChange={(value, preview) => {
+            setValue("ship.photo", value);
+            setShipPhotoPreview(preview);
+          }}
+          quoteId={quoteId}
+          kind="cruise_photo"
+        />
       </SectionCard>
 
       {/* 05 — Cabines e tarifas */}

@@ -31,7 +31,7 @@ const form = normalizeCruiseDraft({
     { id: "1", date: "2026-12-10", portOrDestination: "Santos", operation: "Embarque", arrival: "", departure: "18:00" },
     { id: "2", date: "2026-12-11", portOrDestination: "Navegação", operation: "Navegação", arrival: "", departure: "" },
   ],
-  ship: { photos: [], highlights: "" },
+  ship: { photo: null, highlights: "" },
   fare: {
     cabins: [{ id: "1", category: "Varanda", type: "Garantida (GTY)", occupancy: "", price: "R$ 4.500,00", photo: null }],
     portFeesOption: "included",

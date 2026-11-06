@@ -63,7 +63,7 @@ export async function buildCruisePresentation(
     downloadAgencyLogoBuffer(supabase, form.agencyLogo),
     resolveAgencyLogo(supabase, form.agencyLogo, COVER_LOGO_BOX),
     resolveAgencyLogo(supabase, form.agencyLogo, INNER_LOGO_BOX),
-    resolveShipPhoto(form.general.shipName, form.general.cruiseLine, aiOutput.shipPhoto, {
+    resolveShipPhoto(supabase, form.general.shipName, form.general.cruiseLine, form.ship.photo, aiOutput.shipPhoto, {
       w: SLIDE_WIDTH_IN,
       h: SLIDE_HEIGHT_IN,
     }),

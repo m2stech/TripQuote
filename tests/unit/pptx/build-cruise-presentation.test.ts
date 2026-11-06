@@ -36,7 +36,7 @@ function makeQuote(
       { id: "2", date: "2026-12-11", portOrDestination: "Navegação", operation: "Navegação", arrival: "", departure: "" },
       { id: "3", date: "2026-12-12", portOrDestination: "Ilhabela", operation: "Ancorado", arrival: "08:00", departure: "18:00" },
     ],
-    ship: { photos: [], highlights: "" },
+    ship: { photo: null, highlights: "" },
     fare: {
       cabins: [{ id: "1", category: "Varanda", type: "Garantida (GTY)", occupancy: "", price: "R$ 4.500,00", photo: null }],
       portFeesOption: "included",
