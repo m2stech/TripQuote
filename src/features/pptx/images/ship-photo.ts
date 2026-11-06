@@ -4,7 +4,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { findAlternativePhoto } from "@/features/ai/orchestration/find-alternative-photo";
 import { fetchGooglePlacesPhoto } from "@/features/pptx/images/google-places-photo";
-import { fetchAndSizeImage, sizeImage, type BoxInches } from "@/features/pptx/images/resolve-image-sizing";
+import {
+  fetchAndSizeImage,
+  resolveContainSizing,
+  sizeImage,
+  type BoxInches,
+} from "@/features/pptx/images/resolve-image-sizing";
 import { fetchWikipediaPhoto } from "@/features/pptx/images/wikipedia-photo";
 import { downloadStorageObject } from "@/features/pptx/storage";
 import type { ResolvedImage } from "@/features/pptx/types";
@@ -17,13 +22,16 @@ import type { Database } from "@/lib/supabase/types";
  * estabelecimentos geolocalizados — companhias/navios recém-lançados (ex.:
  * Corazul/Buenavista, estreando no Brasil) não têm presença indexada ainda
  * em nenhuma fonte automática, e forçar uma busca mais "solta" arrisca
- * trazer um lugar errado (ex.: um shopping ou site de agência de nome
- * parecido) em vez de nenhuma foto. Por isso o upload manual (`manualPhoto`,
- * `ship.photo` no formulário) tem prioridade sobre toda a cascata
- * automática quando presente — o consultor gera primeiro, confere, e sobe a
- * foto manualmente se a busca não encontrar nada ou encontrar algo
- * inadequado. Ordem: upload manual → Google Places → Wikipedia → URL citada
- * pela IA (com 1 retry via `findAlternativePhoto`) → placeholder.
+ * trazer um lugar errado (ex.: um shopping, ou um ponto turístico genérico
+ * do porto de embarque, em vez do navio) — já aconteceu na prática. Por isso
+ * o upload manual (`manualPhoto`, `ship.photo` no formulário) é mandatório
+ * quando presente: usado direto, sem passar pela checagem de resolução
+ * mínima de `sizeImage` (pensada para fontes automáticas não confiáveis,
+ * não para um arquivo que o próprio consultor escolheu) nem pela cascata
+ * automática — mesmo padrão incondicional de `resolveCabinPhoto`. Só cai
+ * para a busca automática quando não há upload. Ordem: upload manual →
+ * Google Places → Wikipedia → URL citada pela IA (com 1 retry via
+ * `findAlternativePhoto`) → placeholder.
  */
 export async function resolveShipPhoto(
   supabase: SupabaseClient<Database>,
@@ -36,10 +44,13 @@ export async function resolveShipPhoto(
   if (manualPhoto) {
     try {
       const buffer = await downloadStorageObject(supabase, "cruise-photos", manualPhoto.storagePath);
-      const resolved = await sizeImage({ buffer, mimeType: manualPhoto.mimeType }, box);
-      if (resolved) return resolved;
+      const sizing = await resolveContainSizing(buffer, box);
+      return { kind: "image", data: buffer, sizing };
     } catch {
-      // segue para a cascata automática
+      // Falha de infra (download/leitura) no upload mandatório: cai para
+      // placeholder, igual a `resolveAgencyLogo`/`resolveCabinPhoto` — nunca
+      // tenta a cascata automática, que já mostrou trazer foto errada.
+      return { kind: "placeholder" };
     }
   }
 

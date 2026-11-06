@@ -1,4 +1,5 @@
 import JSZip from "jszip";
+import sharp from "sharp";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.stubGlobal("fetch", vi.fn());
@@ -8,6 +9,7 @@ vi.mock("@/features/pptx/images/google-places-photo", () => ({
 }));
 
 import { buildCruisePresentation, type CruiseQuoteRecord } from "@/features/pptx/build-cruise-presentation";
+import { fetchGooglePlacesPhoto } from "@/features/pptx/images/google-places-photo";
 import { normalizeCruiseDraft, type CruiseFormValues } from "@/features/quotes/schemas/cruise-form.schema";
 
 function makeQuote(
@@ -172,5 +174,60 @@ describe("buildCruisePresentation", () => {
 
     const lastInclusionsSlide = await zip.file("ppt/slides/slide9.xml")!.async("text");
     expect(lastInclusionsSlide).toContain("Item incluído 16");
+  });
+
+  it("foto do navio enviada manualmente tem prioridade sobre a busca automática, mesmo pequena", async () => {
+    // 50x50px: bem abaixo do DPI mínimo exigido de fontes automáticas
+    // (`meetsMinimumResolution`) — upload manual não deve ser rejeitado por isso.
+    const manualPhotoBuffer = await sharp({
+      create: { width: 50, height: 50, channels: 3, background: { r: 10, g: 20, b: 30 } },
+    })
+      .png()
+      .toBuffer();
+
+    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValueOnce({
+      buffer: await sharp({
+        create: { width: 4000, height: 3000, channels: 3, background: { r: 200, g: 200, b: 200 } },
+      })
+        .png()
+        .toBuffer(),
+      mimeType: "image/png",
+    });
+
+    const supabaseWithShipPhoto = {
+      storage: {
+        from: vi.fn().mockReturnValue({
+          download: vi.fn().mockResolvedValue({
+            data: { arrayBuffer: async () => manualPhotoBuffer },
+            error: null,
+          }),
+        }),
+      },
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }),
+      }),
+    } as never;
+
+    const buffer = await buildCruisePresentation(
+      supabaseWithShipPhoto,
+      makeQuote({
+        ship: {
+          photo: { fileName: "navio.png", storagePath: "quote-1/navio.png", mimeType: "image/png", sizeBytes: 1000 },
+          highlights: "",
+        },
+      }),
+    );
+
+    const zip = await JSZip.loadAsync(buffer);
+    const mediaFiles = Object.values(zip.files).filter((file) => /^ppt\/media\/.+/.test(file.name) && !file.dir);
+    const mediaSizes = await Promise.all(mediaFiles.map(async (file) => (await file.async("nodebuffer")).byteLength));
+    // A foto manual (50x50, poucos bytes) deve ter sido usada na capa e no
+    // slide do navio — não a foto "automática" (4000x3000, bem maior).
+    expect(Math.max(...mediaSizes)).toBeLessThan(50_000);
+
+    // Google Places não deve nem ter sido chamado para o navio (é chamado
+    // para as fotos de porto, sem relação): upload manual presente pula a
+    // cascata automática do navio inteira.
+    expect(fetchGooglePlacesPhoto).not.toHaveBeenCalledWith(expect.stringContaining("navio"));
   });
 });
