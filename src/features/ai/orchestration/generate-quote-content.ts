@@ -6,6 +6,7 @@ import { getOpenAiClient } from "@/features/ai/client/openai-client";
 import { composePromptInput } from "@/features/ai/prompt/compose-prompt";
 import { AiGenerationError } from "@/features/ai/orchestration/errors";
 import type { FlightImagePart } from "@/features/ai/vision/flight-image-input";
+import { namesAreEquivalent } from "@/features/pptx/fuzzy-name-match";
 import { generationOutputSchema, type GenerationOutput } from "@/features/quotes/schemas/generation-output.schema";
 import type { PromptVersionRecord } from "@/features/prompts/schemas/prompt-version.schema";
 import type { QuoteFormValues } from "@/features/quotes/schemas/quote-form.schema";
@@ -27,14 +28,33 @@ export interface GenerateQuoteContentResult {
 
 /**
  * Valida a cobertura da resposta contra o formulário: todo hotel do form
- * deve aparecer na resposta, na mesma contagem. Não cabe em Zod puro (é uma
+ * deve aparecer na resposta, na mesma contagem. Comparação de nome tolerante
+ * a pequenas divergências de grafia (ver `fuzzy-name-match.ts`) — a IA
+ * frequentemente "corrige" nomes próprios digitados pelo usuário (ex.: form
+ * tem "Marriot", a IA responde "Marriott"), e uma comparação exata tratava
+ * isso como hotel ausente, forçando um retry inútil e, no limite, falhando a
+ * geração inteira por 1 caractere de diferença. Não cabe em Zod puro (é uma
  * comparação cruzada entre dois valores), então fica como passo explícito
- * depois do `safeParse`.
+ * depois do `safeParse`. Mesmo critério de tolerância usado por
+ * `matchHotelsByName` no builder PPTX, para que um hotel aceito aqui nunca
+ * caia no fallback `ai: null` lá.
  */
 function hasCompleteHotelCoverage(output: GenerationOutput, form: QuoteFormValues): boolean {
   if (output.hotels.length !== form.hotels.length) return false;
-  const outputNames = new Set(output.hotels.map((hotel) => hotel.name));
-  return form.hotels.every((hotel) => outputNames.has(hotel.name));
+  return form.hotels.every((hotel) =>
+    output.hotels.some((outputHotel) => namesAreEquivalent(outputHotel.name, hotel.name)),
+  );
+}
+
+/**
+ * Descreve a divergência de cobertura (nomes esperados x recebidos) para
+ * diagnóstico — só chamada quando a cobertura já falhou, nunca no caminho de
+ * sucesso.
+ */
+function describeHotelCoverageMismatch(output: GenerationOutput, form: QuoteFormValues): string {
+  const expected = form.hotels.map((hotel) => hotel.name);
+  const received = output.hotels.map((hotel) => hotel.name);
+  return `esperado [${expected.join(" | ")}], recebido [${received.join(" | ")}]`;
 }
 
 async function callResponsesApi(
@@ -93,7 +113,9 @@ export async function generateQuoteContent(
     }
 
     if (!hasCompleteHotelCoverage(validation.data, form)) {
-      lastFailureReason = "A resposta não cobriu todos os hotéis informados no formulário.";
+      lastFailureReason =
+        `A resposta não cobriu todos os hotéis informados no formulário ` +
+        `(${describeHotelCoverageMismatch(validation.data, form)}).`;
       continue;
     }
 

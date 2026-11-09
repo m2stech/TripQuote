@@ -60,4 +60,12 @@ describe("matchHotelsByName", () => {
     expect(result).toHaveLength(2);
     expect(result[1]!.ai).toBeNull();
   });
+
+  it("casa hotéis mesmo com pequena divergência de grafia (caso relatado: Marriot x Marriott)", () => {
+    const formHotels = [makeHotel("Quebec City Marriot Downtown")];
+    const aiHotels = [makeGeneratedHotel("Quebec City Marriott Downtown")];
+
+    const result = matchHotelsByName(formHotels, aiHotels);
+    expect(result[0]!.ai).not.toBeNull();
+  });
 });

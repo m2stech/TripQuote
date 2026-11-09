@@ -140,4 +140,22 @@ describe("generateQuoteContent", () => {
       generateQuoteContent({ form, promptVersion, flightImagePart: null }),
     ).rejects.toThrow(AiGenerationError);
   });
+
+  it("aceita pequena divergência de grafia no nome do hotel (caso relatado: Marriot x Marriott)", async () => {
+    const outputWithRenamedHotel = {
+      ...validOutputParsed(),
+      hotels: [
+        {
+          ...validOutputParsed().hotels[0]!,
+          name: "Mandarin Oriental Santiago",
+        },
+      ],
+    };
+    const parse = mockResponsesParse({ output_parsed: outputWithRenamedHotel });
+
+    const result = await generateQuoteContent({ form, promptVersion, flightImagePart: null });
+
+    expect(parse).toHaveBeenCalledTimes(1);
+    expect(result.output.hotels).toHaveLength(1);
+  });
 });
