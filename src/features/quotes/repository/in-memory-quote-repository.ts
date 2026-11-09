@@ -1,7 +1,11 @@
+import type { UpdateCommercialStatusInput } from "@/features/quotes/schemas/commercial-status.schema";
 import { normalizeCruiseDraft } from "@/features/quotes/schemas/cruise-form.schema";
 import type { AnyQuoteDraftValues } from "@/features/quotes/schemas/product.schema";
 import type { QuoteFormValues } from "@/features/quotes/schemas/quote-form.schema";
-import { normalizeQuoteDraft, quoteFormDefaultValues } from "@/features/quotes/schemas/quote-form.schema";
+import {
+  normalizeQuoteDraft,
+  quoteFormDefaultValues,
+} from "@/features/quotes/schemas/quote-form.schema";
 import { toQuoteSummary, type QuoteRecord } from "@/features/quotes/schemas/quote.schema";
 
 function normalizeAnyDraft(form: AnyQuoteDraftValues): QuoteRecord["form"] {
@@ -10,7 +14,11 @@ function normalizeAnyDraft(form: AnyQuoteDraftValues): QuoteRecord["form"] {
 }
 
 /** Período de viagem do rascunho — embarque/desembarque no cruzeiro, início/fim no terrestre. */
-function tripPeriod(form: QuoteRecord["form"]): { destination: string; startDate: string; endDate: string } {
+function tripPeriod(form: QuoteRecord["form"]): {
+  destination: string;
+  startDate: string;
+  endDate: string;
+} {
   if (form.productType === "cruzeiro") {
     return {
       destination: form.general.destination,
@@ -18,7 +26,11 @@ function tripPeriod(form: QuoteRecord["form"]): { destination: string; startDate
       endDate: form.general.disembarkationDate,
     };
   }
-  return { destination: form.general.destination, startDate: form.general.startDate, endDate: form.general.endDate };
+  return {
+    destination: form.general.destination,
+    startDate: form.general.startDate,
+    endDate: form.general.endDate,
+  };
 }
 import type {
   GenerationResult,
@@ -69,6 +81,8 @@ function seedQuotes(): QuoteRecord[] {
     {
       id: createId(),
       status: "done",
+      commercialStatus: "won",
+      commercialReference: "LOC-1234",
       createdAt: daysAgo(10),
       updatedAt: daysAgo(9),
       createdBy: "consultor@snow.com.br",
@@ -83,6 +97,7 @@ function seedQuotes(): QuoteRecord[] {
     {
       id: createId(),
       status: "processing",
+      commercialStatus: "pending",
       createdAt: daysAgo(2),
       updatedAt: daysAgo(0),
       createdBy: "consultor@snow.com.br",
@@ -97,6 +112,7 @@ function seedQuotes(): QuoteRecord[] {
     {
       id: createId(),
       status: "draft",
+      commercialStatus: "pending",
       createdAt: daysAgo(1),
       updatedAt: daysAgo(1),
       createdBy: "consultor@snow.com.br",
@@ -111,6 +127,8 @@ function seedQuotes(): QuoteRecord[] {
     {
       id: createId(),
       status: "error",
+      commercialStatus: "lost",
+      commercialReason: "Agência optou por outro fornecedor.",
       createdAt: daysAgo(5),
       updatedAt: daysAgo(5),
       createdBy: "consultor@snow.com.br",
@@ -153,7 +171,9 @@ export class InMemoryQuoteRepository implements QuoteRepository {
 
     if (filters.destination) {
       const term = filters.destination.trim().toLowerCase();
-      items = items.filter((quote) => tripPeriod(quote.form).destination.toLowerCase().includes(term));
+      items = items.filter((quote) =>
+        tripPeriod(quote.form).destination.toLowerCase().includes(term),
+      );
     }
 
     if (filters.periodStart) {
@@ -189,6 +209,7 @@ export class InMemoryQuoteRepository implements QuoteRepository {
     const record: QuoteRecord = {
       id: createId(),
       status: "draft",
+      commercialStatus: "pending",
       createdAt: now,
       updatedAt: now,
       createdBy,
@@ -198,7 +219,11 @@ export class InMemoryQuoteRepository implements QuoteRepository {
     return record;
   }
 
-  async upsertDraft(id: string, form: AnyQuoteDraftValues, createdBy: string): Promise<QuoteRecord> {
+  async upsertDraft(
+    id: string,
+    form: AnyQuoteDraftValues,
+    createdBy: string,
+  ): Promise<QuoteRecord> {
     await wait(SIMULATED_LATENCY_MS);
     const existing = this.quotes.find((quote) => quote.id === id);
     if (existing) {
@@ -215,6 +240,7 @@ export class InMemoryQuoteRepository implements QuoteRepository {
     const record: QuoteRecord = {
       id,
       status: "draft",
+      commercialStatus: "pending",
       createdAt: now,
       updatedAt: now,
       createdBy,
@@ -233,6 +259,7 @@ export class InMemoryQuoteRepository implements QuoteRepository {
     const record: QuoteRecord = {
       id,
       status: "draft",
+      commercialStatus: "pending",
       createdAt: now,
       updatedAt: now,
       createdBy,
@@ -305,8 +332,19 @@ export class InMemoryQuoteRepository implements QuoteRepository {
 
     const finished: QuoteRecord =
       result.status === "done"
-        ? { ...existing, status: "done", errorMessage: undefined, aiOutput: result.aiOutput, updatedAt: new Date().toISOString() }
-        : { ...existing, status: "error", errorMessage: result.errorMessage, updatedAt: new Date().toISOString() };
+        ? {
+            ...existing,
+            status: "done",
+            errorMessage: undefined,
+            aiOutput: result.aiOutput,
+            updatedAt: new Date().toISOString(),
+          }
+        : {
+            ...existing,
+            status: "error",
+            errorMessage: result.errorMessage,
+            updatedAt: new Date().toISOString(),
+          };
 
     this.quotes = this.quotes.map((quote) => (quote.id === id ? finished : quote));
     return finished;
@@ -321,6 +359,29 @@ export class InMemoryQuoteRepository implements QuoteRepository {
     const updated: QuoteRecord = {
       ...existing,
       pptxStoragePath: path,
+      updatedAt: new Date().toISOString(),
+    };
+    this.quotes = this.quotes.map((quote) => (quote.id === id ? updated : quote));
+    return updated;
+  }
+
+  async updateCommercialStatus(
+    id: string,
+    input: UpdateCommercialStatusInput,
+    changedBy: string,
+  ): Promise<QuoteRecord> {
+    await wait(SIMULATED_LATENCY_MS);
+    const existing = this.quotes.find((quote) => quote.id === id);
+    if (!existing) {
+      throw new Error(`Orçamento ${id} não encontrado.`);
+    }
+    const updated: QuoteRecord = {
+      ...existing,
+      commercialStatus: input.status,
+      commercialReference: input.status === "won" ? input.reference : null,
+      commercialReason: input.status === "lost" ? input.reason : null,
+      commercialStatusUpdatedAt: new Date().toISOString(),
+      commercialStatusUpdatedBy: changedBy,
       updatedAt: new Date().toISOString(),
     };
     this.quotes = this.quotes.map((quote) => (quote.id === id ? updated : quote));

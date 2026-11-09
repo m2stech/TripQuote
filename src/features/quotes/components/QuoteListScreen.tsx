@@ -18,10 +18,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getCurrentUserRoleAction, listQuotesAction } from "@/features/quotes/actions/quote-actions";
+import {
+  getCurrentUserRoleAction,
+  listQuotesAction,
+} from "@/features/quotes/actions/quote-actions";
+import { QuoteCommercialStatusBadge } from "@/features/quotes/components/QuoteCommercialStatusBadge";
 import { QuoteStatusBadge } from "@/features/quotes/components/QuoteStatusBadge";
 import { PRODUCT_TYPE_LABELS } from "@/features/prompts/schemas/product-type.schema";
-import { quoteStatusLabels, quoteStatusValues, type QuoteStatus } from "@/features/quotes/schemas/quote.schema";
+import {
+  quoteStatusLabels,
+  quoteStatusValues,
+  type QuoteStatus,
+} from "@/features/quotes/schemas/quote.schema";
 import type { QuoteSummary } from "@/features/quotes/schemas/quote.schema";
 
 const STATUS_FILTER_ALL = "all" as const;
@@ -79,25 +87,28 @@ export function QuoteListScreen() {
     };
   }, []);
 
-  const loadQuotes = useCallback(async (currentFilters: Filters, currentIsAdmin: boolean | null) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const result = await listQuotesAction({
-        search: currentFilters.search || undefined,
-        status: currentFilters.status === STATUS_FILTER_ALL ? undefined : currentFilters.status,
-        destination: currentFilters.destination || undefined,
-        periodStart: currentFilters.periodStart || undefined,
-        periodEnd: currentFilters.periodEnd || undefined,
-        onlyMine: currentIsAdmin ? currentFilters.visibility === VISIBILITY_MINE : undefined,
-      });
-      setItems(result.items);
-    } catch {
-      setError("Não foi possível carregar a lista de orçamentos.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const loadQuotes = useCallback(
+    async (currentFilters: Filters, currentIsAdmin: boolean | null) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const result = await listQuotesAction({
+          search: currentFilters.search || undefined,
+          status: currentFilters.status === STATUS_FILTER_ALL ? undefined : currentFilters.status,
+          destination: currentFilters.destination || undefined,
+          periodStart: currentFilters.periodStart || undefined,
+          periodEnd: currentFilters.periodEnd || undefined,
+          onlyMine: currentIsAdmin ? currentFilters.visibility === VISIBILITY_MINE : undefined,
+        });
+        setItems(result.items);
+      } catch {
+        setError("Não foi possível carregar a lista de orçamentos.");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     // Aguarda `isAdmin` ser resolvido (não-null) antes da primeira busca:
@@ -143,7 +154,9 @@ export function QuoteListScreen() {
                 id="quote-search"
                 placeholder="Agência, consultor ou destino"
                 value={filters.search}
-                onChange={(event) => setFilters((prev) => ({ ...prev, search: event.target.value }))}
+                onChange={(event) =>
+                  setFilters((prev) => ({ ...prev, search: event.target.value }))
+                }
               />
             </div>
 
@@ -227,7 +240,12 @@ export function QuoteListScreen() {
 
           {hasActiveFilters ? (
             <div className="mt-4">
-              <Button type="button" variant="outline" size="sm" onClick={() => setFilters(INITIAL_FILTERS)}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setFilters(INITIAL_FILTERS)}
+              >
                 Limpar filtros
               </Button>
             </div>
@@ -256,7 +274,11 @@ export function QuoteListScreen() {
                 title="Nenhum orçamento encontrado"
                 description="Ajuste os filtros de busca e tente novamente."
                 action={
-                  <Button type="button" variant="outline" onClick={() => setFilters(INITIAL_FILTERS)}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setFilters(INITIAL_FILTERS)}
+                  >
                     Limpar filtros
                   </Button>
                 }
@@ -285,12 +307,13 @@ export function QuoteListScreen() {
                 <li key={quote.id}>
                   <Link
                     href={`/orcamentos/${quote.id}`}
-                    className="rounded-snow-card border-border bg-card shadow-snow-card hover:border-snow-blue focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-snow-blue flex flex-col gap-2 border p-5 transition-colors sm:flex-row sm:items-center sm:justify-between"
+                    className="rounded-snow-card border-border bg-card shadow-snow-card hover:border-snow-blue focus-visible:outline-snow-blue flex flex-col gap-2 border p-5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
                         <p className="text-foreground font-semibold">{quote.agency}</p>
                         <Badge variant="outline">{PRODUCT_TYPE_LABELS[quote.productType]}</Badge>
+                        <QuoteStatusBadge status={quote.status} />
                       </div>
                       <p className="text-muted-foreground text-sm">
                         {quote.destination} · Consultor: {quote.consultant}
@@ -302,7 +325,7 @@ export function QuoteListScreen() {
                         Criado por {quote.createdByName} em {formatDateTime(quote.createdAt)}
                       </p>
                     </div>
-                    <QuoteStatusBadge status={quote.status} />
+                    <QuoteCommercialStatusBadge status={quote.commercialStatus} />
                   </Link>
                 </li>
               ))}

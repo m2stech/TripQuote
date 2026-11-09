@@ -1,10 +1,17 @@
-import type { AnyGenerationOutput, AnyQuoteDraftValues } from "@/features/quotes/schemas/product.schema";
-import type { QuoteRecord, QuoteStatus, QuoteSummary } from "@/features/quotes/schemas/quote.schema";
+import type { UpdateCommercialStatusInput } from "@/features/quotes/schemas/commercial-status.schema";
+import type {
+  AnyGenerationOutput,
+  AnyQuoteDraftValues,
+} from "@/features/quotes/schemas/product.schema";
+import type {
+  QuoteRecord,
+  QuoteStatus,
+  QuoteSummary,
+} from "@/features/quotes/schemas/quote.schema";
 
 /** Resultado final de uma geração via IA, gravado pelo orquestrador (M6). */
 export type GenerationResult =
-  | { status: "done"; aiOutput: AnyGenerationOutput }
-  | { status: "error"; errorMessage: string };
+  { status: "done"; aiOutput: AnyGenerationOutput } | { status: "error"; errorMessage: string };
 
 /**
  * Filtros de listagem de orçamentos. `period` filtra pela data de início da
@@ -75,4 +82,15 @@ export interface QuoteRepository {
    * `status: "done"` já obtido com sucesso.
    */
   updatePptxStoragePath(id: string, path: string): Promise<QuoteRecord>;
+  /**
+   * Altera o status comercial do orçamento (M12) e grava uma linha no
+   * histórico de auditoria (`quote_commercial_status_history`). `changedBy`
+   * é sempre o usuário autenticado que realizou a troca — nunca confiar em
+   * um valor vindo do client (ver `updateQuoteCommercialStatusAction`).
+   */
+  updateCommercialStatus(
+    id: string,
+    input: UpdateCommercialStatusInput,
+    changedBy: string,
+  ): Promise<QuoteRecord>;
 }

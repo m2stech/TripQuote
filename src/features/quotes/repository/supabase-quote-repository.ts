@@ -3,8 +3,13 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/lib/supabase/types";
+import type { UpdateCommercialStatusInput } from "@/features/quotes/schemas/commercial-status.schema";
 import type { AnyQuoteDraftValues } from "@/features/quotes/schemas/product.schema";
-import { parseQuoteRecord, toQuoteSummary, type QuoteRecord } from "@/features/quotes/schemas/quote.schema";
+import {
+  parseQuoteRecord,
+  toQuoteSummary,
+  type QuoteRecord,
+} from "@/features/quotes/schemas/quote.schema";
 import type {
   GenerationResult,
   QuoteListFilters,
@@ -25,6 +30,11 @@ function rowToRecord(row: QuoteRow): QuoteRecord {
     form: row.form,
     aiOutput: row.ai_output ?? null,
     pptxStoragePath: row.pptx_storage_path ?? null,
+    commercialStatus: row.commercial_status,
+    commercialReference: row.commercial_reference ?? null,
+    commercialReason: row.commercial_reason ?? null,
+    commercialStatusUpdatedAt: row.commercial_status_updated_at ?? null,
+    commercialStatusUpdatedBy: row.commercial_status_updated_by ?? null,
   });
 }
 
@@ -44,8 +54,14 @@ function formToColumns(form: AnyQuoteDraftValues | Record<string, never>) {
     agency: general?.agency || "",
     consultant: general?.consultant || "",
     destination: general?.destination || "",
-    start_date: (isCruise ? (general as { embarkationDate?: string })?.embarkationDate : (general as { startDate?: string })?.startDate) || null,
-    end_date: (isCruise ? (general as { disembarkationDate?: string })?.disembarkationDate : (general as { endDate?: string })?.endDate) || null,
+    start_date:
+      (isCruise
+        ? (general as { embarkationDate?: string })?.embarkationDate
+        : (general as { startDate?: string })?.startDate) || null,
+    end_date:
+      (isCruise
+        ? (general as { disembarkationDate?: string })?.disembarkationDate
+        : (general as { endDate?: string })?.endDate) || null,
     form: form as unknown as Database["public"]["Tables"]["quotes"]["Row"]["form"],
   };
 }
@@ -108,18 +124,30 @@ export class SupabaseQuoteRepository implements QuoteRepository {
     const uniqueIds = Array.from(new Set(userIds));
     if (uniqueIds.length === 0) return new Map();
 
-    const { data, error } = await this.supabase.from("profiles").select("id, full_name").in("id", uniqueIds);
-    if (error) throw new Error(`Não foi possível carregar os responsáveis pelos orçamentos: ${error.message}`);
+    const { data, error } = await this.supabase
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", uniqueIds);
+    if (error)
+      throw new Error(
+        `Não foi possível carregar os responsáveis pelos orçamentos: ${error.message}`,
+      );
 
     return new Map(
       (data ?? [])
-        .filter((profile): profile is { id: string; full_name: string } => Boolean(profile.full_name))
+        .filter((profile): profile is { id: string; full_name: string } =>
+          Boolean(profile.full_name),
+        )
         .map((profile) => [profile.id, profile.full_name]),
     );
   }
 
   async getById(id: string): Promise<QuoteRecord | null> {
-    const { data, error } = await this.supabase.from("quotes").select("*").eq("id", id).maybeSingle();
+    const { data, error } = await this.supabase
+      .from("quotes")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
     if (error) throw new Error(`Não foi possível carregar o orçamento: ${error.message}`);
     return data ? rowToRecord(data) : null;
   }
@@ -134,7 +162,11 @@ export class SupabaseQuoteRepository implements QuoteRepository {
     return rowToRecord(data);
   }
 
-  async upsertDraft(id: string, form: AnyQuoteDraftValues, createdBy: string): Promise<QuoteRecord> {
+  async upsertDraft(
+    id: string,
+    form: AnyQuoteDraftValues,
+    createdBy: string,
+  ): Promise<QuoteRecord> {
     const { data, error } = await this.supabase
       .from("quotes")
       .upsert(
@@ -158,7 +190,12 @@ export class SupabaseQuoteRepository implements QuoteRepository {
     const { data, error } = await this.supabase
       .from("quotes")
       .upsert(
-        { id, ...formToColumns({} as Record<string, never>), created_by: createdBy, status: "draft" },
+        {
+          id,
+          ...formToColumns({} as Record<string, never>),
+          created_by: createdBy,
+          status: "draft",
+        },
         { onConflict: "id", ignoreDuplicates: true },
       )
       .select("*");
@@ -258,7 +295,8 @@ export class SupabaseQuoteRepository implements QuoteRepository {
           ? {
               status: "done",
               error_message: null,
-              ai_output: result.aiOutput as unknown as Database["public"]["Tables"]["quotes"]["Row"]["ai_output"],
+              ai_output:
+                result.aiOutput as unknown as Database["public"]["Tables"]["quotes"]["Row"]["ai_output"],
             }
           : { status: "error", error_message: result.errorMessage },
       )
@@ -277,6 +315,56 @@ export class SupabaseQuoteRepository implements QuoteRepository {
       .select("*")
       .single();
     if (error) throw new Error(`Não foi possível registrar o arquivo gerado: ${error.message}`);
+    return rowToRecord(data);
+  }
+
+  /**
+   * Grava o novo status comercial em `quotes` e insere a linha de auditoria
+   * correspondente em `quote_commercial_status_history`. Não há transação
+   * real disponível via supabase-js: se o insert do histórico falhar após o
+   * update ter sucesso, o status fica correto mas sem o registro de auditoria
+   * dessa troca específica — risco aceito (mesmo padrão best-effort usado em
+   * `duplicate()`, que copia anexos um a um sem transação).
+   */
+  async updateCommercialStatus(
+    id: string,
+    input: UpdateCommercialStatusInput,
+    changedBy: string,
+  ): Promise<QuoteRecord> {
+    const current = await this.getById(id);
+    if (!current) throw new Error(`Orçamento ${id} não encontrado.`);
+
+    const now = new Date().toISOString();
+    const { data, error } = await this.supabase
+      .from("quotes")
+      .update({
+        commercial_status: input.status,
+        commercial_reference: input.status === "won" ? input.reference : null,
+        commercial_reason: input.status === "lost" ? input.reason : null,
+        commercial_status_updated_at: now,
+        commercial_status_updated_by: changedBy,
+      })
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) throw new Error(`Não foi possível atualizar o status comercial: ${error.message}`);
+
+    const { error: historyError } = await this.supabase
+      .from("quote_commercial_status_history")
+      .insert({
+        quote_id: id,
+        previous_status: current.commercialStatus,
+        new_status: input.status,
+        reference: input.status === "won" ? input.reference : null,
+        reason: input.status === "lost" ? input.reason : null,
+        changed_by: changedBy,
+      });
+    if (historyError) {
+      throw new Error(
+        `Não foi possível registrar o histórico do status comercial: ${historyError.message}`,
+      );
+    }
+
     return rowToRecord(data);
   }
 }
