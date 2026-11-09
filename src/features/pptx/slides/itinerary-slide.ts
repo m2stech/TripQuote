@@ -44,13 +44,29 @@ const COMPACT_THRESHOLD_CHARS = 700;
  * apertado do que uma estimativa conservadora assume), que gerava páginas
  * com só 1 dia mesmo quando um dia curto adjacente caberia junto.
  */
-function charsPerLine(fontSize: number): number {
+export function charsPerLine(fontSize: number): number {
   const inchesPerChar = fontSize >= NORMAL_FONT_SIZE ? 0.092 : 0.079;
   return Math.floor(DESCRIPTION_W / inchesPerChar);
 }
 
-function isCompactDescription(description: string): boolean {
+export function isCompactDescription(description: string): boolean {
   return description.length > COMPACT_THRESHOLD_CHARS;
+}
+
+/**
+ * Conta as linhas visuais que `description` vai ocupar, somando por
+ * parágrafo (quebra `\n`) em vez de dividir o total de caracteres pela
+ * largura disponível. Dividir pelo total ignora que cada quebra de linha
+ * explícita força uma linha "curta" extra — um texto com 6 parágrafos curtos
+ * ocupa 6+ linhas mesmo que a soma dos caracteres caiba em poucas linhas
+ * corridas, e a estimativa por caractere total subestimava a altura nesses
+ * casos (bug relatado: texto vazando do card em roteiros com parágrafos).
+ */
+export function countWrappedLines(description: string, fontSize: number): number {
+  const perLine = charsPerLine(fontSize);
+  return description
+    .split("\n")
+    .reduce((total, paragraph) => total + Math.max(1, Math.ceil(paragraph.length / perLine)), 0);
 }
 
 /**
@@ -59,11 +75,11 @@ function isCompactDescription(description: string): boolean {
  * na altura fixa original, cortando texto (bug relatado). Cresce com o
  * texto em vez de assumir uma altura única para todo dia.
  */
-function estimateRowHeight(description: string): number {
+export function estimateRowHeight(description: string): number {
   const compact = isCompactDescription(description);
   const fontSize = compact ? COMPACT_FONT_SIZE : NORMAL_FONT_SIZE;
   const lineHeight = compact ? COMPACT_LINE_HEIGHT_IN : NORMAL_LINE_HEIGHT_IN;
-  const lineCount = Math.max(1, Math.ceil(description.length / charsPerLine(fontSize)));
+  const lineCount = Math.max(1, countWrappedLines(description, fontSize));
   return Math.max(MIN_ROW_H, ROW_PADDING * 2 + lineCount * lineHeight);
 }
 
