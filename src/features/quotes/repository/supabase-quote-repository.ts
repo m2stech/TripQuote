@@ -12,6 +12,7 @@ import {
 } from "@/features/quotes/schemas/quote.schema";
 import type {
   GenerationResult,
+  OperatorOption,
   QuoteListFilters,
   QuoteListResult,
   QuoteRepository,
@@ -143,6 +144,24 @@ export class SupabaseQuoteRepository implements QuoteRepository {
         )
         .map((profile) => [profile.id, profile.full_name]),
     );
+  }
+
+  /**
+   * Operadores distintos com ao menos um orçamento criado, ordenados por
+   * nome. Mesma RLS de `loadCreatorNames`: consultor só enxergaria a si
+   * mesmo, admin enxerga todos — por isso este método só faz sentido exposto
+   * ao filtro "Operador" quando o papel é admin (checado na Server Action).
+   */
+  async listOperators(): Promise<OperatorOption[]> {
+    const { data, error } = await this.supabase.from("quotes").select("created_by");
+    if (error) throw new Error(`Não foi possível carregar os operadores: ${error.message}`);
+
+    const uniqueIds = Array.from(new Set((data ?? []).map((row) => row.created_by)));
+    const namesByUserId = await this.loadCreatorNames(uniqueIds);
+
+    return uniqueIds
+      .map((id) => ({ id, name: namesByUserId.get(id) ?? id }))
+      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   }
 
   async getById(id: string): Promise<QuoteRecord | null> {

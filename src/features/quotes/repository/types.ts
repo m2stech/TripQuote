@@ -40,6 +40,12 @@ export interface QuoteListResult {
   total: number;
 }
 
+/** Operador (usuário autenticado) que já criou ao menos um orçamento — opção do filtro "Operador". */
+export interface OperatorOption {
+  id: string;
+  name: string;
+}
+
 /**
  * Camada de acesso a orçamentos. `InMemoryQuoteRepository` foi a implementação
  * mock usada até o M5 (mantida para testes); `SupabaseQuoteRepository` é a
@@ -47,6 +53,13 @@ export interface QuoteListResult {
  */
 export interface QuoteRepository {
   list(filters?: QuoteListFilters): Promise<QuoteListResult>;
+  /**
+   * Operadores distintos que já criaram ao menos um orçamento — popula o
+   * filtro "Operador" (admin apenas). Diferente de `listUsers` (gestão de
+   * usuários): aqui só entram usuários com orçamento criado, nunca a base
+   * completa de cadastros.
+   */
+  listOperators(): Promise<OperatorOption[]>;
   getById(id: string): Promise<QuoteRecord | null>;
   create(form: AnyQuoteDraftValues, createdBy: string): Promise<QuoteRecord>;
   /**

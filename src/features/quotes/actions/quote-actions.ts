@@ -3,10 +3,11 @@
 import { revalidatePath } from "next/cache";
 
 import { getCurrentUserRole } from "@/lib/auth/get-current-user-role";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import { requireCurrentUserId } from "@/lib/auth/require-current-user-id";
 import { getQuoteRepository } from "@/features/quotes/repository";
 import { runQuoteGeneration } from "@/features/quotes/actions/generation-orchestrator";
-import type { QuoteListFilters } from "@/features/quotes/repository/types";
+import type { OperatorOption, QuoteListFilters } from "@/features/quotes/repository/types";
 import { updateCommercialStatusInputSchema } from "@/features/quotes/schemas/commercial-status.schema";
 import {
   anyQuoteDraftSchema,
@@ -37,12 +38,16 @@ export async function getCurrentUserRoleAction(): Promise<
  * recebido como id direto do client — para que o filtro "apenas as minhas"
  * do admin não possa ser usado para espiar os orçamentos de outro usuário.
  * Para consultor, a restrição por usuário já vem da RLS independente deste
- * parâmetro.
+ * parâmetro. `operatorId` (filtro "Operador", admin apenas na UI) é
+ * repassado como `createdBy` ao repository — um consultor que manipulasse
+ * esse valor no client não ganharia nada: a RLS de `quotes` já restringe
+ * toda leitura a `created_by = auth.uid()` para quem não é admin,
+ * independente do filtro pedido.
  */
 export async function listQuotesAction(
-  filters: Omit<QuoteListFilters, "createdBy"> & { onlyMine?: boolean } = {},
+  filters: Omit<QuoteListFilters, "createdBy"> & { onlyMine?: boolean; operatorId?: string } = {},
 ) {
-  const { onlyMine, ...rest } = filters;
+  const { onlyMine, operatorId, ...rest } = filters;
   const repository = await getQuoteRepository();
 
   if (onlyMine) {
@@ -50,7 +55,18 @@ export async function listQuotesAction(
     return repository.list({ ...rest, createdBy: userId });
   }
 
-  return repository.list(rest);
+  return repository.list({ ...rest, createdBy: operatorId });
+}
+
+/**
+ * Operadores distintos com ao menos um orçamento criado — popula o filtro
+ * "Operador" na listagem. Admin apenas: revela nomes de todos os usuários
+ * que já criaram orçamentos.
+ */
+export async function listOperatorsAction(): Promise<OperatorOption[]> {
+  await requireAdmin();
+  const repository = await getQuoteRepository();
+  return repository.listOperators();
 }
 
 export async function getQuoteAction(id: string): Promise<QuoteRecord | null> {

@@ -335,6 +335,15 @@ describe("SupabaseQuoteRepository", () => {
     expect(result.items[0]?.agency).toBe("Agência A");
   });
 
+  it("listOperators() retorna operadores distintos que já criaram orçamento, ordenados", async () => {
+    await repository.create(draft({ general: { agency: "Agência A" } }), "user-b");
+    await repository.create(draft({ general: { agency: "Agência B" } }), "user-a");
+    await repository.create(draft({ general: { agency: "Agência C" } }), "user-b");
+
+    const operators = await repository.listOperators();
+    expect(operators.map((operator) => operator.id)).toEqual(["user-a", "user-b"]);
+  });
+
   it("lista orçamentos filtrando por createdBy (visibilidade 'apenas as minhas')", async () => {
     await repository.create(draft({ general: { agency: "Agência A" } }), "user-1");
     await repository.create(draft({ general: { agency: "Agência B" } }), "user-2");

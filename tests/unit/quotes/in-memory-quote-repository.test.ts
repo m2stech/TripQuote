@@ -44,6 +44,16 @@ describe("InMemoryQuoteRepository", () => {
     expect(result.items[0]?.agency).toBe("Agência Alfa");
   });
 
+  it("listOperators() retorna operadores distintos que já criaram orçamento, ordenados", async () => {
+    const repository = new InMemoryQuoteRepository([]);
+    await repository.create(makeForm({ agency: "Agência Alfa" }), "user-b@test.com");
+    await repository.create(makeForm({ agency: "Agência Beta" }), "user-a@test.com");
+    await repository.create(makeForm({ agency: "Agência Gama" }), "user-b@test.com");
+
+    const operators = await repository.listOperators();
+    expect(operators.map((operator) => operator.id)).toEqual(["user-a@test.com", "user-b@test.com"]);
+  });
+
   it("filtra por busca textual (agência, consultor ou destino)", async () => {
     const repository = new InMemoryQuoteRepository([]);
     await repository.create(makeForm({ agency: "Agência Alfa", destination: "Lisboa" }), "user@test.com");

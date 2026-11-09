@@ -20,10 +20,12 @@ import {
 } from "@/components/ui/select";
 import {
   getCurrentUserRoleAction,
+  listOperatorsAction,
   listQuotesAction,
 } from "@/features/quotes/actions/quote-actions";
 import { QuoteCommercialStatusBadge } from "@/features/quotes/components/QuoteCommercialStatusBadge";
 import { QuoteStatusBadge } from "@/features/quotes/components/QuoteStatusBadge";
+import type { OperatorOption } from "@/features/quotes/repository/types";
 import { PRODUCT_TYPE_LABELS } from "@/features/prompts/schemas/product-type.schema";
 import {
   commercialStatusLabels,
@@ -47,6 +49,9 @@ const VISIBILITY_MINE = "mine" as const;
 const VISIBILITY_ALL = "all" as const;
 type VisibilityFilterValue = typeof VISIBILITY_MINE | typeof VISIBILITY_ALL;
 
+const OPERATOR_FILTER_ALL = "all" as const;
+type OperatorFilterValue = string | typeof OPERATOR_FILTER_ALL;
+
 interface Filters {
   search: string;
   status: StatusFilterValue;
@@ -55,6 +60,7 @@ interface Filters {
   periodStart: string;
   periodEnd: string;
   visibility: VisibilityFilterValue;
+  operatorId: OperatorFilterValue;
 }
 
 const INITIAL_FILTERS: Filters = {
@@ -65,6 +71,7 @@ const INITIAL_FILTERS: Filters = {
   periodStart: "",
   periodEnd: "",
   visibility: VISIBILITY_MINE,
+  operatorId: OPERATOR_FILTER_ALL,
 };
 
 /**
@@ -82,6 +89,7 @@ export function QuoteListScreen() {
   const [items, setItems] = useState<QuoteSummary[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [operators, setOperators] = useState<OperatorOption[]>([]);
 
   useEffect(() => {
     let isActive = true;
@@ -96,6 +104,21 @@ export function QuoteListScreen() {
       isActive = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    let isActive = true;
+    listOperatorsAction()
+      .then((result) => {
+        if (isActive) setOperators(result);
+      })
+      .catch(() => {
+        if (isActive) setOperators([]);
+      });
+    return () => {
+      isActive = false;
+    };
+  }, [isAdmin]);
 
   const loadQuotes = useCallback(
     async (currentFilters: Filters, currentIsAdmin: boolean | null) => {
@@ -113,6 +136,10 @@ export function QuoteListScreen() {
           periodStart: currentFilters.periodStart || undefined,
           periodEnd: currentFilters.periodEnd || undefined,
           onlyMine: currentIsAdmin ? currentFilters.visibility === VISIBILITY_MINE : undefined,
+          operatorId:
+            currentIsAdmin && currentFilters.operatorId !== OPERATOR_FILTER_ALL
+              ? currentFilters.operatorId
+              : undefined,
         });
         setItems(result.items);
       } catch {
@@ -143,7 +170,8 @@ export function QuoteListScreen() {
       filters.destination !== "" ||
       filters.periodStart !== "" ||
       filters.periodEnd !== "" ||
-      filters.visibility !== VISIBILITY_MINE,
+      filters.visibility !== VISIBILITY_MINE ||
+      filters.operatorId !== OPERATOR_FILTER_ALL,
     [filters],
   );
 
@@ -237,6 +265,37 @@ export function QuoteListScreen() {
                   <SelectContent>
                     <SelectItem value={VISIBILITY_MINE}>Apenas as minhas</SelectItem>
                     <SelectItem value={VISIBILITY_ALL}>Todas as cotações</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+
+            {isAdmin ? (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="quote-operator">Operador</Label>
+                <Select
+                  value={filters.operatorId}
+                  onValueChange={(value) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      operatorId: value as OperatorFilterValue,
+                      // Filtrar por um operador específico só surte efeito
+                      // com "Todas as cotações" — "Apenas as minhas" sempre
+                      // sobrescreveria o filtro para o próprio admin.
+                      visibility: value === OPERATOR_FILTER_ALL ? prev.visibility : VISIBILITY_ALL,
+                    }))
+                  }
+                >
+                  <SelectTrigger id="quote-operator" className="w-full">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={OPERATOR_FILTER_ALL}>Todos</SelectItem>
+                    {operators.map((operator) => (
+                      <SelectItem key={operator.id} value={operator.id}>
+                        {operator.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

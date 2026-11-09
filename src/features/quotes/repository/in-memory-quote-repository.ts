@@ -34,6 +34,7 @@ function tripPeriod(form: QuoteRecord["form"]): {
 }
 import type {
   GenerationResult,
+  OperatorOption,
   QuoteListFilters,
   QuoteListResult,
   QuoteRepository,
@@ -200,6 +201,14 @@ export class InMemoryQuoteRepository implements QuoteRepository {
     items.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
 
     return { items: items.map((quote) => toQuoteSummary(quote)), total: items.length };
+  }
+
+  async listOperators(): Promise<OperatorOption[]> {
+    await wait(SIMULATED_LATENCY_MS);
+    const uniqueIds = Array.from(new Set(this.quotes.map((quote) => quote.createdBy)));
+    return uniqueIds
+      .map((id) => ({ id, name: id }))
+      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   }
 
   async getById(id: string): Promise<QuoteRecord | null> {
