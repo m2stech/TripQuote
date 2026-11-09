@@ -26,6 +26,11 @@ import { QuoteCommercialStatusBadge } from "@/features/quotes/components/QuoteCo
 import { QuoteStatusBadge } from "@/features/quotes/components/QuoteStatusBadge";
 import { PRODUCT_TYPE_LABELS } from "@/features/prompts/schemas/product-type.schema";
 import {
+  commercialStatusLabels,
+  commercialStatusValues,
+  type CommercialStatus,
+} from "@/features/quotes/schemas/commercial-status.schema";
+import {
   quoteStatusLabels,
   quoteStatusValues,
   type QuoteStatus,
@@ -35,6 +40,9 @@ import type { QuoteSummary } from "@/features/quotes/schemas/quote.schema";
 const STATUS_FILTER_ALL = "all" as const;
 type StatusFilterValue = QuoteStatus | typeof STATUS_FILTER_ALL;
 
+const COMMERCIAL_STATUS_FILTER_ALL = "all" as const;
+type CommercialStatusFilterValue = CommercialStatus | typeof COMMERCIAL_STATUS_FILTER_ALL;
+
 const VISIBILITY_MINE = "mine" as const;
 const VISIBILITY_ALL = "all" as const;
 type VisibilityFilterValue = typeof VISIBILITY_MINE | typeof VISIBILITY_ALL;
@@ -42,6 +50,7 @@ type VisibilityFilterValue = typeof VISIBILITY_MINE | typeof VISIBILITY_ALL;
 interface Filters {
   search: string;
   status: StatusFilterValue;
+  commercialStatus: CommercialStatusFilterValue;
   destination: string;
   periodStart: string;
   periodEnd: string;
@@ -51,6 +60,7 @@ interface Filters {
 const INITIAL_FILTERS: Filters = {
   search: "",
   status: STATUS_FILTER_ALL,
+  commercialStatus: COMMERCIAL_STATUS_FILTER_ALL,
   destination: "",
   periodStart: "",
   periodEnd: "",
@@ -95,6 +105,10 @@ export function QuoteListScreen() {
         const result = await listQuotesAction({
           search: currentFilters.search || undefined,
           status: currentFilters.status === STATUS_FILTER_ALL ? undefined : currentFilters.status,
+          commercialStatus:
+            currentFilters.commercialStatus === COMMERCIAL_STATUS_FILTER_ALL
+              ? undefined
+              : currentFilters.commercialStatus,
           destination: currentFilters.destination || undefined,
           periodStart: currentFilters.periodStart || undefined,
           periodEnd: currentFilters.periodEnd || undefined,
@@ -125,6 +139,7 @@ export function QuoteListScreen() {
     () =>
       filters.search !== "" ||
       filters.status !== STATUS_FILTER_ALL ||
+      filters.commercialStatus !== COMMERCIAL_STATUS_FILTER_ALL ||
       filters.destination !== "" ||
       filters.periodStart !== "" ||
       filters.periodEnd !== "" ||
@@ -161,7 +176,7 @@ export function QuoteListScreen() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="quote-status">Status</Label>
+              <Label htmlFor="quote-status">Status geração</Label>
               <Select
                 value={filters.status}
                 onValueChange={(value) =>
@@ -176,6 +191,31 @@ export function QuoteListScreen() {
                   {quoteStatusValues.map((status) => (
                     <SelectItem key={status} value={status}>
                       {quoteStatusLabels[status]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="quote-commercial-status">Status Cotação</Label>
+              <Select
+                value={filters.commercialStatus}
+                onValueChange={(value) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    commercialStatus: value as CommercialStatusFilterValue,
+                  }))
+                }
+              >
+                <SelectTrigger id="quote-commercial-status" className="w-full">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={COMMERCIAL_STATUS_FILTER_ALL}>Todos</SelectItem>
+                  {commercialStatusValues.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {commercialStatusLabels[status]}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -169,6 +169,10 @@ export class InMemoryQuoteRepository implements QuoteRepository {
       items = items.filter((quote) => quote.status === filters.status);
     }
 
+    if (filters.commercialStatus) {
+      items = items.filter((quote) => quote.commercialStatus === filters.commercialStatus);
+    }
+
     if (filters.destination) {
       const term = filters.destination.trim().toLowerCase();
       items = items.filter((quote) =>

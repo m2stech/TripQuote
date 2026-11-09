@@ -87,6 +87,9 @@ export class SupabaseQuoteRepository implements QuoteRepository {
     if (filters.status) {
       query = query.eq("status", filters.status);
     }
+    if (filters.commercialStatus) {
+      query = query.eq("commercial_status", filters.commercialStatus);
+    }
     if (filters.destination) {
       query = query.ilike("destination", `%${filters.destination}%`);
     }

@@ -325,6 +325,16 @@ describe("SupabaseQuoteRepository", () => {
     expect(result.items[0]?.destination).toBe("Lisboa");
   });
 
+  it("lista orçamentos filtrando por status comercial ('Status Cotação')", async () => {
+    const won = await repository.create(draft({ general: { agency: "Agência A" } }), "user-1");
+    await repository.create(draft({ general: { agency: "Agência B" } }), "user-1");
+    await repository.updateCommercialStatus(won.id, { status: "won", reference: "LOC-1", reason: "" }, "user-1");
+
+    const result = await repository.list({ commercialStatus: "won" });
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.agency).toBe("Agência A");
+  });
+
   it("lista orçamentos filtrando por createdBy (visibilidade 'apenas as minhas')", async () => {
     await repository.create(draft({ general: { agency: "Agência A" } }), "user-1");
     await repository.create(draft({ general: { agency: "Agência B" } }), "user-2");

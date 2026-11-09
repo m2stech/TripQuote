@@ -1,4 +1,7 @@
-import type { UpdateCommercialStatusInput } from "@/features/quotes/schemas/commercial-status.schema";
+import type {
+  CommercialStatus,
+  UpdateCommercialStatusInput,
+} from "@/features/quotes/schemas/commercial-status.schema";
 import type {
   AnyGenerationOutput,
   AnyQuoteDraftValues,
@@ -18,11 +21,14 @@ export type GenerationResult =
  * viagem (`general.startDate`). `createdBy`, quando informado, restringe aos
  * orçamentos criados por esse usuário — usado pelo filtro "Apenas as minhas"
  * do admin (consultor já tem essa restrição garantida pela RLS, sem precisar
- * desse filtro).
+ * desse filtro). `status` filtra pelo status técnico de geração ("Status
+ * geração" na UI); `commercialStatus` filtra pelo status comercial (M12,
+ * "Status Cotação" na UI) — os dois são independentes.
  */
 export interface QuoteListFilters {
   search?: string;
   status?: QuoteStatus;
+  commercialStatus?: CommercialStatus;
   destination?: string;
   periodStart?: string;
   periodEnd?: string;
