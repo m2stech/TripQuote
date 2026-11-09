@@ -110,7 +110,7 @@ describe("runQuoteGeneration", () => {
     vi.mocked(buildFlightImagePart).mockResolvedValue(null);
     vi.mocked(buildQuotePresentation).mockReset();
     vi.mocked(uploadGeneratedPptx).mockReset();
-    vi.mocked(buildQuotePresentation).mockResolvedValue(Buffer.from("fake-pptx"));
+    vi.mocked(buildQuotePresentation).mockResolvedValue({ buffer: Buffer.from("fake-pptx"), photoFallbacks: [] });
     vi.mocked(uploadGeneratedPptx).mockResolvedValue(`${quoteId}/orcamento.pptx`);
 
     const {
@@ -177,6 +177,68 @@ describe("runQuoteGeneration", () => {
     );
     expect(result.status).toBe("done");
     expect(result.pptxStoragePath).toBe(`${quoteId}/orcamento.pptx`);
+  });
+
+  it("registra quote.photo.fallback em audit_log quando o builder reporta fotos ausentes (ex.: URL do TripAdvisor expirada)", async () => {
+    vi.mocked(generateQuoteContent).mockResolvedValue({
+      output: {
+        coverTagline: "Tagline",
+        destinationDescription: "Descrição",
+        destinationAttractions: [],
+        destinationPhoto: { status: "not_found", url: null, sourceUrl: null, caption: null },
+        hotels: [],
+        flightItinerary: null,
+      },
+      model: "gpt-4.1",
+      promptTokens: 100,
+      completionTokens: 50,
+    });
+    const photoFallbacks = [
+      {
+        subject: "Hotel: The Ritz Toronto",
+        attempts: [
+          { source: "Google Places", reason: "GOOGLE_PLACES_API_KEY não configurada" },
+          {
+            source: "URL da IA (https://dynamic-media-cdn.tripadvisor.com/media/photo-o/foto.jpg)",
+            reason: "HTTP 404",
+          },
+          { source: "Retry da IA", reason: "não encontrou foto alternativa" },
+        ],
+      },
+    ];
+    vi.mocked(buildQuotePresentation).mockResolvedValue({ buffer: Buffer.from("fake-pptx"), photoFallbacks });
+
+    await runQuoteGeneration(quoteId, userId);
+
+    expect(auditInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "quote.photo.fallback",
+        entity_id: quoteId,
+        metadata: { fallbacks: photoFallbacks },
+      }),
+    );
+  });
+
+  it("não registra quote.photo.fallback quando todas as fotos foram resolvidas", async () => {
+    vi.mocked(generateQuoteContent).mockResolvedValue({
+      output: {
+        coverTagline: "Tagline",
+        destinationDescription: "Descrição",
+        destinationAttractions: [],
+        destinationPhoto: { status: "not_found", url: null, sourceUrl: null, caption: null },
+        hotels: [],
+        flightItinerary: null,
+      },
+      model: "gpt-4.1",
+      promptTokens: 100,
+      completionTokens: 50,
+    });
+
+    await runQuoteGeneration(quoteId, userId);
+
+    expect(auditInsert).not.toHaveBeenCalledWith(
+      expect.objectContaining({ action: "quote.photo.fallback" }),
+    );
   });
 
   it("falha na montagem do PPTX não reverte o status 'done' já obtido", async () => {

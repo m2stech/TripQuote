@@ -15,10 +15,10 @@ describe("fetchGooglePlacesPhoto", () => {
     process.env.GOOGLE_PLACES_API_KEY = originalApiKey;
   });
 
-  it("retorna null imediatamente quando GOOGLE_PLACES_API_KEY não está configurada, sem chamar fetch", async () => {
+  it("retorna falha imediata quando GOOGLE_PLACES_API_KEY não está configurada, sem chamar fetch", async () => {
     delete process.env.GOOGLE_PLACES_API_KEY;
     const result = await fetchGooglePlacesPhoto("Hotel Teste, Cidade");
-    expect(result).toBeNull();
+    expect(result).toEqual({ ok: false, reason: "GOOGLE_PLACES_API_KEY não configurada" });
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -40,36 +40,38 @@ describe("fetchGooglePlacesPhoto", () => {
 
     const result = await fetchGooglePlacesPhoto("Hotel Brasil Express, Balneário Camboriú");
 
-    expect(result).not.toBeNull();
-    expect(result?.mimeType).toBe("image/jpeg");
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("expected ok");
+    expect(result.value.mimeType).toBe("image/jpeg");
   });
 
-  it("retorna null quando searchText não encontra nenhum place", async () => {
+  it("retorna falha quando searchText não encontra nenhum place", async () => {
     vi.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ places: [] }) } as never);
     const result = await fetchGooglePlacesPhoto("Hotel Inexistente Xyz123");
-    expect(result).toBeNull();
+    expect(result).toEqual({ ok: false, reason: "nenhum lugar/foto encontrado para a busca" });
   });
 
-  it("retorna null quando searchText falha (status não-ok)", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({ ok: false } as never);
+  it("retorna o motivo da falha quando searchText falha (status não-ok)", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({ ok: false, status: 500 } as never);
     const result = await fetchGooglePlacesPhoto("Hotel Teste");
-    expect(result).toBeNull();
+    expect(result).toEqual({ ok: false, reason: "HTTP 500 na busca de lugar" });
   });
 
-  it("retorna null quando a chamada de media falha", async () => {
+  it("retorna o motivo da falha quando a chamada de media falha", async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({ places: [{ photos: [{ name: "places/abc/photos/xyz" }] }] }),
       } as never)
-      .mockResolvedValueOnce({ ok: false } as never);
+      .mockResolvedValueOnce({ ok: false, status: 403 } as never);
 
     const result = await fetchGooglePlacesPhoto("Hotel Teste");
-    expect(result).toBeNull();
+    expect(result).toEqual({ ok: false, reason: "HTTP 403 ao resolver mídia da foto" });
   });
 
-  it("retorna null em erro de rede, sem lançar", async () => {
+  it("retorna o motivo da falha em erro de rede, sem lançar", async () => {
     vi.mocked(fetch).mockRejectedValueOnce(new Error("network error"));
-    await expect(fetchGooglePlacesPhoto("Hotel Teste")).resolves.toBeNull();
+    const result = await fetchGooglePlacesPhoto("Hotel Teste");
+    expect(result).toEqual({ ok: false, reason: "network error" });
   });
 });

@@ -3,9 +3,11 @@ import sharp from "sharp";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.stubGlobal("fetch", vi.fn());
-vi.mock("@/features/pptx/images/wikipedia-photo", () => ({ fetchWikipediaPhoto: vi.fn().mockResolvedValue(null) }));
+vi.mock("@/features/pptx/images/wikipedia-photo", () => ({
+  fetchWikipediaPhoto: vi.fn().mockResolvedValue({ ok: false, reason: "mock: sem artigo" }),
+}));
 vi.mock("@/features/pptx/images/google-places-photo", () => ({
-  fetchGooglePlacesPhoto: vi.fn().mockResolvedValue(null),
+  fetchGooglePlacesPhoto: vi.fn().mockResolvedValue({ ok: false, reason: "mock: sem resultado" }),
 }));
 
 import { buildCruisePresentation, type CruiseQuoteRecord } from "@/features/pptx/build-cruise-presentation";
@@ -102,7 +104,7 @@ describe("buildCruisePresentation", () => {
   });
 
   it("gera um Buffer .pptx válido com a estrutura OOXML esperada", async () => {
-    const buffer = await buildCruisePresentation(supabase, makeQuote());
+    const { buffer } = await buildCruisePresentation(supabase, makeQuote());
 
     expect(buffer).toBeInstanceOf(Buffer);
     expect(buffer.byteLength).toBeGreaterThan(0);
@@ -112,14 +114,14 @@ describe("buildCruisePresentation", () => {
   });
 
   it("contagem de slides: capa + resumo + roteiro + portos + navio + a bordo + cabines + incluído + final = 9", async () => {
-    const buffer = await buildCruisePresentation(supabase, makeQuote());
+    const { buffer } = await buildCruisePresentation(supabase, makeQuote());
     const zip = await JSZip.loadAsync(buffer);
     const slideFiles = Object.keys(zip.files).filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name));
     expect(slideFiles).toHaveLength(9);
   });
 
   it("sem roteiro informado: omite o slide de portos (sem dados da IA para nenhum porto)", async () => {
-    const buffer = await buildCruisePresentation(
+    const { buffer } = await buildCruisePresentation(
       supabase,
       makeQuote({ itinerary: [] }, {}),
     );
@@ -130,7 +132,7 @@ describe("buildCruisePresentation", () => {
   });
 
   it("sem itens em incluído/não incluído/opcionais: omite o slide 'O que está incluído'", async () => {
-    const buffer = await buildCruisePresentation(
+    const { buffer } = await buildCruisePresentation(
       supabase,
       makeQuote({ inclusions: { included: [], notIncluded: [], optional: [], importantInfo: "" } }),
     );
@@ -149,7 +151,7 @@ describe("buildCruisePresentation", () => {
       price: "R$ 4.500,00",
       photo: null,
     }));
-    const buffer = await buildCruisePresentation(
+    const { buffer } = await buildCruisePresentation(
       supabase,
       makeQuote({ fare: { cabins: manyCabins, portFeesOption: "included", portFeesValue: "", fareRules: "" } }),
     );
@@ -161,7 +163,7 @@ describe("buildCruisePresentation", () => {
 
   it("mais de 15 itens incluídos: pagina em slide de continuação, sem omitir itens", async () => {
     const manyIncluded = Array.from({ length: 16 }, (_, index) => `Item incluído ${index + 1}`);
-    const buffer = await buildCruisePresentation(
+    const { buffer } = await buildCruisePresentation(
       supabase,
       makeQuote({
         inclusions: { included: manyIncluded, notIncluded: [], optional: [], importantInfo: "" },
@@ -186,12 +188,15 @@ describe("buildCruisePresentation", () => {
       .toBuffer();
 
     vi.mocked(fetchGooglePlacesPhoto).mockResolvedValueOnce({
-      buffer: await sharp({
-        create: { width: 4000, height: 3000, channels: 3, background: { r: 200, g: 200, b: 200 } },
-      })
-        .png()
-        .toBuffer(),
-      mimeType: "image/png",
+      ok: true,
+      value: {
+        buffer: await sharp({
+          create: { width: 4000, height: 3000, channels: 3, background: { r: 200, g: 200, b: 200 } },
+        })
+          .png()
+          .toBuffer(),
+        mimeType: "image/png",
+      },
     });
 
     const supabaseWithShipPhoto = {
@@ -208,7 +213,7 @@ describe("buildCruisePresentation", () => {
       }),
     } as never;
 
-    const buffer = await buildCruisePresentation(
+    const { buffer } = await buildCruisePresentation(
       supabaseWithShipPhoto,
       makeQuote({
         ship: {

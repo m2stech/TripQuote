@@ -31,33 +31,44 @@ describe("resolveHotelPhoto", () => {
   });
 
   it("usa a foto do Google Places quando disponível, sem tentar mais nada", async () => {
-    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue({ buffer: await createPngBuffer(), mimeType: "image/jpeg" });
+    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue({
+      ok: true,
+      value: { buffer: await createPngBuffer(), mimeType: "image/jpeg" },
+    });
 
     const result = await resolveHotelPhoto(hotelName, location, null, box);
 
     expect(fetchGooglePlacesPhoto).toHaveBeenCalledWith(`${hotelName}, ${location}`);
-    expect(result.kind).toBe("image");
+    expect(result.image.kind).toBe("image");
+    expect(result.attempts).toEqual([]);
     expect(fetchExternalImage).not.toHaveBeenCalled();
   });
 
   it("usa só o nome do hotel na busca quando não há location", async () => {
-    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue(null);
+    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue({ ok: false, reason: "sem resultado" });
     await resolveHotelPhoto(hotelName, null, null, box);
     expect(fetchGooglePlacesPhoto).toHaveBeenCalledWith(hotelName);
   });
 
-  it("sem Google Places e sem aiPhoto: placeholder direto", async () => {
-    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue(null);
+  it("sem Google Places e sem aiPhoto: placeholder direto, com o motivo registrado", async () => {
+    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue({ ok: false, reason: "GOOGLE_PLACES_API_KEY não configurada" });
 
     const result = await resolveHotelPhoto(hotelName, location, null, box);
 
-    expect(result).toEqual({ kind: "placeholder" });
+    expect(result.image).toEqual({ kind: "placeholder" });
+    expect(result.attempts).toEqual([
+      { source: "Google Places", reason: "GOOGLE_PLACES_API_KEY não configurada" },
+      { source: "URL da IA", reason: "aiOutput sem foto confirmada (status !== real_photo_found)" },
+    ]);
     expect(fetchExternalImage).not.toHaveBeenCalled();
   });
 
   it("sem Google Places, usa a URL da IA quando real_photo_found", async () => {
-    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue(null);
-    vi.mocked(fetchExternalImage).mockResolvedValue({ buffer: await createPngBuffer(), mimeType: "image/png" });
+    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue({ ok: false, reason: "sem resultado" });
+    vi.mocked(fetchExternalImage).mockResolvedValue({
+      ok: true,
+      value: { buffer: await createPngBuffer(), mimeType: "image/png" },
+    });
 
     const result = await resolveHotelPhoto(
       hotelName,
@@ -66,15 +77,15 @@ describe("resolveHotelPhoto", () => {
       box,
     );
 
-    expect(result.kind).toBe("image");
+    expect(result.image.kind).toBe("image");
     expect(findAlternativePhoto).not.toHaveBeenCalled();
   });
 
   it("Places e URL da IA falham, retry encontra alternativa: usa a nova foto", async () => {
-    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue(null);
+    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue({ ok: false, reason: "sem resultado" });
     vi.mocked(fetchExternalImage)
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ buffer: await createPngBuffer(), mimeType: "image/png" });
+      .mockResolvedValueOnce({ ok: false, reason: "HTTP 404" })
+      .mockResolvedValueOnce({ ok: true, value: { buffer: await createPngBuffer(), mimeType: "image/png" } });
     vi.mocked(findAlternativePhoto).mockResolvedValue({
       photo: {
         status: "real_photo_found",
@@ -91,12 +102,12 @@ describe("resolveHotelPhoto", () => {
       box,
     );
 
-    expect(result.kind).toBe("image");
+    expect(result.image.kind).toBe("image");
   });
 
-  it("todas as fontes falham: placeholder", async () => {
-    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue(null);
-    vi.mocked(fetchExternalImage).mockResolvedValue(null);
+  it("todas as fontes falham: placeholder com o diagnóstico completo (caso relatado: foto de hotel ausente)", async () => {
+    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue({ ok: false, reason: "GOOGLE_PLACES_API_KEY não configurada" });
+    vi.mocked(fetchExternalImage).mockResolvedValue({ ok: false, reason: "HTTP 404" });
     vi.mocked(findAlternativePhoto).mockResolvedValue({
       photo: { status: "not_found", url: null, sourceUrl: null, caption: null },
     });
@@ -108,6 +119,11 @@ describe("resolveHotelPhoto", () => {
       box,
     );
 
-    expect(result).toEqual({ kind: "placeholder" });
+    expect(result.image).toEqual({ kind: "placeholder" });
+    expect(result.attempts).toEqual([
+      { source: "Google Places", reason: "GOOGLE_PLACES_API_KEY não configurada" },
+      { source: "URL da IA (https://morta.example.com/hotel.jpg)", reason: "HTTP 404" },
+      { source: "Retry da IA", reason: "não encontrou foto alternativa" },
+    ]);
   });
 });

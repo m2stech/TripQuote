@@ -3,6 +3,7 @@ import "server-only";
 import sharp from "sharp";
 
 import { fetchExternalImage, type FetchedImage } from "@/features/pptx/images/fetch-external-image";
+import { fail, ok, type FetchAttemptResult } from "@/features/pptx/images/photo-diagnostics";
 import type { ResolvedImage } from "@/features/pptx/types";
 
 export interface BoxInches {
@@ -62,37 +63,42 @@ async function readPixelDimensions(buffer: Buffer): Promise<{ width: number; hei
 
 /**
  * Busca uma imagem externa e calcula seu sizing numa única chamada,
- * devolvendo `null` em qualquer falha (fetch ou leitura de metadata) —
- * usado por `destination-photo.ts`/`hotel-photo.ts` tanto na tentativa
- * original quanto na de retry (`findAlternativePhoto`), evitando duplicar
- * o par fetch+sizing+try/catch em cada um.
+ * devolvendo `{ ok: false, reason }` em qualquer falha (fetch ou leitura de
+ * metadata) — usado por `destination-photo.ts`/`hotel-photo.ts` tanto na
+ * tentativa original quanto na de retry (`findAlternativePhoto`), evitando
+ * duplicar o par fetch+sizing+try/catch em cada um.
  */
-export async function fetchAndSizeImage(url: string, box: BoxInches): Promise<ResolvedImage | null> {
+export async function fetchAndSizeImage(url: string, box: BoxInches): Promise<FetchAttemptResult<ResolvedImage>> {
   const fetched = await fetchExternalImage(url);
-  if (!fetched) return null;
-  return sizeImage(fetched, box);
+  if (!fetched.ok) return fail(fetched.reason);
+  return sizeImage(fetched.value, box);
 }
 
 /**
  * Calcula o sizing de uma imagem já obtida (buffer em mãos, ex.: vinda de
  * `fetchWikipediaPhoto`/`fetchGooglePlacesPhoto`, que já fazem seu próprio
- * fetch) — devolve `null` se a leitura de metadata falhar (buffer
- * corrompido) OU se a resolução for baixa demais para `box`
+ * fetch) — devolve `{ ok: false, reason }` se a leitura de metadata falhar
+ * (buffer corrompido) OU se a resolução for baixa demais para `box`
  * (`meetsMinimumResolution`): uma imagem pequena esticada para preencher a
  * caixa fica visivelmente borrada no slide (bug relatado), então é melhor
  * rejeitá-la e deixar quem chama cair no próximo fallback do que aceitá-la
  * só porque o fetch teve sucesso. Complementa `fetchAndSizeImage`, que
  * busca por URL.
  */
-export async function sizeImage(fetched: FetchedImage, box: BoxInches): Promise<ResolvedImage | null> {
+export async function sizeImage(fetched: FetchedImage, box: BoxInches): Promise<FetchAttemptResult<ResolvedImage>> {
   try {
     const dimensions = await readPixelDimensions(fetched.buffer);
-    if (!dimensions) return null;
-    if (!meetsMinimumResolution(dimensions.width, dimensions.height, box)) return null;
+    if (!dimensions) return fail("não foi possível ler as dimensões da imagem");
+    if (!meetsMinimumResolution(dimensions.width, dimensions.height, box)) {
+      return fail(
+        `resolução abaixo do mínimo (${dimensions.width}x${dimensions.height}px para uma caixa de ` +
+          `${box.w.toFixed(2)}x${box.h.toFixed(2)}in)`,
+      );
+    }
 
     const sizing = await resolveContainSizing(fetched.buffer, box);
-    return { kind: "image", data: fetched.buffer, sizing };
-  } catch {
-    return null;
+    return ok({ kind: "image", data: fetched.buffer, sizing });
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "erro desconhecido ao processar a imagem");
   }
 }

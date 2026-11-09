@@ -8,8 +8,16 @@ import { generateQuoteContent } from "@/features/ai/orchestration/generate-quote
 import { buildCruiseItineraryImagePart } from "@/features/ai/vision/cruise-itinerary-image-input";
 import { buildFlightImagePart } from "@/features/ai/vision/flight-image-input";
 import { estimateCostUsd } from "@/features/ai/pricing/estimate-cost";
-import { buildCruisePresentation, type CruiseQuoteRecord } from "@/features/pptx/build-cruise-presentation";
-import { buildQuotePresentation, type TerrestrialQuoteRecord } from "@/features/pptx/build-quote-presentation";
+import {
+  buildCruisePresentation,
+  type BuildCruisePresentationResult,
+  type CruiseQuoteRecord,
+} from "@/features/pptx/build-cruise-presentation";
+import {
+  buildQuotePresentation,
+  type BuildQuotePresentationResult,
+  type TerrestrialQuoteRecord,
+} from "@/features/pptx/build-quote-presentation";
 import { uploadGeneratedPptx } from "@/features/pptx/storage";
 import { getActivePromptVersion } from "@/features/prompts/repository/prompt-version-repository";
 import type { PromptVersionRecord } from "@/features/prompts/schemas/prompt-version.schema";
@@ -266,10 +274,20 @@ async function logPreflightFailureAndGetGenericError(
  * do conteúdo já gerado. Em caso de falha, registra em `audit_log` e
  * retorna o quote com `pptxStoragePath` ainda nulo (usuário pode tentar
  * gerar novamente).
+ *
+ * Além disso, registra em `audit_log` (`quote.photo.fallback`, best-effort —
+ * nunca bloqueia a montagem) quando alguma foto (destino, hotel, navio,
+ * porto) caiu em placeholder após esgotar todas as fontes: cada fonte
+ * tentada e seu motivo de falha ficam auditáveis depois, em vez de só a foto
+ * ausente no .pptx sem rastro (bug relatado — foto de hotel faltando sem
+ * nenhuma pista do porquê).
  */
 async function buildAndStorePptx<T extends TerrestrialQuoteRecord | CruiseQuoteRecord>(
   doneQuote: T,
-  buildPresentation: (supabase: SupabaseClient<Database>, quote: T) => Promise<Buffer>,
+  buildPresentation: (
+    supabase: SupabaseClient<Database>,
+    quote: T,
+  ) => Promise<BuildQuotePresentationResult | BuildCruisePresentationResult>,
   supabase: SupabaseClient<Database>,
   adminSupabase: SupabaseClient<Database>,
   repository: QuoteRepository,
@@ -277,7 +295,18 @@ async function buildAndStorePptx<T extends TerrestrialQuoteRecord | CruiseQuoteR
   quoteId: string,
 ): Promise<QuoteRecord> {
   try {
-    const pptxBuffer = await buildPresentation(supabase, doneQuote);
+    const { buffer: pptxBuffer, photoFallbacks } = await buildPresentation(supabase, doneQuote);
+
+    if (photoFallbacks.length > 0) {
+      await adminSupabase.from("audit_log").insert({
+        actor_id: userId,
+        action: "quote.photo.fallback",
+        entity_type: "quote",
+        entity_id: quoteId,
+        metadata: { fallbacks: photoFallbacks } as unknown as Database["public"]["Tables"]["audit_log"]["Insert"]["metadata"],
+      });
+    }
+
     const storagePath = await uploadGeneratedPptx(supabase, quoteId, pptxBuffer);
     return await repository.updatePptxStoragePath(quoteId, storagePath);
   } catch (pptxError) {

@@ -43,7 +43,8 @@ export async function resolveInstitutionalBranding(
     ? await downloadInstitutionalLogo(supabase, settings.institutional_logo_storage_path)
     : null;
 
-  const buffer = managedBuffer ?? (await fetchExternalImage(INSTITUTIONAL_LOGO_URL))?.buffer ?? null;
+  const fetchedLogo = managedBuffer ? null : await fetchExternalImage(INSTITUTIONAL_LOGO_URL);
+  const buffer = managedBuffer ?? (fetchedLogo?.ok ? fetchedLogo.value.buffer : null);
   if (!buffer) return { logo: { kind: "placeholder" }, footerText };
 
   try {

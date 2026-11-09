@@ -59,13 +59,15 @@ describe("meetsMinimumResolution", () => {
 describe("sizeImage", () => {
   const box = { w: 4, h: 3 };
 
-  it("rejeita (retorna null) uma imagem de baixa resolução para a caixa, em vez de esticá-la", async () => {
+  it("rejeita (retorna o motivo) uma imagem de baixa resolução para a caixa, em vez de esticá-la", async () => {
     const buffer = await sharp({ create: { width: 200, height: 100, channels: 3, background: { r: 1, g: 1, b: 1 } } })
       .png()
       .toBuffer();
 
     const result = await sizeImage({ buffer, mimeType: "image/png" }, box);
-    expect(result).toBeNull();
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("expected failure");
+    expect(result.reason).toContain("resolução abaixo do mínimo");
   });
 
   it("aceita uma imagem com resolução suficiente", async () => {
@@ -74,6 +76,8 @@ describe("sizeImage", () => {
       .toBuffer();
 
     const result = await sizeImage({ buffer, mimeType: "image/png" }, box);
-    expect(result?.kind).toBe("image");
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("expected ok");
+    expect(result.value.kind).toBe("image");
   });
 });

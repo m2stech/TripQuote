@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { downloadAgencyLogoBuffer, resolveAgencyLogo } from "@/features/pptx/images/agency-logo";
 import { resolveCabinPhoto } from "@/features/pptx/images/cabin-photo";
 import { resolveInstitutionalBranding } from "@/features/pptx/images/institutional-logo";
+import { recordPhotoFallbackIfNeeded, type PhotoFallbackEntry } from "@/features/pptx/images/photo-diagnostics";
 import { resolvePortPhoto } from "@/features/pptx/images/port-photo";
 import { resolveShipPhoto } from "@/features/pptx/images/ship-photo";
 import { findPortByName } from "@/features/pptx/match-ports";
@@ -40,6 +41,12 @@ function formatPeriod(startDate: string, endDate: string): string {
   return `${format(startDate)} a ${format(endDate)}`;
 }
 
+export interface BuildCruisePresentationResult {
+  buffer: Buffer;
+  /** Fotos que caíram em placeholder após esgotar todas as fontes — ver `photo-diagnostics.ts`. */
+  photoFallbacks: PhotoFallbackEntry[];
+}
+
 /**
  * Orquestra a montagem determinística do .pptx de Cruzeiro, mesmo padrão de
  * `buildQuotePresentation` (terrestre): resolve todas as imagens primeiro,
@@ -49,26 +56,39 @@ function formatPeriod(startDate: string, endDate: string): string {
 export async function buildCruisePresentation(
   supabase: SupabaseClient<Database>,
   quote: CruiseQuoteRecord,
-): Promise<Buffer> {
+): Promise<BuildCruisePresentationResult> {
   if (quote.status !== "done" || !quote.aiOutput) {
     throw new Error("Orçamento sem geração concluída.");
   }
 
   const { form, aiOutput } = quote;
+  const photoFallbacks: PhotoFallbackEntry[] = [];
 
   const pres = new pptxgen();
   pres.layout = "LAYOUT_WIDE";
 
-  const [agencyLogoBuffer, agencyLogoCover, agencyLogoInner, shipPhoto, institutionalBranding] = await Promise.all([
-    downloadAgencyLogoBuffer(supabase, form.agencyLogo),
-    resolveAgencyLogo(supabase, form.agencyLogo, COVER_LOGO_BOX),
-    resolveAgencyLogo(supabase, form.agencyLogo, INNER_LOGO_BOX),
-    resolveShipPhoto(supabase, form.general.shipName, form.general.cruiseLine, form.ship.photo, aiOutput.shipPhoto, {
-      w: SLIDE_WIDTH_IN,
-      h: SLIDE_HEIGHT_IN,
-    }),
-    resolveInstitutionalBranding(supabase, FOOTER_LOGO_BOX),
-  ]);
+  const [agencyLogoBuffer, agencyLogoCover, agencyLogoInner, resolvedShipPhoto, institutionalBranding] =
+    await Promise.all([
+      downloadAgencyLogoBuffer(supabase, form.agencyLogo),
+      resolveAgencyLogo(supabase, form.agencyLogo, COVER_LOGO_BOX),
+      resolveAgencyLogo(supabase, form.agencyLogo, INNER_LOGO_BOX),
+      resolveShipPhoto(
+        supabase,
+        form.general.shipName,
+        form.general.cruiseLine,
+        form.ship.photo,
+        aiOutput.shipPhoto,
+        { w: SLIDE_WIDTH_IN, h: SLIDE_HEIGHT_IN },
+      ),
+      resolveInstitutionalBranding(supabase, FOOTER_LOGO_BOX),
+    ]);
+  recordPhotoFallbackIfNeeded(
+    photoFallbacks,
+    `Navio: ${form.general.shipName}`,
+    resolvedShipPhoto.image.kind,
+    resolvedShipPhoto.attempts,
+  );
+  const shipPhoto = resolvedShipPhoto.image;
 
   const theme = agencyLogoBuffer ? await extractThemeFromLogo(agencyLogoBuffer) : DEFAULT_THEME;
 
@@ -114,8 +134,14 @@ export async function buildCruisePresentation(
       uniquePortNames.map(async (portName): Promise<PortPhotoEntry | null> => {
         const port = findPortByName(aiOutput.ports, portName);
         if (!port) return null;
-        const photo = await resolvePortPhoto(portName, port.photo, { w: 3, h: 2 });
-        return { name: port.name, shortDescription: port.shortDescription, photo };
+        const resolvedPortPhoto = await resolvePortPhoto(portName, port.photo, { w: 3, h: 2 });
+        recordPhotoFallbackIfNeeded(
+          photoFallbacks,
+          `Porto: ${port.name}`,
+          resolvedPortPhoto.image.kind,
+          resolvedPortPhoto.attempts,
+        );
+        return { name: port.name, shortDescription: port.shortDescription, photo: resolvedPortPhoto.image };
       }),
     )
   ).filter((entry): entry is PortPhotoEntry => entry !== null);
@@ -170,5 +196,6 @@ export async function buildCruisePresentation(
     theme,
   });
 
-  return (await pres.write({ outputType: "nodebuffer" })) as Buffer;
+  const buffer = (await pres.write({ outputType: "nodebuffer" })) as Buffer;
+  return { buffer, photoFallbacks };
 }

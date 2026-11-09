@@ -32,11 +32,31 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   quote: "Orçamento",
 };
 
+/**
+ * Formata um valor de `metadata` para texto legível — `String(value)` falha
+ * silenciosamente para array/objeto (vira "[object Object]", bug relatado em
+ * `quote.photo.fallback`, cujo `fallbacks` é uma lista de objetos), por isso
+ * cada tipo tem seu próprio formato em vez de confiar na coerção padrão.
+ */
+function formatMetadataValue(value: unknown): string {
+  if (value === null || value === undefined) return "—";
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "(vazio)";
+    return value.map((item) => formatMetadataValue(item)).join("; ");
+  }
+  if (typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([key, nested]) => `${key}: ${formatMetadataValue(nested)}`)
+      .join(", ");
+  }
+  return String(value);
+}
+
 /** `metadata` traz contexto técnico (ex.: motivo de uma falha) gravado por cada feature — nunca o conteúdo do prompt (ver `generation-orchestrator.ts`, que só grava IDs/mensagens de erro). */
 function formatMetadata(metadata: Record<string, unknown>): string | null {
   const entries = Object.entries(metadata);
   if (entries.length === 0) return null;
-  return entries.map(([key, value]) => `${key}: ${String(value)}`).join(" · ");
+  return entries.map(([key, value]) => `${key}: ${formatMetadataValue(value)}`).join(" · ");
 }
 
 /** Tela de auditoria (M9): lista `audit_log`, com filtros por tipo de entidade e período. */

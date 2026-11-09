@@ -7,6 +7,7 @@ import { downloadAgencyLogoBuffer, resolveAgencyLogo } from "@/features/pptx/ima
 import { resolveDestinationPhoto } from "@/features/pptx/images/destination-photo";
 import { resolveHotelPhoto } from "@/features/pptx/images/hotel-photo";
 import { resolveInstitutionalBranding } from "@/features/pptx/images/institutional-logo";
+import { recordPhotoFallbackIfNeeded, type PhotoFallbackEntry } from "@/features/pptx/images/photo-diagnostics";
 import { matchHotelsByName } from "@/features/pptx/match-hotels";
 import { resolveFlightItinerary } from "@/features/pptx/resolve-flight-itinerary";
 import { buildCoverSlide } from "@/features/pptx/slides/cover-slide";
@@ -39,6 +40,12 @@ function formatPeriod(startDate: string, endDate: string): string {
   return `${format(startDate)} a ${format(endDate)}`;
 }
 
+export interface BuildQuotePresentationResult {
+  buffer: Buffer;
+  /** Fotos que caíram em placeholder após esgotar todas as fontes — ver `photo-diagnostics.ts`. */
+  photoFallbacks: PhotoFallbackEntry[];
+}
+
 /**
  * Orquestra a montagem determinística do .pptx a partir de um `QuoteRecord`
  * com geração concluída (`status: "done"` e `aiOutput` presente). Resolve
@@ -49,17 +56,18 @@ function formatPeriod(startDate: string, endDate: string): string {
 export async function buildQuotePresentation(
   supabase: SupabaseClient<Database>,
   quote: TerrestrialQuoteRecord,
-): Promise<Buffer> {
+): Promise<BuildQuotePresentationResult> {
   if (quote.status !== "done" || !quote.aiOutput) {
     throw new Error("Orçamento sem geração concluída.");
   }
 
   const { form, aiOutput } = quote;
+  const photoFallbacks: PhotoFallbackEntry[] = [];
 
   const pres = new pptxgen();
   pres.layout = "LAYOUT_WIDE";
 
-  const [agencyLogoBuffer, agencyLogoCover, agencyLogoInner, destinationPhoto, institutionalBranding] =
+  const [agencyLogoBuffer, agencyLogoCover, agencyLogoInner, resolvedDestinationPhoto, institutionalBranding] =
     await Promise.all([
       downloadAgencyLogoBuffer(supabase, form.agencyLogo),
       resolveAgencyLogo(supabase, form.agencyLogo, COVER_LOGO_BOX),
@@ -70,6 +78,13 @@ export async function buildQuotePresentation(
       }),
       resolveInstitutionalBranding(supabase, FOOTER_LOGO_BOX),
     ]);
+  recordPhotoFallbackIfNeeded(
+    photoFallbacks,
+    `Destino: ${form.general.destination}`,
+    resolvedDestinationPhoto.image.kind,
+    resolvedDestinationPhoto.attempts,
+  );
+  const destinationPhoto = resolvedDestinationPhoto.image;
 
   const theme = agencyLogoBuffer ? await extractThemeFromLogo(agencyLogoBuffer) : DEFAULT_THEME;
 
@@ -111,12 +126,19 @@ export async function buildQuotePresentation(
 
   const matchedHotels = matchHotelsByName(form.hotels, aiOutput.hotels);
   for (const [index, matched] of matchedHotels.entries()) {
-    const photo = await resolveHotelPhoto(
+    const resolvedHotelPhoto = await resolveHotelPhoto(
       matched.form.name,
       matched.ai?.location ?? null,
       matched.ai?.photo ?? null,
       HOTEL_PHOTO_BOX,
     );
+    recordPhotoFallbackIfNeeded(
+      photoFallbacks,
+      `Hotel: ${matched.form.name}`,
+      resolvedHotelPhoto.image.kind,
+      resolvedHotelPhoto.attempts,
+    );
+    const photo = resolvedHotelPhoto.image;
     buildHotelSlides(pres, {
       optionNumber: index + 1,
       name: matched.form.name,
@@ -164,5 +186,6 @@ export async function buildQuotePresentation(
     theme,
   });
 
-  return (await pres.write({ outputType: "nodebuffer" })) as Buffer;
+  const buffer = (await pres.write({ outputType: "nodebuffer" })) as Buffer;
+  return { buffer, photoFallbacks };
 }

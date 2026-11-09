@@ -34,32 +34,42 @@ describe("resolveDestinationPhoto", () => {
   });
 
   it("usa a foto do Google Places quando disponível, sem tentar mais nada", async () => {
-    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue({ buffer: await createPngBuffer(), mimeType: "image/jpeg" });
+    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue({
+      ok: true,
+      value: { buffer: await createPngBuffer(), mimeType: "image/jpeg" },
+    });
 
     const result = await resolveDestinationPhoto(destination, aiNotFound, box);
 
     expect(fetchGooglePlacesPhoto).toHaveBeenCalledWith(`ponto turístico em ${destination}`);
-    expect(result.kind).toBe("image");
+    expect(result.image.kind).toBe("image");
+    expect(result.attempts).toEqual([]);
     expect(fetchWikipediaPhoto).not.toHaveBeenCalled();
     expect(fetchExternalImage).not.toHaveBeenCalled();
     expect(findAlternativePhoto).not.toHaveBeenCalled();
   });
 
   it("sem Google Places, usa a foto da Wikipedia quando disponível", async () => {
-    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue(null);
-    vi.mocked(fetchWikipediaPhoto).mockResolvedValue({ buffer: await createPngBuffer(), mimeType: "image/png" });
+    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue({ ok: false, reason: "sem resultado" });
+    vi.mocked(fetchWikipediaPhoto).mockResolvedValue({
+      ok: true,
+      value: { buffer: await createPngBuffer(), mimeType: "image/png" },
+    });
 
     const result = await resolveDestinationPhoto(destination, aiNotFound, box);
 
-    expect(result.kind).toBe("image");
+    expect(result.image.kind).toBe("image");
     expect(fetchExternalImage).not.toHaveBeenCalled();
     expect(findAlternativePhoto).not.toHaveBeenCalled();
   });
 
   it("sem Google Places e sem Wikipedia, usa a URL da IA quando real_photo_found", async () => {
-    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue(null);
-    vi.mocked(fetchWikipediaPhoto).mockResolvedValue(null);
-    vi.mocked(fetchExternalImage).mockResolvedValue({ buffer: await createPngBuffer(), mimeType: "image/png" });
+    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue({ ok: false, reason: "sem resultado" });
+    vi.mocked(fetchWikipediaPhoto).mockResolvedValue({ ok: false, reason: "sem artigo" });
+    vi.mocked(fetchExternalImage).mockResolvedValue({
+      ok: true,
+      value: { buffer: await createPngBuffer(), mimeType: "image/png" },
+    });
 
     const result = await resolveDestinationPhoto(
       destination,
@@ -67,26 +77,31 @@ describe("resolveDestinationPhoto", () => {
       box,
     );
 
-    expect(result.kind).toBe("image");
+    expect(result.image.kind).toBe("image");
     expect(findAlternativePhoto).not.toHaveBeenCalled();
   });
 
-  it("nenhuma fonte determinística e sem aiPhoto válida: placeholder direto", async () => {
-    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue(null);
-    vi.mocked(fetchWikipediaPhoto).mockResolvedValue(null);
+  it("nenhuma fonte determinística e sem aiPhoto válida: placeholder direto, com o diagnóstico completo", async () => {
+    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue({ ok: false, reason: "GOOGLE_PLACES_API_KEY não configurada" });
+    vi.mocked(fetchWikipediaPhoto).mockResolvedValue({ ok: false, reason: "artigo sem imagem" });
 
     const result = await resolveDestinationPhoto(destination, aiNotFound, box);
 
-    expect(result).toEqual({ kind: "placeholder" });
+    expect(result.image).toEqual({ kind: "placeholder" });
+    expect(result.attempts).toEqual([
+      { source: "Google Places", reason: "GOOGLE_PLACES_API_KEY não configurada" },
+      { source: "Wikipedia", reason: "artigo sem imagem" },
+      { source: "URL da IA", reason: "aiOutput sem foto confirmada (status !== real_photo_found)" },
+    ]);
     expect(fetchExternalImage).not.toHaveBeenCalled();
   });
 
   it("Places, Wikipedia e URL da IA falham, retry encontra alternativa: usa a nova foto", async () => {
-    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue(null);
-    vi.mocked(fetchWikipediaPhoto).mockResolvedValue(null);
+    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue({ ok: false, reason: "sem resultado" });
+    vi.mocked(fetchWikipediaPhoto).mockResolvedValue({ ok: false, reason: "sem artigo" });
     vi.mocked(fetchExternalImage)
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ buffer: await createPngBuffer(), mimeType: "image/png" });
+      .mockResolvedValueOnce({ ok: false, reason: "HTTP 404" })
+      .mockResolvedValueOnce({ ok: true, value: { buffer: await createPngBuffer(), mimeType: "image/png" } });
     vi.mocked(findAlternativePhoto).mockResolvedValue({
       photo: { status: "real_photo_found", url: "https://commons.wikimedia.org/alt.jpg", sourceUrl: null, caption: null },
     });
@@ -97,13 +112,13 @@ describe("resolveDestinationPhoto", () => {
       box,
     );
 
-    expect(result.kind).toBe("image");
+    expect(result.image.kind).toBe("image");
   });
 
-  it("todas as fontes falham: placeholder", async () => {
-    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue(null);
-    vi.mocked(fetchWikipediaPhoto).mockResolvedValue(null);
-    vi.mocked(fetchExternalImage).mockResolvedValue(null);
+  it("todas as fontes falham: placeholder com o diagnóstico completo", async () => {
+    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue({ ok: false, reason: "sem resultado" });
+    vi.mocked(fetchWikipediaPhoto).mockResolvedValue({ ok: false, reason: "sem artigo" });
+    vi.mocked(fetchExternalImage).mockResolvedValue({ ok: false, reason: "HTTP 404" });
     vi.mocked(findAlternativePhoto).mockResolvedValue({ photo: aiNotFound });
 
     const result = await resolveDestinationPhoto(
@@ -112,7 +127,13 @@ describe("resolveDestinationPhoto", () => {
       box,
     );
 
-    expect(result).toEqual({ kind: "placeholder" });
+    expect(result.image).toEqual({ kind: "placeholder" });
+    expect(result.attempts).toEqual([
+      { source: "Google Places", reason: "sem resultado" },
+      { source: "Wikipedia", reason: "sem artigo" },
+      { source: "URL da IA (https://morta.example.com/destino.jpg)", reason: "HTTP 404" },
+      { source: "Retry da IA", reason: "não encontrou foto alternativa" },
+    ]);
   });
 
   it("foto do Google Places com resolução baixa é rejeitada, cai para Wikipedia", async () => {
@@ -122,12 +143,18 @@ describe("resolveDestinationPhoto", () => {
       .default({ create: { width: 100, height: 75, channels: 3, background: { r: 1, g: 1, b: 1 } } })
       .png()
       .toBuffer();
-    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue({ buffer: smallBuffer, mimeType: "image/jpeg" });
-    vi.mocked(fetchWikipediaPhoto).mockResolvedValue({ buffer: await createPngBuffer(), mimeType: "image/png" });
+    vi.mocked(fetchGooglePlacesPhoto).mockResolvedValue({
+      ok: true,
+      value: { buffer: smallBuffer, mimeType: "image/jpeg" },
+    });
+    vi.mocked(fetchWikipediaPhoto).mockResolvedValue({
+      ok: true,
+      value: { buffer: await createPngBuffer(), mimeType: "image/png" },
+    });
 
     const result = await resolveDestinationPhoto(destination, aiNotFound, box);
 
-    expect(result.kind).toBe("image");
+    expect(result.image.kind).toBe("image");
     expect(fetchWikipediaPhoto).toHaveBeenCalled();
   });
 });

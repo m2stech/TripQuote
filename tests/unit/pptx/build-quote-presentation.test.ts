@@ -7,9 +7,11 @@ vi.stubGlobal("fetch", vi.fn());
 // global mockado falhar "por acidente" dentro do try/catch desses módulos
 // — frágil caso alguém rode a suíte com GOOGLE_PLACES_API_KEY configurada
 // no ambiente.
-vi.mock("@/features/pptx/images/wikipedia-photo", () => ({ fetchWikipediaPhoto: vi.fn().mockResolvedValue(null) }));
+vi.mock("@/features/pptx/images/wikipedia-photo", () => ({
+  fetchWikipediaPhoto: vi.fn().mockResolvedValue({ ok: false, reason: "mock: sem artigo" }),
+}));
 vi.mock("@/features/pptx/images/google-places-photo", () => ({
-  fetchGooglePlacesPhoto: vi.fn().mockResolvedValue(null),
+  fetchGooglePlacesPhoto: vi.fn().mockResolvedValue({ ok: false, reason: "mock: sem resultado" }),
 }));
 
 import { buildQuotePresentation, type TerrestrialQuoteRecord } from "@/features/pptx/build-quote-presentation";
@@ -112,7 +114,7 @@ describe("buildQuotePresentation", () => {
   });
 
   it("gera um Buffer .pptx válido com a estrutura OOXML esperada", async () => {
-    const buffer = await buildQuotePresentation(supabase, makeQuote());
+    const { buffer } = await buildQuotePresentation(supabase, makeQuote());
 
     expect(buffer).toBeInstanceOf(Buffer);
     expect(buffer.byteLength).toBeGreaterThan(0);
@@ -122,14 +124,14 @@ describe("buildQuotePresentation", () => {
   });
 
   it("contagem de slides: capa + destino + inclusões + 1 hotel + voos + final = 6 (sem roteiro)", async () => {
-    const buffer = await buildQuotePresentation(supabase, makeQuote());
+    const { buffer } = await buildQuotePresentation(supabase, makeQuote());
     const zip = await JSZip.loadAsync(buffer);
     const slideFiles = Object.keys(zip.files).filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name));
     expect(slideFiles).toHaveLength(6);
   });
 
   it("sem voos (flights.enabled=false): 1 slide a menos", async () => {
-    const buffer = await buildQuotePresentation(
+    const { buffer } = await buildQuotePresentation(
       supabase,
       makeQuote({ flights: { enabled: false } }),
     );
@@ -139,7 +141,7 @@ describe("buildQuotePresentation", () => {
   });
 
   it("com roteiro habilitado: 1 slide a mais", async () => {
-    const buffer = await buildQuotePresentation(
+    const { buffer } = await buildQuotePresentation(
       supabase,
       makeQuote({
         itinerary: { enabled: true, days: [{ id: "1", label: "Dia 1", description: "Chegada" }] },
@@ -151,7 +153,7 @@ describe("buildQuotePresentation", () => {
   });
 
   it("com voos estruturados em ida e volta: 1 slide para cada direção", async () => {
-    const buffer = await buildQuotePresentation(
+    const { buffer } = await buildQuotePresentation(
       supabase,
       makeQuote(
         {},
@@ -199,7 +201,7 @@ describe("buildQuotePresentation", () => {
   });
 
   it("modo circuito: adiciona o slide de valor do pacote antes dos hotéis", async () => {
-    const buffer = await buildQuotePresentation(
+    const { buffer } = await buildQuotePresentation(
       supabase,
       makeQuote({
         general: {
@@ -227,7 +229,7 @@ describe("buildQuotePresentation", () => {
   });
 
   it("modo padrão (sem circuito): não adiciona o slide de valor do pacote", async () => {
-    const buffer = await buildQuotePresentation(supabase, makeQuote());
+    const { buffer } = await buildQuotePresentation(supabase, makeQuote());
     const zip = await JSZip.loadAsync(buffer);
     const slideFiles = Object.keys(zip.files).filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name));
     expect(slideFiles).toHaveLength(6);
@@ -256,7 +258,7 @@ describe("buildQuotePresentation", () => {
       agencyLogo: { fileName: "logo.png", storagePath: "quote-1/logo.png", mimeType: "image/png", sizeBytes: 100 },
     });
 
-    const buffer = await buildQuotePresentation(supabaseWithLogo, quote);
+    const { buffer } = await buildQuotePresentation(supabaseWithLogo, quote);
     const zip = await JSZip.loadAsync(buffer);
     const slide1Xml = await zip.file("ppt/slides/slide1.xml")!.async("string");
 
