@@ -26,6 +26,8 @@ Baseado em [CLAUDE.md](../CLAUDE.md) e [PRD.md](PRD.md). Ordem: **setup → inte
 | M9 | Consumo, auditoria e observabilidade | `feat/m9-usage-audit-sentry` | Tokens/custo, auditoria, Sentry |
 | M10 | Testes E2E e deploy | `feat/m10-e2e-deploy` | Playwright, Vercel, produção |
 | M11 | Produto Cruzeiro | `feat/m11-cruise-product` | Segundo tipo de orçamento (formulário, prompt, PPTX) |
+| M12 | Status comercial | `feat/m12-commercial-status` | Pendente/Efetivado/Cancelado, histórico de auditoria |
+| M13 | Cadastro de agências e consultores | `feat/m13-agency-registry` | Tabelas, admin, migração assistida, formulário |
 
 ---
 
@@ -288,3 +290,43 @@ Campos obrigatórios (mínimo para gerar, espelhando "01 Dados gerais + 04 Hoté
 
 **Aceite:** criar um orçamento de cruzeiro ponta a ponta (formulário → gerar → baixar) produz um .pptx 16:9 editável com os 8 slides; orçamento terrestre existente continua funcionando sem alteração de comportamento; admin gerencia as duas linhas de prompt (terrestre e cruzeiro) separadamente.
 **Commit final:** `feat(cruise): add cruise quote product with dedicated form, prompt and pptx builder`
+
+## M12 — Status comercial
+
+**Branch:** `feat/m12-commercial-status`
+**Objetivo:** status comercial do orçamento (Pendente/Efetivado/Cancelado), desacoplado do status técnico de geração, com histórico de auditoria.
+
+- [ ] Migration: enum `commercial_status` (`pending`/`won`/`lost`); colunas em `quotes` (`commercial_status`, `commercial_reference`, `commercial_reason`, `commercial_status_updated_at`, `commercial_status_updated_by`); tabela `quote_commercial_status_history` (append-only) + RLS (owner-or-admin, reaproveitando `current_user_role()`/`current_user_is_active()`)
+- [ ] Schema Zod `commercialStatusSchema` (com `superRefine`: localizador obrigatório quando `won`, justificativa obrigatória quando `lost`)
+- [ ] `QuoteRepository.updateCommercialStatus(id, input)` + `updateQuoteCommercialStatusAction` (`requireCurrentUserId`, grava a mudança em `quotes` e insere linha em `quote_commercial_status_history`)
+- [ ] `QuoteCommercialStatusBadge` (mesmo padrão de `QuoteStatusBadge`); reposicionamento dos badges na listagem — status comercial assume o lugar hoje ocupado pelo status técnico; status técnico migra para perto do badge de tipo de produto (Terrestre/Cruzeiro)
+- [ ] Nova seção "Dados comerciais" em `QuoteDetailScreen` (visualizar/alterar status, localizador/justificativa condicionais, salvar)
+- [ ] Testes Vitest do schema e da action (3 estados + validações condicionais)
+- [ ] Revisão com `supabase-rls-reviewer`
+- [ ] Merge em `main`
+
+**Aceite:** operador (consultor dono do orçamento ou admin) altera o status comercial de um orçamento, o histórico é gravado, os badges refletem a mudança na listagem e no detalhe; nenhuma funcionalidade de geração/regeneração/PPTX é afetada.
+**Commit final:** `feat(quotes): add commercial status tracking with audit history`
+
+## M13 — Cadastro de agências e consultores
+
+**Branch:** `feat/m13-agency-registry`
+**Objetivo:** cadastro estruturado de Agências e Consultores, reutilizado na criação de orçamentos (terrestre e cruzeiro), com migração incremental dos dados existentes sem perder histórico.
+
+**Decisões de modelagem (não negociáveis para este marco):**
+- Tabelas novas `agencies` e `agency_consultants` (consultor da agência — entidade distinta do Operador/`profiles`, que é o usuário autenticado do TripQuote). `quotes` ganha `agency_id`/`consultant_id` **nullable**, coexistindo com as colunas de texto livre já existentes (`agency`, `consultant`), que passam a funcionar como snapshot do nome no momento da gravação — preserva a integridade histórica dos orçamentos já gerados.
+- Logo da agência deixa de ser um attachment por orçamento e passa a ser um ativo da agência (`agencies.logo_storage_path`), herdado automaticamente ao escolher a agência — novo bucket `agency-assets` (RLS: leitura para qualquer autenticado ativo, escrita só admin), separado de `agency-logos` (que continua existindo para o caso de uso da válvula de escape abaixo).
+- Migração em 3 fases incrementais, sem exclusões destrutivas: Fase A (schema aditivo, nullable, zero impacto visível) → Fase B (backfill assistido por revisão humana do admin, nunca por heurística automática de similaridade de texto) → Fase C (formulário passa a usar o cadastro).
+- Formulário mantém uma válvula de escape temporária ("outra agência, digitar manualmente") durante a transição da Fase C, para não bloquear a operação quando uma agência nova ainda não foi cadastrada; remoção planejada para um milestone futuro, após o cadastro se consolidar.
+- `active boolean` em `agencies`/`agency_consultants` permite desativar sem apagar histórico; não há exclusão física neste marco.
+
+- [ ] Migration (Fase A): `agencies`, `agency_consultants`, `agency_id`/`consultant_id` nullable em `quotes`, bucket `agency-assets` + RLS
+- [ ] `src/features/agencies/` (schemas, repository, actions — `requireAdmin()` para escrita) + página admin `src/app/admin/agencias/` (listar/criar/editar/desativar agência, gerenciar consultores vinculados, upload de logo)
+- [ ] Backfill assistido (Fase B): relatório admin de agências/consultores distintos encontrados nos orçamentos existentes (com contagem), fluxo de aprovação/agrupamento pelo admin, script/action que popula `agencies`/`agency_consultants` e atualiza `agency_id`/`consultant_id` nos orçamentos existentes por grupo aprovado
+- [ ] Formulário (Fase C): `QuoteForm.tsx`/`CruiseQuoteForm.tsx` — campo Agência vira combobox (agências ativas), campo Consultor vira select dependente da agência escolhida, logo deixa de ter upload manual (preview read-only herdado da agência), com válvula de escape "outra agência"; `formToColumns` passa a gravar `agency_id`/`consultant_id` além do snapshot de texto
+- [ ] Testes Vitest (schemas/repository novos) + Playwright do fluxo crítico (login → criar → gerar → baixar) revalidado com o novo formulário
+- [ ] Revisão com `supabase-rls-reviewer`
+- [ ] Merge em `main`
+
+**Aceite:** todo orçamento novo usa agência/consultor cadastrados com logo herdado automaticamente (sem novo upload); orçamentos antigos preservam seus dados originais (texto livre + logo próprio) sem alteração de comportamento; admin gerencia o cadastro numa tela própria.
+**Commit final:** `feat(agencies): add agency and consultant registry with assisted migration`
