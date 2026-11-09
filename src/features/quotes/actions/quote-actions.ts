@@ -7,7 +7,11 @@ import { requireCurrentUserId } from "@/lib/auth/require-current-user-id";
 import { getQuoteRepository } from "@/features/quotes/repository";
 import { runQuoteGeneration } from "@/features/quotes/actions/generation-orchestrator";
 import type { QuoteListFilters } from "@/features/quotes/repository/types";
-import { anyQuoteDraftSchema, type AnyQuoteDraftValues } from "@/features/quotes/schemas/product.schema";
+import { updateCommercialStatusInputSchema } from "@/features/quotes/schemas/commercial-status.schema";
+import {
+  anyQuoteDraftSchema,
+  type AnyQuoteDraftValues,
+} from "@/features/quotes/schemas/product.schema";
 import type { QuoteRecord } from "@/features/quotes/schemas/quote.schema";
 import type { Database } from "@/lib/supabase/types";
 
@@ -22,7 +26,9 @@ export type QuoteDraftActionInput = AnyQuoteDraftValues;
  * value `Date.now()` while prerendering" sob Cache Components (Next 16).
  * Mesmo padrão de `UserManagementScreen`, que também resolve tudo no client.
  */
-export async function getCurrentUserRoleAction(): Promise<Database["public"]["Enums"]["user_role"]> {
+export async function getCurrentUserRoleAction(): Promise<
+  Database["public"]["Enums"]["user_role"]
+> {
   return getCurrentUserRole();
 }
 
@@ -68,7 +74,10 @@ export async function createQuoteAction(form: QuoteDraftActionInput): Promise<Qu
  * formulário). Propositalmente **não** há criação no mount da tela: visitar
  * "/orcamentos/novo" sem preencher nada não deve gravar nenhuma linha.
  */
-export async function updateQuoteAction(id: string, form: QuoteDraftActionInput): Promise<QuoteRecord> {
+export async function updateQuoteAction(
+  id: string,
+  form: QuoteDraftActionInput,
+): Promise<QuoteRecord> {
   const parsed = anyQuoteDraftSchema.parse(form);
   const userId = await requireCurrentUserId();
   const repository = await getQuoteRepository();
@@ -94,6 +103,38 @@ export async function removeQuoteAction(id: string): Promise<void> {
 export async function regenerateQuoteAction(id: string): Promise<QuoteRecord> {
   const userId = await requireCurrentUserId();
   const record = await runQuoteGeneration(id, userId);
+  revalidatePath(`/orcamentos/${id}`);
+  return record;
+}
+
+/**
+ * Altera o status comercial de um orçamento (M12). Quem pode: o consultor
+ * dono do orçamento ou admin — mesma regra owner-or-admin já aplicada pela
+ * RLS de `quotes`, replicada aqui porque a UPDATE em si é permitida pela
+ * policy existente (sem policy nova para as colunas comerciais), então a
+ * checagem de autorização específica dessa ação precisa viver na Server
+ * Action.
+ */
+export async function updateQuoteCommercialStatusAction(
+  id: string,
+  input: unknown,
+): Promise<QuoteRecord> {
+  const parsed = updateCommercialStatusInputSchema.parse(input);
+  const userId = await requireCurrentUserId();
+  const repository = await getQuoteRepository();
+
+  const existing = await repository.getById(id);
+  if (!existing) throw new Error("Orçamento não encontrado.");
+
+  if (existing.createdBy !== userId) {
+    const role = await getCurrentUserRole();
+    if (role !== "admin") {
+      throw new Error("Você não tem permissão para alterar este orçamento.");
+    }
+  }
+
+  const record = await repository.updateCommercialStatus(id, parsed, userId);
+  revalidatePath("/orcamentos");
   revalidatePath(`/orcamentos/${id}`);
   return record;
 }

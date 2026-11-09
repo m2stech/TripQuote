@@ -11,12 +11,28 @@ import { Hero } from "@/components/hero";
 import { LoadingState } from "@/components/loading-state";
 import { SectionCard } from "@/components/section-card";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
   duplicateQuoteAction,
   getQuoteAction,
   regenerateQuoteAction,
+  updateQuoteCommercialStatusAction,
 } from "@/features/quotes/actions/quote-actions";
+import { QuoteCommercialStatusBadge } from "@/features/quotes/components/QuoteCommercialStatusBadge";
 import { QuoteStatusBadge } from "@/features/quotes/components/QuoteStatusBadge";
+import {
+  commercialStatusLabels,
+  commercialStatusValues,
+  type CommercialStatus,
+} from "@/features/quotes/schemas/commercial-status.schema";
 import type { QuoteRecord } from "@/features/quotes/schemas/quote.schema";
 
 interface QuoteDetailScreenProps {
@@ -72,7 +88,9 @@ export function QuoteDetailScreen({ quoteId }: QuoteDetailScreenProps) {
     setIsRegenerating(true);
     try {
       // Reflete o estado "processing" imediatamente na tela.
-      setQuote((prev) => (prev ? { ...prev, status: "processing", errorMessage: undefined } : prev));
+      setQuote((prev) =>
+        prev ? { ...prev, status: "processing", errorMessage: undefined } : prev,
+      );
       const updated = await regenerateQuoteAction(quoteId);
       setQuote(updated);
       if (updated.status === "error") {
@@ -93,12 +111,16 @@ export function QuoteDetailScreen({ quoteId }: QuoteDetailScreenProps) {
       <div className="snow-container flex flex-col gap-8 px-4 pt-6 sm:px-6">
         <Hero
           title="Detalhe do orçamento"
-          subtitle={quote ? `${quote.form.general.agency} · ${quote.form.general.destination}` : undefined}
+          subtitle={
+            quote ? `${quote.form.general.agency} · ${quote.form.general.destination}` : undefined
+          }
         />
 
         {isLoading ? <LoadingState label="Carregando orçamento…" /> : null}
 
-        {!isLoading && error ? <ErrorState description={error} onRetry={() => void loadQuote()} /> : null}
+        {!isLoading && error ? (
+          <ErrorState description={error} onRetry={() => void loadQuote()} />
+        ) : null}
 
         {!isLoading && !error && !quote ? (
           <EmptyState
@@ -143,7 +165,10 @@ export function QuoteDetailScreen({ quoteId }: QuoteDetailScreenProps) {
                   <DetailItem label="Viajantes" value={quote.form.general.travelers || "—"} />
                   <DetailItem label="Moeda" value={quote.form.general.currency} />
                   <DetailItem label="Tipo de valor" value={quote.form.general.priceType} />
-                  <DetailItem label="Base de acomodação" value={quote.form.general.occupancy || "—"} />
+                  <DetailItem
+                    label="Base de acomodação"
+                    value={quote.form.general.occupancy || "—"}
+                  />
                 </dl>
               ) : (
                 <dl className="snow-grid-2 text-sm">
@@ -162,14 +187,23 @@ export function QuoteDetailScreen({ quoteId }: QuoteDetailScreenProps) {
               )}
             </SectionCard>
 
+            <CommercialStatusSection key={quote.id} quote={quote} onUpdated={setQuote} />
+
             {quote.form.productType === "terrestre" ? (
-              <SectionCard number={2} title="Hotéis" description="Hotéis incluídos neste orçamento.">
+              <SectionCard
+                number={3}
+                title="Hotéis"
+                description="Hotéis incluídos neste orçamento."
+              >
                 {quote.form.hotels.length === 0 ? (
                   <p className="text-muted-foreground text-sm">Nenhum hotel adicionado.</p>
                 ) : (
                   <ul className="flex flex-col gap-2">
                     {quote.form.hotels.map((hotel) => (
-                      <li key={hotel.id} className="border-snow-input-border rounded-[9px] border p-3 text-sm">
+                      <li
+                        key={hotel.id}
+                        className="border-snow-input-border rounded-[9px] border p-3 text-sm"
+                      >
                         <p className="text-foreground font-medium">{hotel.name}</p>
                         <p className="text-muted-foreground">{hotel.mealPlan}</p>
                       </li>
@@ -178,13 +212,20 @@ export function QuoteDetailScreen({ quoteId }: QuoteDetailScreenProps) {
                 )}
               </SectionCard>
             ) : (
-              <SectionCard number={2} title="Cabines" description="Cabines incluídas neste orçamento.">
+              <SectionCard
+                number={3}
+                title="Cabines"
+                description="Cabines incluídas neste orçamento."
+              >
                 {quote.form.fare.cabins.length === 0 ? (
                   <p className="text-muted-foreground text-sm">Nenhuma cabine adicionada.</p>
                 ) : (
                   <ul className="flex flex-col gap-2">
                     {quote.form.fare.cabins.map((cabin) => (
-                      <li key={cabin.id} className="border-snow-input-border rounded-[9px] border p-3 text-sm">
+                      <li
+                        key={cabin.id}
+                        className="border-snow-input-border rounded-[9px] border p-3 text-sm"
+                      >
                         <p className="text-foreground font-medium">{cabin.category}</p>
                         <p className="text-muted-foreground">{cabin.type}</p>
                       </li>
@@ -194,7 +235,7 @@ export function QuoteDetailScreen({ quoteId }: QuoteDetailScreenProps) {
               </SectionCard>
             )}
 
-            <SectionCard number={3} title="Ações">
+            <SectionCard number={4} title="Ações">
               <div className="flex flex-wrap gap-3">
                 {quote.status === "done" && quote.pptxStoragePath ? (
                   <Button
@@ -207,7 +248,9 @@ export function QuoteDetailScreen({ quoteId }: QuoteDetailScreenProps) {
                 ) : null}
                 <Button
                   type="button"
-                  variant={quote.status === "done" && quote.pptxStoragePath ? "default" : "snow-generate"}
+                  variant={
+                    quote.status === "done" && quote.pptxStoragePath ? "default" : "snow-generate"
+                  }
                   onClick={handleRegenerate}
                   disabled={isRegenerating || quote.status === "processing"}
                 >
@@ -243,6 +286,101 @@ function DetailItem({ label, value }: { label: string; value: string }) {
       <dt className="text-muted-foreground text-xs">{label}</dt>
       <dd className="text-foreground font-medium">{value}</dd>
     </div>
+  );
+}
+
+interface CommercialStatusSectionProps {
+  quote: QuoteRecord;
+  onUpdated: (quote: QuoteRecord) => void;
+}
+
+/**
+ * Seção "Dados comerciais" (M12): status comercial independente do status
+ * técnico de geração, com localizador (quando Efetivado) ou justificativa
+ * (quando Cancelado) — ver `updateCommercialStatusInputSchema`.
+ */
+function CommercialStatusSection({ quote, onUpdated }: CommercialStatusSectionProps) {
+  const [status, setStatus] = useState<CommercialStatus>(quote.commercialStatus);
+  const [reference, setReference] = useState(quote.commercialReference ?? "");
+  const [reason, setReason] = useState(quote.commercialReason ?? "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  async function handleSave() {
+    setIsSaving(true);
+    try {
+      const updated = await updateQuoteCommercialStatusAction(quote.id, {
+        status,
+        reference,
+        reason,
+      });
+      onUpdated(updated);
+      setStatus(updated.commercialStatus);
+      setReference(updated.commercialReference ?? "");
+      setReason(updated.commercialReason ?? "");
+      toast.success("Status comercial atualizado.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Não foi possível salvar o status comercial.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <SectionCard number={2} title="Dados comerciais">
+      <div className="flex flex-wrap items-center gap-3">
+        <QuoteCommercialStatusBadge status={quote.commercialStatus} />
+      </div>
+
+      <div className="snow-grid-2">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="commercial-status">Status comercial</Label>
+          <Select value={status} onValueChange={(value) => setStatus(value as CommercialStatus)}>
+            <SelectTrigger id="commercial-status" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {commercialStatusValues.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {commercialStatusLabels[value]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {status === "won" ? (
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="commercial-reference">Localizador / referência da venda</Label>
+            <Textarea
+              id="commercial-reference"
+              value={reference}
+              onChange={(event) => setReference(event.target.value)}
+              rows={2}
+            />
+          </div>
+        ) : null}
+
+        {status === "lost" ? (
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="commercial-reason">Justificativa do cancelamento</Label>
+            <Textarea
+              id="commercial-reason"
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              rows={2}
+            />
+          </div>
+        ) : null}
+      </div>
+
+      <div>
+        <Button type="button" onClick={handleSave} disabled={isSaving}>
+          {isSaving ? "Salvando…" : "Salvar"}
+        </Button>
+      </div>
+    </SectionCard>
   );
 }
 

@@ -32,6 +32,11 @@ function createFakeSupabase() {
     error_message: string | null;
     created_at: string;
     updated_at: string;
+    commercial_status: "pending" | "won" | "lost";
+    commercial_reference: string | null;
+    commercial_reason: string | null;
+    commercial_status_updated_at: string | null;
+    commercial_status_updated_by: string | null;
   }
 
   let nextId = 1;
@@ -44,6 +49,15 @@ function createFakeSupabase() {
     file_name: string;
     mime_type: string;
     size_bytes: number;
+  }> = [];
+  const commercialStatusHistory: Array<{
+    id: string;
+    quote_id: string;
+    previous_status: string | null;
+    new_status: string;
+    reference: string | null;
+    reason: string | null;
+    changed_by: string;
   }> = [];
 
   function quotesTable() {
@@ -81,6 +95,11 @@ function createFakeSupabase() {
           error_message: null,
           created_at: now,
           updated_at: now,
+          commercial_status: "pending",
+          commercial_reference: null,
+          commercial_reason: null,
+          commercial_status_updated_at: null,
+          commercial_status_updated_by: null,
           ...values,
         };
         rows.push(row);
@@ -160,6 +179,11 @@ function createFakeSupabase() {
             error_message: null,
             created_at: now,
             updated_at: now,
+            commercial_status: "pending",
+            commercial_reference: null,
+            commercial_reason: null,
+            commercial_status_updated_at: null,
+            commercial_status_updated_by: null,
             ...pendingInsert,
           };
           rows.push(row);
@@ -174,7 +198,11 @@ function createFakeSupabase() {
         return Promise.resolve({ data: null, error: { message: "unsupported" } });
       },
       then(
-        resolve: (value: { data: Row[] | null; error: { message: string } | null; count: number }) => void,
+        resolve: (value: {
+          data: Row[] | null;
+          error: { message: string } | null;
+          count: number;
+        }) => void,
       ) {
         if (pendingUpdate) {
           const row = rows.find((candidate) => candidate.id === pendingUpdateMatchId);
@@ -223,12 +251,24 @@ function createFakeSupabase() {
     return builder;
   }
 
+  function commercialStatusHistoryTable() {
+    const builder = {
+      insert(values: (typeof commercialStatusHistory)[number]) {
+        commercialStatusHistory.push(values);
+        return Promise.resolve({ error: null });
+      },
+    };
+    return builder;
+  }
+
   return {
     rows,
     attachments,
-    from(table: "quotes" | "quote_attachments" | "profiles") {
+    commercialStatusHistory,
+    from(table: "quotes" | "quote_attachments" | "profiles" | "quote_commercial_status_history") {
       if (table === "quotes") return quotesTable();
       if (table === "profiles") return profilesTable();
+      if (table === "quote_commercial_status_history") return commercialStatusHistoryTable();
       return attachmentsTable();
     },
     storage: {
@@ -257,7 +297,10 @@ describe("SupabaseQuoteRepository", () => {
   });
 
   it("cria um orçamento com status 'draft' e form normalizado", async () => {
-    const created = await repository.create(draft({ general: { agency: "Primus Turismo" } }), "user-1");
+    const created = await repository.create(
+      draft({ general: { agency: "Primus Turismo" } }),
+      "user-1",
+    );
     expect(created.status).toBe("draft");
     expect(created.form.general.agency).toBe("Primus Turismo");
     expect(created.form.general.destination).toBe("");
@@ -305,7 +348,11 @@ describe("SupabaseQuoteRepository", () => {
 
   it("upsertDraft() cria um rascunho novo com o id e o conteúdo informados", async () => {
     const id = "fixed-draft-id";
-    const created = await repository.upsertDraft(id, draft({ general: { agency: "Primus Turismo" } }), "user-1");
+    const created = await repository.upsertDraft(
+      id,
+      draft({ general: { agency: "Primus Turismo" } }),
+      "user-1",
+    );
     expect(created.id).toBe(id);
     expect(created.status).toBe("draft");
     expect(created.form.general.agency).toBe("Primus Turismo");
@@ -328,7 +375,11 @@ describe("SupabaseQuoteRepository", () => {
   it("upsertDraft() atualiza o conteúdo quando o rascunho já existe", async () => {
     const id = "fixed-draft-id";
     await repository.upsertDraft(id, draft({ general: { agency: "Primeira" } }), "user-1");
-    const updated = await repository.upsertDraft(id, draft({ general: { agency: "Segunda" } }), "user-1");
+    const updated = await repository.upsertDraft(
+      id,
+      draft({ general: { agency: "Segunda" } }),
+      "user-1",
+    );
     expect(updated.form.general.agency).toBe("Segunda");
   });
 
@@ -354,7 +405,10 @@ describe("SupabaseQuoteRepository", () => {
   });
 
   it("markProcessing() marca o orçamento como processing, limpando erro anterior", async () => {
-    const created = await repository.create(draft({ general: { agency: "Primus Turismo" } }), "user-1");
+    const created = await repository.create(
+      draft({ general: { agency: "Primus Turismo" } }),
+      "user-1",
+    );
     await repository.markProcessing(created.id);
     const found = await repository.getById(created.id);
     expect(found?.status).toBe("processing");
@@ -362,7 +416,10 @@ describe("SupabaseQuoteRepository", () => {
   });
 
   it("updateGenerationResult() grava status done com a saída da IA", async () => {
-    const created = await repository.create(draft({ general: { agency: "Primus Turismo" } }), "user-1");
+    const created = await repository.create(
+      draft({ general: { agency: "Primus Turismo" } }),
+      "user-1",
+    );
     const aiOutput = {
       coverTagline: "Tagline gerada",
       destinationDescription: "Descrição gerada",
@@ -371,13 +428,19 @@ describe("SupabaseQuoteRepository", () => {
       hotels: [],
       flightItinerary: null,
     };
-    const result = await repository.updateGenerationResult(created.id, { status: "done", aiOutput });
+    const result = await repository.updateGenerationResult(created.id, {
+      status: "done",
+      aiOutput,
+    });
     expect(result.status).toBe("done");
     expect(result.aiOutput).toEqual(aiOutput);
   });
 
   it("updateGenerationResult() grava status error com a mensagem informada", async () => {
-    const created = await repository.create(draft({ general: { agency: "Primus Turismo" } }), "user-1");
+    const created = await repository.create(
+      draft({ general: { agency: "Primus Turismo" } }),
+      "user-1",
+    );
     const result = await repository.updateGenerationResult(created.id, {
       status: "error",
       errorMessage: "Não foi possível gerar o orçamento. Tente novamente.",
@@ -389,5 +452,58 @@ describe("SupabaseQuoteRepository", () => {
   it("normaliza o form ao ler (compatibilidade com `quoteFormDefaultValues`)", async () => {
     const created = await repository.create(draft(), "user-1");
     expect(created.form).toEqual(quoteFormDefaultValues);
+  });
+
+  it("updateCommercialStatus() grava o novo status e insere uma linha no histórico", async () => {
+    const created = await repository.create(
+      draft({ general: { agency: "Primus Turismo" } }),
+      "user-1",
+    );
+
+    const updated = await repository.updateCommercialStatus(
+      created.id,
+      { status: "won", reference: "LOC-123", reason: "" },
+      "user-1",
+    );
+
+    expect(updated.commercialStatus).toBe("won");
+    expect(updated.commercialReference).toBe("LOC-123");
+    expect(updated.commercialReason).toBeNull();
+
+    expect(supabase.commercialStatusHistory).toHaveLength(1);
+    expect(supabase.commercialStatusHistory[0]).toMatchObject({
+      quote_id: created.id,
+      previous_status: "pending",
+      new_status: "won",
+      reference: "LOC-123",
+      changed_by: "user-1",
+    });
+  });
+
+  it("updateCommercialStatus() grava previous_status corretamente em trocas sucessivas", async () => {
+    const created = await repository.create(draft(), "user-1");
+    await repository.updateCommercialStatus(
+      created.id,
+      { status: "won", reference: "LOC-1", reason: "" },
+      "user-1",
+    );
+    await repository.updateCommercialStatus(
+      created.id,
+      { status: "lost", reference: "", reason: "Cliente desistiu." },
+      "user-2",
+    );
+
+    expect(supabase.commercialStatusHistory).toHaveLength(2);
+    expect(supabase.commercialStatusHistory[1]).toMatchObject({
+      previous_status: "won",
+      new_status: "lost",
+      reason: "Cliente desistiu.",
+      changed_by: "user-2",
+    });
+
+    const found = await repository.getById(created.id);
+    expect(found?.commercialStatus).toBe("lost");
+    expect(found?.commercialReference).toBeNull();
+    expect(found?.commercialReason).toBe("Cliente desistiu.");
   });
 });

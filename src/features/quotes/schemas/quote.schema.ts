@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+import {
+  commercialStatusSchema,
+  type CommercialStatus,
+} from "@/features/quotes/schemas/commercial-status.schema";
 import { normalizeCruiseDraft } from "@/features/quotes/schemas/cruise-form.schema";
 import {
   anyGenerationOutputSchema,
@@ -7,7 +11,10 @@ import {
   type AnyQuoteDraftValues,
   type AnyQuoteFormValues,
 } from "@/features/quotes/schemas/product.schema";
-import { migrateLegacyRoomOption, normalizeQuoteDraft } from "@/features/quotes/schemas/quote-form.schema";
+import {
+  migrateLegacyRoomOption,
+  normalizeQuoteDraft,
+} from "@/features/quotes/schemas/quote-form.schema";
 
 /**
  * Schemas Zod do registro de orçamento (metadados + payload do formulário).
@@ -38,12 +45,19 @@ export const quoteRecordSchema = z.object({
   form: anyQuoteDraftSchema,
   aiOutput: anyGenerationOutputSchema.nullable().optional(),
   pptxStoragePath: z.string().nullable().optional(),
+  commercialStatus: commercialStatusSchema.optional().default("pending"),
+  commercialReference: z.string().nullable().optional(),
+  commercialReason: z.string().nullable().optional(),
+  commercialStatusUpdatedAt: z.string().nullable().optional(),
+  commercialStatusUpdatedBy: z.string().nullable().optional(),
 });
 
 type QuoteRecordParsed = z.infer<typeof quoteRecordSchema>;
 
 function normalizeAnyQuoteDraft(draft: AnyQuoteDraftValues): AnyQuoteFormValues {
-  return draft.productType === "cruzeiro" ? normalizeCruiseDraft(draft) : normalizeQuoteDraft(draft);
+  return draft.productType === "cruzeiro"
+    ? normalizeCruiseDraft(draft)
+    : normalizeQuoteDraft(draft);
 }
 
 /**
@@ -127,7 +141,9 @@ function withDefaultProductType(raw: unknown): unknown {
 /** Valida e normaliza um registro bruto (ex.: linha do banco) em `QuoteRecord`. */
 export function parseQuoteRecord(raw: unknown): QuoteRecord {
   const withProductType = withDefaultProductType(raw);
-  const parsed = quoteRecordSchema.parse(migrateLegacyRooms(migrateLegacyAiOutput(withProductType)));
+  const parsed = quoteRecordSchema.parse(
+    migrateLegacyRooms(migrateLegacyAiOutput(withProductType)),
+  );
   return { ...parsed, form: normalizeAnyQuoteDraft(parsed.form) };
 }
 
@@ -139,6 +155,7 @@ export function parseQuoteRecord(raw: unknown): QuoteRecord {
 export interface QuoteSummary {
   id: string;
   status: QuoteStatus;
+  commercialStatus: CommercialStatus;
   productType: AnyQuoteFormValues["productType"];
   agency: string;
   consultant: string;
@@ -162,6 +179,7 @@ export function toQuoteSummary(record: QuoteRecord, createdByName?: string): Quo
   return {
     id: record.id,
     status: record.status,
+    commercialStatus: record.commercialStatus,
     productType: form.productType,
     agency: form.general.agency,
     consultant: form.general.consultant || "—",

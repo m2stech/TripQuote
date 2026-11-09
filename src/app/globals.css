@@ -61,6 +61,8 @@
   --color-snow-remove-fg: var(--snow-remove-fg);
   --color-snow-warning-bg: var(--snow-warning-bg);
   --color-snow-warning-border: var(--snow-warning-border);
+  --color-snow-success-bg: var(--snow-success-bg);
+  --color-snow-success-fg: var(--snow-success-fg);
   --color-snow-info-bg: var(--snow-info-bg);
   --color-snow-input-border: var(--snow-input-border);
 
@@ -94,6 +96,8 @@ body {
   --snow-remove-fg: oklch(0.5226 0.1372 42.92); /* #a8491c */
   --snow-warning-bg: oklch(0.9747 0.0192 72.58); /* #fff5e9 */
   --snow-warning-border: oklch(0.8994 0.0529 67.99); /* #f6d8b9 */
+  --snow-success-bg: oklch(0.9245 0.0617 151.69); /* #d3f3df */
+  --snow-success-fg: oklch(0.4495 0.1157 155.35); /* #1b7a3d */
   --snow-info-bg: oklch(0.9717 0.0085 225.08); /* #f0f7fa */
   --snow-input-border: oklch(0.8725 0.023 233.4); /* #c7d8e2 */
 

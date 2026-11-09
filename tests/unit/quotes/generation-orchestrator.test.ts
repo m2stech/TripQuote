@@ -38,6 +38,7 @@ const userId = "user-1";
 const quote: QuoteRecord = {
   id: quoteId,
   status: "draft",
+  commercialStatus: "pending",
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   createdBy: userId,
@@ -54,10 +55,15 @@ const promptVersion = {
   createdAt: new Date().toISOString(),
 };
 
-function mockGenerationsTable(insertResult: { data: { id: string } | null; error: { message: string } | null }) {
+function mockGenerationsTable(insertResult: {
+  data: { id: string } | null;
+  error: { message: string } | null;
+}) {
   const update = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
   const insertSelectSingle = vi.fn().mockResolvedValue(insertResult);
-  const insert = vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single: insertSelectSingle }) });
+  const insert = vi
+    .fn()
+    .mockReturnValue({ select: vi.fn().mockReturnValue({ single: insertSelectSingle }) });
   // Contagem usada por `enforceGenerationRateLimit`: `select(..., { count, head }).eq(...).gte(...)`.
   const select = vi.fn().mockReturnValue({
     eq: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ count: 0, error: null }) }),
@@ -107,7 +113,11 @@ describe("runQuoteGeneration", () => {
     vi.mocked(buildQuotePresentation).mockResolvedValue(Buffer.from("fake-pptx"));
     vi.mocked(uploadGeneratedPptx).mockResolvedValue(`${quoteId}/orcamento.pptx`);
 
-    const { update, insert, select: generationsSelect } = mockGenerationsTable({
+    const {
+      update,
+      insert,
+      select: generationsSelect,
+    } = mockGenerationsTable({
       data: { id: "generation-1" },
       error: null,
     });
@@ -156,8 +166,15 @@ describe("runQuoteGeneration", () => {
       expect.objectContaining({ status: "done" }),
     );
     expect(buildQuotePresentation).toHaveBeenCalled();
-    expect(uploadGeneratedPptx).toHaveBeenCalledWith(expect.anything(), quoteId, expect.any(Buffer));
-    expect(repository.updatePptxStoragePath).toHaveBeenCalledWith(quoteId, `${quoteId}/orcamento.pptx`);
+    expect(uploadGeneratedPptx).toHaveBeenCalledWith(
+      expect.anything(),
+      quoteId,
+      expect.any(Buffer),
+    );
+    expect(repository.updatePptxStoragePath).toHaveBeenCalledWith(
+      quoteId,
+      `${quoteId}/orcamento.pptx`,
+    );
     expect(result.status).toBe("done");
     expect(result.pptxStoragePath).toBe(`${quoteId}/orcamento.pptx`);
   });
@@ -176,18 +193,24 @@ describe("runQuoteGeneration", () => {
       promptTokens: 100,
       completionTokens: 50,
     });
-    vi.mocked(buildQuotePresentation).mockRejectedValue(new Error("falha ao buscar imagem externa"));
+    vi.mocked(buildQuotePresentation).mockRejectedValue(
+      new Error("falha ao buscar imagem externa"),
+    );
 
     const result = await runQuoteGeneration(quoteId, userId);
 
     expect(result.status).toBe("done");
     expect(result.pptxStoragePath).toBeUndefined();
     expect(repository.updatePptxStoragePath).not.toHaveBeenCalled();
-    expect(auditInsert).toHaveBeenCalledWith(expect.objectContaining({ action: "quote.pptx.failed" }));
+    expect(auditInsert).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "quote.pptx.failed" }),
+    );
   });
 
   it("fluxo de erro: grava status error com mensagem técnica no banco e genérica ao usuário", async () => {
-    vi.mocked(generateQuoteContent).mockRejectedValue(new AiGenerationError("detalhe técnico sensível"));
+    vi.mocked(generateQuoteContent).mockRejectedValue(
+      new AiGenerationError("detalhe técnico sensível"),
+    );
 
     const result = await runQuoteGeneration(quoteId, userId);
 
@@ -218,7 +241,9 @@ describe("runQuoteGeneration", () => {
         return {
           update: generationsUpdate,
           select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ count: 20, error: null }) }),
+            eq: vi
+              .fn()
+              .mockReturnValue({ gte: vi.fn().mockResolvedValue({ count: 20, error: null }) }),
           }),
         };
       }
@@ -226,7 +251,9 @@ describe("runQuoteGeneration", () => {
       throw new Error(`tabela inesperada: ${table}`);
     });
 
-    await expect(runQuoteGeneration(quoteId, userId)).rejects.toThrow(/Limite de \d+ gerações por hora/);
+    await expect(runQuoteGeneration(quoteId, userId)).rejects.toThrow(
+      /Limite de \d+ gerações por hora/,
+    );
     expect(repository.markProcessing).not.toHaveBeenCalled();
   });
 
@@ -237,7 +264,9 @@ describe("runQuoteGeneration", () => {
           update: generationsUpdate,
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              gte: vi.fn().mockResolvedValue({ count: null, error: { message: "relation does not exist" } }),
+              gte: vi
+                .fn()
+                .mockResolvedValue({ count: null, error: { message: "relation does not exist" } }),
             }),
           }),
         };
@@ -253,7 +282,9 @@ describe("runQuoteGeneration", () => {
     expect(auditInsert).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "quote.generation.failed",
-        metadata: expect.objectContaining({ reason: expect.stringContaining("relation does not exist") }),
+        metadata: expect.objectContaining({
+          reason: expect.stringContaining("relation does not exist"),
+        }),
       }),
     );
   });
