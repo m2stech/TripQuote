@@ -25,8 +25,18 @@ const ADMIN_SECTIONS = [
   },
   {
     href: "/admin/consumo",
-    title: "Consumo",
-    description: "Acompanhe tokens, custo estimado e auditoria de geração.",
+    title: "Consumo de IA",
+    description: "Acompanhe tokens e custo estimado por geração.",
+  },
+  {
+    href: "/admin/precos-modelo",
+    title: "Preços por modelo",
+    description: "Defina o preço por token de cada modelo de IA.",
+  },
+  {
+    href: "/admin/auditoria",
+    title: "Auditoria",
+    description: "Ações administrativas e de geração registradas no sistema.",
   },
 ] as const;
 

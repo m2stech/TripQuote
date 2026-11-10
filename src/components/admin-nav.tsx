@@ -9,7 +9,9 @@ const ADMIN_LINKS = [
   { href: "/admin/usuarios", label: "Usuários" },
   { href: "/admin/prompts", label: "Prompts" },
   { href: "/admin/identidade-visual", label: "Identidade visual" },
-  { href: "/admin/consumo", label: "Consumo" },
+  { href: "/admin/consumo", label: "Consumo de IA" },
+  { href: "/admin/precos-modelo", label: "Preços por modelo" },
+  { href: "/admin/auditoria", label: "Auditoria" },
 ] as const;
 
 /**
