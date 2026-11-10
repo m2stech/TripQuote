@@ -508,7 +508,7 @@ describe("SupabaseQuoteRepository", () => {
     );
     await repository.updateCommercialStatus(
       created.id,
-      { status: "lost", reference: "", reason: "Cliente desistiu." },
+      { status: "lost", reference: "", reason: "client_gave_up" },
       "user-2",
     );
 
@@ -516,13 +516,13 @@ describe("SupabaseQuoteRepository", () => {
     expect(supabase.commercialStatusHistory[1]).toMatchObject({
       previous_status: "won",
       new_status: "lost",
-      reason: "Cliente desistiu.",
+      reason: "client_gave_up",
       changed_by: "user-2",
     });
 
     const found = await repository.getById(created.id);
     expect(found?.commercialStatus).toBe("lost");
     expect(found?.commercialReference).toBeNull();
-    expect(found?.commercialReason).toBe("Cliente desistiu.");
+    expect(found?.commercialReason).toBe("client_gave_up");
   });
 });

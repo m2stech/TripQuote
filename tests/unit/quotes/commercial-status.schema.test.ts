@@ -32,12 +32,20 @@ describe("updateCommercialStatusInputSchema", () => {
     }
   });
 
-  it("aceita 'lost' com justificativa informada", () => {
+  it("aceita 'lost' com um motivo da lista fechada", () => {
+    const result = updateCommercialStatusInputSchema.safeParse({
+      status: "lost",
+      reason: "price_above_market",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita 'lost' com motivo fora da lista fechada (sem opção 'Outro'/texto livre)", () => {
     const result = updateCommercialStatusInputSchema.safeParse({
       status: "lost",
       reason: "Preço acima do orçamento.",
     });
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
   });
 
   it("rejeita um status fora do enum", () => {

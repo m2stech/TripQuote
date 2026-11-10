@@ -19,12 +19,39 @@ export const commercialStatusLabels: Record<CommercialStatus, string> = {
   lost: "Cancelado",
 };
 
+/**
+ * Motivos de cancelamento (status "lost"): lista fechada definida pelo
+ * negócio, sem opção "Outro" — texto livre não é aceito, ver CLAUDE.md
+ * (decisão de 2026-11-10, substitui o Textarea original do M12).
+ */
+export const cancellationReasonValues = [
+  "agency_closed_with_competitor",
+  "agency_no_response",
+  "client_gave_up",
+  "client_closed_with_competitor",
+  "client_no_response",
+  "price_above_market",
+] as const;
+
+export const cancellationReasonSchema = z.enum(cancellationReasonValues);
+
+export type CancellationReason = z.infer<typeof cancellationReasonSchema>;
+
+export const cancellationReasonLabels: Record<CancellationReason, string> = {
+  agency_closed_with_competitor: "Agência fechou em outra empresa",
+  agency_no_response: "Agência não deu retorno",
+  client_gave_up: "Cliente desistiu",
+  client_closed_with_competitor: "Cliente fechou em outra empresa",
+  client_no_response: "Cliente não deu retorno",
+  price_above_market: "Preço acima do mercado",
+};
+
 /** Entrada da action que altera o status comercial de um orçamento. */
 export const updateCommercialStatusInputSchema = z
   .object({
     status: commercialStatusSchema,
     reference: z.string().trim().optional().default(""),
-    reason: z.string().trim().optional().default(""),
+    reason: z.union([cancellationReasonSchema, z.literal("")]).optional().default(""),
   })
   .superRefine((data, ctx) => {
     if (data.status === "won" && !data.reference) {
@@ -38,7 +65,7 @@ export const updateCommercialStatusInputSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["reason"],
-        message: "Informe a justificativa do cancelamento.",
+        message: "Selecione o motivo do cancelamento.",
       });
     }
   });

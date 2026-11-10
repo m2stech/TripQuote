@@ -29,8 +29,11 @@ import {
 import { QuoteCommercialStatusBadge } from "@/features/quotes/components/QuoteCommercialStatusBadge";
 import { QuoteStatusBadge } from "@/features/quotes/components/QuoteStatusBadge";
 import {
+  cancellationReasonLabels,
+  cancellationReasonValues,
   commercialStatusLabels,
   commercialStatusValues,
+  type CancellationReason,
   type CommercialStatus,
 } from "@/features/quotes/schemas/commercial-status.schema";
 import type { QuoteRecord } from "@/features/quotes/schemas/quote.schema";
@@ -364,13 +367,22 @@ function CommercialStatusSection({ quote, onUpdated }: CommercialStatusSectionPr
 
         {status === "lost" ? (
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="commercial-reason">Justificativa do cancelamento</Label>
-            <Textarea
-              id="commercial-reason"
+            <Label htmlFor="commercial-reason">Motivo do cancelamento</Label>
+            <Select
               value={reason}
-              onChange={(event) => setReason(event.target.value)}
-              rows={2}
-            />
+              onValueChange={(value) => setReason(value as CancellationReason)}
+            >
+              <SelectTrigger id="commercial-reason" className="w-full">
+                <SelectValue placeholder="Selecione o motivo" />
+              </SelectTrigger>
+              <SelectContent>
+                {cancellationReasonValues.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {cancellationReasonLabels[value]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         ) : null}
       </div>
