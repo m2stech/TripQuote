@@ -355,7 +355,7 @@ function CommercialStatusSection({ quote, onUpdated }: CommercialStatusSectionPr
 
         {status === "won" ? (
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="commercial-reference">Localizador / referência da venda</Label>
+            <Label htmlFor="commercial-reference">Localizador da intranet</Label>
             <Textarea
               id="commercial-reference"
               value={reference}

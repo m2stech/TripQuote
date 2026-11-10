@@ -135,7 +135,11 @@ export async function updateQuoteCommercialStatusAction(
   id: string,
   input: unknown,
 ): Promise<QuoteRecord> {
-  const parsed = updateCommercialStatusInputSchema.parse(input);
+  const validation = updateCommercialStatusInputSchema.safeParse(input);
+  if (!validation.success) {
+    throw new Error(validation.error.issues[0]?.message ?? "Dados inválidos.");
+  }
+  const parsed = validation.data;
   const userId = await requireCurrentUserId();
   const repository = await getQuoteRepository();
 

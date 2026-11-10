@@ -58,7 +58,7 @@ export const updateCommercialStatusInputSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["reference"],
-        message: "Informe o localizador ou referência da venda.",
+        message: "Informe o localizador da intranet.",
       });
     }
     if (data.status === "lost" && !data.reason) {
