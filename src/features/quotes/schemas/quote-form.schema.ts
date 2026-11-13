@@ -283,6 +283,41 @@ export const uploadedAttachmentSchema = z.object({
 
 export type UploadedAttachment = z.infer<typeof uploadedAttachmentSchema>;
 
+// Opcionais (seção própria, entre "06 Programação dia a dia" e "08 Pagamento
+// fixo" no formulário) — nenhum campo do item é obrigatório, só o checkbox
+// geral `enabled` controla se a seção existe no PPTX. Sem interpretação por
+// IA: a imagem é só uma figura exibida no slide, passthrough puro.
+export const optionalItemSchema = z.object({
+  id: z.string(),
+  title: z.string().trim().optional().default(""),
+  price: z.string().trim().optional().default(""),
+  description: z.string().trim().optional().default(""),
+  photo: uploadedAttachmentSchema.nullable().default(null),
+});
+
+export type OptionalItem = z.infer<typeof optionalItemSchema>;
+
+export const optionalsSchema = z.discriminatedUnion("enabled", [
+  z.object({ enabled: z.literal(false) }),
+  z.object({
+    enabled: z.literal(true),
+    items: z.array(optionalItemSchema).min(1, "Adicione ao menos um item opcional."),
+  }),
+]);
+
+export type Optionals = z.infer<typeof optionalsSchema>;
+
+// Draft idêntico ao schema completo: como nenhum campo do item é
+// obrigatório mesmo com enabled: true, não há necessidade de uma versão
+// "relaxada" separada (diferente de itineraryDayDraftSchema).
+const optionalsDraftSchema = z.discriminatedUnion("enabled", [
+  z.object({ enabled: z.literal(false) }),
+  z.object({
+    enabled: z.literal(true),
+    items: z.array(optionalItemSchema).optional().default([]),
+  }),
+]);
+
 export const quoteFormSchema = z
   .object({
     productType: z.literal("terrestre").default("terrestre"),
@@ -292,6 +327,7 @@ export const quoteFormSchema = z
     hotels: hotelsSchema,
     flights: flightsSchema,
     itinerary: itinerarySchema,
+    optionals: optionalsSchema,
     paymentTerms: z.enum(paymentTermsOptions).default("general"),
     agencyLogo: uploadedAttachmentSchema.nullable().default(null),
     flightImage: uploadedAttachmentSchema.nullable().default(null),
@@ -340,6 +376,7 @@ export const quoteDraftSchema = z.object({
   hotels: z.array(hotelSchema).optional(),
   flights: flightsDraftSchema.optional(),
   itinerary: itineraryDraftSchema.optional(),
+  optionals: optionalsDraftSchema.optional(),
   paymentTerms: z.enum(paymentTermsOptions).optional(),
   agencyLogo: uploadedAttachmentSchema.nullable().optional(),
   flightImage: uploadedAttachmentSchema.nullable().optional(),
@@ -365,6 +402,7 @@ export function normalizeQuoteDraft(draft: QuoteDraftValues): QuoteFormValues {
     hotels: draft.hotels ?? quoteFormDefaultValues.hotels,
     flights: draft.flights ?? quoteFormDefaultValues.flights,
     itinerary: draft.itinerary ?? quoteFormDefaultValues.itinerary,
+    optionals: draft.optionals ?? quoteFormDefaultValues.optionals,
     paymentTerms: draft.paymentTerms ?? quoteFormDefaultValues.paymentTerms,
     agencyLogo: draft.agencyLogo ?? null,
     flightImage: draft.flightImage ?? null,
@@ -391,6 +429,7 @@ export const quoteFormDefaultValues: QuoteFormValues = {
   hotels: [],
   flights: { enabled: false },
   itinerary: { enabled: false },
+  optionals: { enabled: false },
   paymentTerms: "general",
   agencyLogo: null,
   flightImage: null,

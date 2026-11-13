@@ -294,6 +294,7 @@ export class SupabaseQuoteRepository implements QuoteRepository {
       flight_image: "flight-images",
       cruise_itinerary_image: "cruise-photos",
       cruise_photo: "cruise-photos",
+      optional_item_photo: "cruise-photos",
     };
 
     for (const attachment of attachments ?? []) {

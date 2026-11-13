@@ -7,6 +7,7 @@ import { downloadAgencyLogoBuffer, resolveAgencyLogo } from "@/features/pptx/ima
 import { resolveDestinationPhoto } from "@/features/pptx/images/destination-photo";
 import { resolveHotelPhoto } from "@/features/pptx/images/hotel-photo";
 import { resolveInstitutionalBranding } from "@/features/pptx/images/institutional-logo";
+import { resolveOptionalItemPhoto } from "@/features/pptx/images/optional-item-photo";
 import { recordPhotoFallbackIfNeeded, type PhotoFallbackEntry } from "@/features/pptx/images/photo-diagnostics";
 import { matchHotelsByName } from "@/features/pptx/match-hotels";
 import { resolveFlightItinerary } from "@/features/pptx/resolve-flight-itinerary";
@@ -17,6 +18,7 @@ import { buildFlightsSlide } from "@/features/pptx/slides/flights-slide";
 import { buildHotelSlides } from "@/features/pptx/slides/hotel-slide";
 import { buildInclusionsSlide } from "@/features/pptx/slides/inclusions-slide";
 import { buildItinerarySlide } from "@/features/pptx/slides/itinerary-slide";
+import { buildOptionalsSlide, OPTIONAL_ITEM_PHOTO_BOX } from "@/features/pptx/slides/optionals-slide";
 import { buildPackagePriceSlide } from "@/features/pptx/slides/package-price-slide";
 import { COVER_LOGO_BOX, FOOTER_LOGO_BOX, HOTEL_PHOTO_BOX, INNER_LOGO_BOX, SLIDE_HEIGHT_IN, SLIDE_WIDTH_IN } from "@/features/pptx/tokens";
 import { DEFAULT_THEME, extractThemeFromLogo } from "@/features/pptx/theme/extract-theme";
@@ -174,6 +176,20 @@ export async function buildQuotePresentation(
   if (form.itinerary.enabled) {
     buildItinerarySlide(pres, {
       days: form.itinerary.days,
+      agencyLogo: agencyLogoInner,
+      theme,
+    });
+  }
+
+  if (form.optionals.enabled) {
+    const optionalItemsWithPhoto = await Promise.all(
+      form.optionals.items.map(async (item) => ({
+        item,
+        photo: await resolveOptionalItemPhoto(supabase, item.photo, OPTIONAL_ITEM_PHOTO_BOX),
+      })),
+    );
+    buildOptionalsSlide(pres, {
+      items: optionalItemsWithPhoto,
       agencyLogo: agencyLogoInner,
       theme,
     });

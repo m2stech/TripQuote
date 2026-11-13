@@ -20,13 +20,15 @@ export type UploadableAttachmentKind =
   | "agency_logo"
   | "flight_image"
   | "cruise_itinerary_image"
-  | "cruise_photo";
+  | "cruise_photo"
+  | "optional_item_photo";
 
 const BUCKET_BY_KIND: Record<UploadableAttachmentKind, string> = {
   agency_logo: "agency-logos",
   flight_image: "flight-images",
   cruise_itinerary_image: "cruise-photos",
   cruise_photo: "cruise-photos",
+  optional_item_photo: "cruise-photos",
 };
 
 export class AttachmentValidationError extends Error {}

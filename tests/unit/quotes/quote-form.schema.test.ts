@@ -8,6 +8,7 @@ import {
   inclusionsSchema,
   itinerarySchema,
   migrateLegacyRoomOption,
+  optionalsSchema,
   quoteDraftSchema,
   quoteFormDefaultValues,
   quoteFormSchema,
@@ -233,6 +234,54 @@ describe("itinerarySchema", () => {
     const result = itinerarySchema.safeParse({
       enabled: true,
       days: [{ id: "1", label: "Dia 1 — 20/07", description: "Chegada e city tour" }],
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("optionalsSchema", () => {
+  it("aceita quando desativado", () => {
+    expect(optionalsSchema.safeParse({ enabled: false }).success).toBe(true);
+  });
+
+  it("rejeita quando ativado sem itens", () => {
+    const result = optionalsSchema.safeParse({ enabled: true, items: [] });
+    expect(result.success).toBe(false);
+  });
+
+  it("aceita item sem nenhum campo preenchido (nada é obrigatório)", () => {
+    const result = optionalsSchema.safeParse({
+      enabled: true,
+      items: [{ id: "1" }],
+    });
+    expect(result.success).toBe(true);
+    if (result.success && result.data.enabled) {
+      expect(result.data.items[0]).toMatchObject({
+        title: "",
+        price: "",
+        description: "",
+        photo: null,
+      });
+    }
+  });
+
+  it("aceita item completo com foto", () => {
+    const result = optionalsSchema.safeParse({
+      enabled: true,
+      items: [
+        {
+          id: "1",
+          title: "City tour privativo",
+          price: "R$ 450,00 por pessoa",
+          description: "Passeio guiado de 4h pelo centro histórico.",
+          photo: {
+            fileName: "city-tour.png",
+            storagePath: "quote-1/attachment-1-city-tour.png",
+            mimeType: "image/png",
+            sizeBytes: 1024,
+          },
+        },
+      ],
     });
     expect(result.success).toBe(true);
   });

@@ -219,9 +219,17 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
     control: control as unknown as Control<{ itinerary: ItineraryEnabled }>,
     name: "itinerary.days",
   });
+  // Mesmo padrão de `itineraryDaysArray` acima: `optionals` é uma união
+  // discriminada, `items` só existe quando `enabled` é `true`.
+  type OptionalsEnabled = Extract<QuoteFormInput["optionals"], { enabled: true }>;
+  const optionalsArray = useFieldArray({
+    control: control as unknown as Control<{ optionals: OptionalsEnabled }>,
+    name: "optionals.items",
+  });
 
   const flightsEnabled = useWatch({ control, name: "flights.enabled" });
   const itineraryEnabled = useWatch({ control, name: "itinerary.enabled" });
+  const optionalsEnabled = useWatch({ control, name: "optionals.enabled" });
   const agencyLogo = useWatch({ control, name: "agencyLogo" }) ?? null;
   const flightImage = useWatch({ control, name: "flightImage" }) ?? null;
   const inclusionsCount = useWatch({ control, name: "inclusions" })?.length ?? 0;
@@ -278,12 +286,27 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
 
   function handleToggleItinerary(checked: boolean) {
     if (checked) {
-      setValue("itinerary", {
-        enabled: true,
-        days: [{ id: createId(), label: "", description: "" }],
-      });
+      // `setValue` sozinho não resincroniza `itineraryDaysArray.fields` (o
+      // `useFieldArray` tem seu próprio estado interno, que só reage a
+      // `append`/`replace`/`remove` do próprio array) — por isso o ramo
+      // `enabled: true` é setado primeiro, com `days` vazio, e o dia inicial
+      // entra via `replace`, não dentro do mesmo `setValue`. Sem isso, o
+      // primeiro dia fica "invisível" até o usuário clicar em "+ Adicionar
+      // dia" manualmente.
+      setValue("itinerary", { enabled: true, days: [] });
+      itineraryDaysArray.replace([{ id: createId(), label: "", description: "" }]);
     } else {
       setValue("itinerary", { enabled: false });
+    }
+  }
+
+  function handleToggleOptionals(checked: boolean) {
+    if (checked) {
+      // Mesmo motivo de `handleToggleItinerary` acima.
+      setValue("optionals", { enabled: true, items: [] });
+      optionalsArray.replace([{ id: createId(), title: "", price: "", description: "", photo: null }]);
+    } else {
+      setValue("optionals", { enabled: false });
     }
   }
 
@@ -704,9 +727,56 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
         </div>
       </SectionCard>
 
-      {/* 07 — Pagamento fixo */}
+      {/* 07 — Opcionais */}
+      <SectionCard number={7} title="Opcionais (opcional)">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="optionals.enabled"
+              checked={optionalsEnabled}
+              onCheckedChange={(checked) => handleToggleOptionals(checked === true)}
+            />
+            <Label htmlFor="optionals.enabled">Incluir slide de opcionais</Label>
+          </div>
+
+          {optionalsEnabled ? (
+            <div className="flex flex-col gap-4">
+              {optionalsArray.fields.map((itemField, itemIndex) => (
+                <OptionalItemBlock
+                  key={itemField.id}
+                  itemIndex={itemIndex}
+                  onRemove={() => optionalsArray.remove(itemIndex)}
+                  register={register}
+                  control={control}
+                  setValue={setValue}
+                  quoteId={quoteId}
+                />
+              ))}
+
+              <Button
+                type="button"
+                variant="snow-secondary"
+                className="self-start"
+                onClick={() =>
+                  optionalsArray.append({
+                    id: createId(),
+                    title: "",
+                    price: "",
+                    description: "",
+                    photo: null,
+                  })
+                }
+              >
+                + Adicionar item
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      </SectionCard>
+
+      {/* 08 — Pagamento fixo */}
       <SectionCard
-        number={7}
+        number={8}
         title="Pagamento fixo"
         description="Condições institucionais fixas, aplicadas conforme o tipo de produto."
       >
@@ -734,9 +804,9 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
         </InfoBox>
       </SectionCard>
 
-      {/* 08 — Rodapé institucional */}
+      {/* 09 — Rodapé institucional */}
       <SectionCard
-        number={8}
+        number={9}
         title="Rodapé institucional"
         description="Texto e logo institucional fixos, definidos pelo sistema."
       >
@@ -751,8 +821,8 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
         </InfoBox>
       </SectionCard>
 
-      {/* 09 — Gerar */}
-      <SectionCard number={9} title="Gerar">
+      {/* 10 — Gerar */}
+      <SectionCard number={10} title="Gerar">
         <div className="flex flex-col gap-4">
           <ul className="text-muted-foreground flex flex-col gap-1 text-sm">
             <li>{inclusionsCount} inclusão(ões) adicionada(s)</li>
@@ -760,6 +830,9 @@ export function QuoteForm({ quoteId: initialQuoteId }: QuoteFormProps) {
             {flightsEnabled ? <li>Slide de voos incluído</li> : null}
             {itineraryEnabled ? (
               <li>{itineraryDaysArray.fields.length} dia(s) de roteiro</li>
+            ) : null}
+            {optionalsEnabled ? (
+              <li>{optionalsArray.fields.length} opcional(is) adicionado(s)</li>
             ) : null}
           </ul>
 
@@ -916,6 +989,119 @@ function HotelBlock({
 
       <Button type="button" variant="snow-remove" className="self-start" onClick={onRemove}>
         Remover hotel
+      </Button>
+    </div>
+  );
+}
+
+interface OptionalItemBlockProps {
+  itemIndex: number;
+  onRemove: () => void;
+  register: UseFormRegister<QuoteFormInput>;
+  control: Control<QuoteFormInput>;
+  setValue: UseFormSetValue<QuoteFormInput>;
+  quoteId: string | null;
+}
+
+/**
+ * Item da seção "Opcionais": nenhum campo é obrigatório (ver
+ * `optionalItemSchema`). A foto é só uma figura exibida no slide — sem
+ * interpretação por IA — resolvida via preview local, mesmo padrão de
+ * `CabinBlock` em `CruiseQuoteForm.tsx` (array + `ImageUpload` por item).
+ */
+function OptionalItemBlock({
+  itemIndex,
+  onRemove,
+  register,
+  control,
+  setValue,
+  quoteId,
+}: OptionalItemBlockProps) {
+  const photo =
+    useWatch({ control, name: `optionals.items.${itemIndex}.photo` as const }) ?? null;
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isActive = true;
+
+    if (!photo) {
+      Promise.resolve().then(() => {
+        if (isActive) setPhotoPreview(null);
+      });
+      return () => {
+        isActive = false;
+      };
+    }
+
+    getAttachmentPreviewUrlAction("optional_item_photo", photo.storagePath)
+      .then((url) => {
+        if (isActive) setPhotoPreview(url);
+      })
+      .catch(() => {
+        if (isActive) setPhotoPreview(null);
+      });
+    return () => {
+      isActive = false;
+    };
+  }, [photo]);
+
+  return (
+    <div className="border-snow-input-border flex flex-col gap-3 rounded-[12px] border p-4">
+      <TwoColumnGrid>
+        <Field label="Título" htmlFor={`optionals.items.${itemIndex}.title`}>
+          <Input
+            id={`optionals.items.${itemIndex}.title`}
+            placeholder="Ex.: City tour privativo"
+            {...register(
+              `optionals.items.${itemIndex}.title` as `optionals.items.${number}.title`,
+            )}
+          />
+        </Field>
+
+        <Field label="Valor (opcional)" htmlFor={`optionals.items.${itemIndex}.price`}>
+          <Input
+            id={`optionals.items.${itemIndex}.price`}
+            placeholder="Ex.: R$ 450,00 por pessoa"
+            {...register(
+              `optionals.items.${itemIndex}.price` as `optionals.items.${number}.price`,
+            )}
+          />
+        </Field>
+
+        <Field
+          label="Descrição (opcional)"
+          htmlFor={`optionals.items.${itemIndex}.description`}
+          className="sm:col-span-2"
+        >
+          <Textarea
+            id={`optionals.items.${itemIndex}.description`}
+            rows={2}
+            {...register(
+              `optionals.items.${itemIndex}.description` as `optionals.items.${number}.description`,
+            )}
+          />
+        </Field>
+
+        <ImageUpload
+          label="Imagem (opcional)"
+          helperText="PNG, JPG ou WEBP, até 5 MB."
+          value={photo}
+          previewUrl={photoPreview}
+          onChange={(value, preview) => {
+            setValue(
+              `optionals.items.${itemIndex}.photo` as `optionals.items.${number}.photo`,
+              value,
+            );
+            setPhotoPreview(preview);
+          }}
+          quoteId={quoteId}
+          kind="optional_item_photo"
+          className="sm:col-span-2"
+        />
+      </TwoColumnGrid>
+
+      <Button type="button" variant="snow-remove" className="self-start" onClick={onRemove}>
+        Remover item
       </Button>
     </div>
   );

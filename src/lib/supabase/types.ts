@@ -467,7 +467,8 @@ export type Database = {
         | "flight_image"
         | "institutional_logo"
         | "cruise_itinerary_image"
-        | "cruise_photo";
+        | "cruise_photo"
+        | "optional_item_photo";
       commercial_status: "pending" | "won" | "lost";
       product_type: "terrestre" | "cruzeiro";
       quote_status: "draft" | "processing" | "done" | "error";
@@ -602,6 +603,7 @@ export const Constants = {
         "institutional_logo",
         "cruise_itinerary_image",
         "cruise_photo",
+        "optional_item_photo",
       ],
       commercial_status: ["pending", "won", "lost"],
       product_type: ["terrestre", "cruzeiro"],
