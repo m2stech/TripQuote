@@ -365,6 +365,35 @@ describe("SupabaseQuoteRepository", () => {
     expect(copy.form.general.agency).toBe("Primus Turismo");
   });
 
+  it("duplica um orçamento e reescreve o storagePath dos anexos do form para o novo id", async () => {
+    const original = await repository.create(
+      draft({ general: { agency: "Primus Turismo", destination: "Santiago" } }),
+      "user-1",
+    );
+    const flightImage = {
+      fileName: "voo.png",
+      storagePath: `${original.id}/attachment-1-voo.png`,
+      mimeType: "image/png",
+      sizeBytes: 123,
+    };
+    await repository.update(original.id, draft({ flightImage }));
+    supabase.attachments.push({
+      id: "attachment-1",
+      quote_id: original.id,
+      kind: "flight_image",
+      storage_path: flightImage.storagePath,
+      file_name: "voo.png",
+      mime_type: "image/png",
+      size_bytes: 123,
+    });
+
+    const copy = await repository.duplicate(original.id);
+
+    if (copy.form.productType !== "terrestre") throw new Error("Esperado form terrestre.");
+    expect(copy.form.flightImage?.storagePath).toBe(`${copy.id}/attachment-1-voo.png`);
+    expect(copy.form.flightImage?.storagePath).not.toContain(original.id);
+  });
+
   it("upsertDraft() cria um rascunho novo com o id e o conteúdo informados", async () => {
     const id = "fixed-draft-id";
     const created = await repository.upsertDraft(

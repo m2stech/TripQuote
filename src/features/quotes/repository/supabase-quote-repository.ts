@@ -68,6 +68,29 @@ function formToColumns(form: AnyQuoteDraftValues | Record<string, never>) {
 }
 
 /**
+ * Reescreve, recursivamente, qualquer string do `form` que comece com
+ * `${fromQuoteId}/` (prefixo de `storagePath` de anexo) para `${toQuoteId}/`.
+ * Usado por `duplicate` para corrigir referências a anexos (logo, imagem de
+ * voo, roteiro, fotos de porto/navio) que `formToColumns` copia do
+ * orçamento original sem ajustar — percorre o JSON em vez de conhecer os
+ * campos do schema, cobrindo também listas dinâmicas (ex. `ports[].photo`).
+ */
+function rewriteStoragePaths(value: unknown, fromQuoteId: string, toQuoteId: string): unknown {
+  if (typeof value === "string") {
+    return value.startsWith(`${fromQuoteId}/`) ? `${toQuoteId}/${value.slice(fromQuoteId.length + 1)}` : value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => rewriteStoragePaths(item, fromQuoteId, toQuoteId));
+  }
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, val]) => [key, rewriteStoragePaths(val, fromQuoteId, toQuoteId)]),
+    );
+  }
+  return value;
+}
+
+/**
  * Implementação de `QuoteRepository` sobre Supabase (M5). Substitui
  * `InMemoryQuoteRepository`, mantendo a mesma interface consumida pelas
  * Server Actions e, indiretamente, pelas telas (ver `features/quotes/actions`).
@@ -291,6 +314,28 @@ export class SupabaseQuoteRepository implements QuoteRepository {
         mime_type: attachment.mime_type,
         size_bytes: attachment.size_bytes,
       });
+    }
+
+    // `formToColumns` grava o `form` original na linha nova sem ajustar os
+    // `storagePath` dos anexos (logo, imagem de voo, roteiro, fotos de porto
+    // etc.), que ainda apontam para o prefixo `id/...` do orçamento de
+    // origem — os anexos em si só são copiados para `duplicated.id/...`
+    // acima. Sem essa reescrita, o `form` duplicado referencia paths que
+    // deixam de existir se o orçamento original for apagado ou tiver o
+    // anexo substituído (bug relatado: imagem de voo "fantasma" após
+    // duplicar, path do pai nunca atualizado).
+    if (JSON.stringify(duplicated.form).includes(id)) {
+      const fixedForm = rewriteStoragePaths(duplicated.form, id, duplicated.id);
+      const { data: fixedRow, error: fixError } = await this.supabase
+        .from("quotes")
+        .update({ form: fixedForm as unknown as Database["public"]["Tables"]["quotes"]["Row"]["form"] })
+        .eq("id", duplicated.id)
+        .select("*")
+        .single();
+      if (fixError) {
+        throw new Error(`Não foi possível corrigir os anexos duplicados: ${fixError.message}`);
+      }
+      return rowToRecord(fixedRow);
     }
 
     return duplicated;
