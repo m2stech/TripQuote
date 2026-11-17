@@ -141,6 +141,15 @@ describe("generateQuoteContent", () => {
     ).rejects.toThrow(AiGenerationError);
   });
 
+  it("inclui o nome do hotel não reconhecido na mensagem técnica da falha", async () => {
+    const missingHotel = { ...validOutputParsed(), hotels: [] };
+    mockResponsesParse({ output_parsed: missingHotel }, { output_parsed: missingHotel });
+
+    await expect(
+      generateQuoteContent({ form, promptVersion, flightImagePart: null }),
+    ).rejects.toThrow(/hotéis não reconhecidos: Mandarin Oriental, Santiago\)\.$/);
+  });
+
   it("aceita pequena divergência de grafia no nome do hotel (caso relatado: Marriot x Marriott)", async () => {
     const outputWithRenamedHotel = {
       ...validOutputParsed(),

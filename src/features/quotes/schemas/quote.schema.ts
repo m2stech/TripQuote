@@ -35,6 +35,19 @@ export const quoteStatusLabels: Record<QuoteStatus, string> = {
   error: "Erro",
 };
 
+/**
+ * Classifica a causa da última falha de geração (ver
+ * `classify-generation-failure.ts`): `user_input` quando o consultor pode
+ * corrigir algo no formulário e tentar de novo, `system` quando é falha de
+ * infraestrutura/IA fora do controle dele. Ausente em orçamentos sem erro ou
+ * gerados antes desta coluna existir — a UI cai no texto genérico nesse caso.
+ */
+export const quoteErrorCauseValues = ["user_input", "system"] as const;
+
+export const quoteErrorCauseSchema = z.enum(quoteErrorCauseValues);
+
+export type QuoteErrorCause = z.infer<typeof quoteErrorCauseSchema>;
+
 export const quoteRecordSchema = z.object({
   id: z.string(),
   status: quoteStatusSchema,
@@ -42,6 +55,7 @@ export const quoteRecordSchema = z.object({
   updatedAt: z.string(),
   createdBy: z.string(),
   errorMessage: z.string().optional(),
+  errorCause: quoteErrorCauseSchema.optional(),
   form: anyQuoteDraftSchema,
   aiOutput: anyGenerationOutputSchema.nullable().optional(),
   pptxStoragePath: z.string().nullable().optional(),

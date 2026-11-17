@@ -8,6 +8,7 @@ vi.mock("@/features/prompts/repository/prompt-version-repository", () => ({
 }));
 vi.mock("@/features/ai/orchestration/generate-quote-content", () => ({
   generateQuoteContent: vi.fn(),
+  HOTEL_COVERAGE_MISMATCH_PREFIX: "A resposta não cobriu todos os hotéis informados no formulário",
 }));
 vi.mock("@/features/ai/vision/flight-image-input", () => ({
   buildFlightImagePart: vi.fn(),
@@ -17,6 +18,11 @@ vi.mock("@/features/pptx/build-quote-presentation", () => ({
 }));
 vi.mock("@/features/pptx/storage", () => ({
   uploadGeneratedPptx: vi.fn(),
+}));
+vi.mock("@/features/ai/client/openai-client", () => ({
+  getOpenAiClient: vi.fn(() => {
+    throw new Error("client OpenAI não disponível em teste");
+  }),
 }));
 
 import { createAdminClient } from "@/lib/supabase/admin";

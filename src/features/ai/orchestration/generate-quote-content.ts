@@ -27,34 +27,47 @@ export interface GenerateQuoteContentResult {
 }
 
 /**
- * Valida a cobertura da resposta contra o formulário: todo hotel do form
- * deve aparecer na resposta, na mesma contagem. Comparação de nome tolerante
- * a pequenas divergências de grafia (ver `fuzzy-name-match.ts`) — a IA
- * frequentemente "corrige" nomes próprios digitados pelo usuário (ex.: form
- * tem "Marriot", a IA responde "Marriott"), e uma comparação exata tratava
- * isso como hotel ausente, forçando um retry inútil e, no limite, falhando a
- * geração inteira por 1 caractere de diferença. Não cabe em Zod puro (é uma
- * comparação cruzada entre dois valores), então fica como passo explícito
- * depois do `safeParse`. Mesmo critério de tolerância usado por
- * `matchHotelsByName` no builder PPTX, para que um hotel aceito aqui nunca
- * caia no fallback `ai: null` lá.
+ * Hotéis do formulário sem correspondência na resposta da IA — vazio quando a
+ * cobertura está completa. Comparação de nome tolerante a pequenas
+ * divergências de grafia (ver `fuzzy-name-match.ts`) — a IA frequentemente
+ * "corrige" nomes próprios digitados pelo usuário (ex.: form tem "Marriot", a
+ * IA responde "Marriott"), e uma comparação exata tratava isso como hotel
+ * ausente, forçando um retry inútil e, no limite, falhando a geração inteira
+ * por 1 caractere de diferença. Não cabe em Zod puro (é uma comparação
+ * cruzada entre dois valores), então fica como passo explícito depois do
+ * `safeParse`. Mesmo critério de tolerância usado por `matchHotelsByName` no
+ * builder PPTX, para que um hotel aceito aqui nunca caia no fallback
+ * `ai: null` lá. Também falha (retorna todos os hotéis do form) se a resposta
+ * trouxer uma contagem diferente da esperada, mesmo que os nomes batam — ex.:
+ * a IA duplicou ou omitiu um hotel.
  */
-function hasCompleteHotelCoverage(output: GenerationOutput, form: QuoteFormValues): boolean {
-  if (output.hotels.length !== form.hotels.length) return false;
-  return form.hotels.every((hotel) =>
-    output.hotels.some((outputHotel) => namesAreEquivalent(outputHotel.name, hotel.name)),
+function findMissingHotels(output: GenerationOutput, form: QuoteFormValues): string[] {
+  const missing = form.hotels.filter(
+    (hotel) => !output.hotels.some((outputHotel) => namesAreEquivalent(outputHotel.name, hotel.name)),
   );
+  if (missing.length > 0) return missing.map((hotel) => hotel.name);
+  if (output.hotels.length !== form.hotels.length) return form.hotels.map((hotel) => hotel.name);
+  return [];
 }
 
 /**
- * Descreve a divergência de cobertura (nomes esperados x recebidos) para
- * diagnóstico — só chamada quando a cobertura já falhou, nunca no caminho de
- * sucesso.
+ * Prefixo fixo da mensagem de cobertura incompleta de hotéis — usado tanto
+ * aqui quanto em `KNOWN_FAILURE_PATTERNS` (`classify-generation-failure.ts`),
+ * que casa por este prefixo e extrai a lista de nomes faltantes (ver
+ * `describeMissingHotels`) para montar uma mensagem amigável citando-os,
+ * sem nunca repassar o texto técnico nem os nomes a uma IA. Qualquer mudança
+ * neste texto ou no formato de `describeMissingHotels` precisa ser replicada
+ * lá.
  */
-function describeHotelCoverageMismatch(output: GenerationOutput, form: QuoteFormValues): string {
-  const expected = form.hotels.map((hotel) => hotel.name);
-  const received = output.hotels.map((hotel) => hotel.name);
-  return `esperado [${expected.join(" | ")}], recebido [${received.join(" | ")}]`;
+export const HOTEL_COVERAGE_MISMATCH_PREFIX = "A resposta não cobriu todos os hotéis informados no formulário";
+
+/**
+ * Descreve os hotéis sem correspondência para diagnóstico e para a mensagem
+ * amigável ao usuário (ver `HOTEL_COVERAGE_MISMATCH_PREFIX`) — só chamada
+ * quando a cobertura já falhou, nunca no caminho de sucesso.
+ */
+function describeMissingHotels(missingHotelNames: string[]): string {
+  return `hotéis não reconhecidos: ${missingHotelNames.join(" | ")}`;
 }
 
 async function callResponsesApi(
@@ -112,10 +125,9 @@ export async function generateQuoteContent(
       continue;
     }
 
-    if (!hasCompleteHotelCoverage(validation.data, form)) {
-      lastFailureReason =
-        `A resposta não cobriu todos os hotéis informados no formulário ` +
-        `(${describeHotelCoverageMismatch(validation.data, form)}).`;
+    const missingHotelNames = findMissingHotels(validation.data, form);
+    if (missingHotelNames.length > 0) {
+      lastFailureReason = `${HOTEL_COVERAGE_MISMATCH_PREFIX} (${describeMissingHotels(missingHotelNames)}).`;
       continue;
     }
 

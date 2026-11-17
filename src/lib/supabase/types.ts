@@ -376,6 +376,7 @@ export type Database = {
           created_by: string;
           destination: string;
           end_date: string | null;
+          error_cause: Database["public"]["Enums"]["quote_error_cause"] | null;
           error_message: string | null;
           form: Json;
           id: string;
@@ -398,6 +399,7 @@ export type Database = {
           created_by: string;
           destination: string;
           end_date?: string | null;
+          error_cause?: Database["public"]["Enums"]["quote_error_cause"] | null;
           error_message?: string | null;
           form: Json;
           id?: string;
@@ -420,6 +422,7 @@ export type Database = {
           created_by?: string;
           destination?: string;
           end_date?: string | null;
+          error_cause?: Database["public"]["Enums"]["quote_error_cause"] | null;
           error_message?: string | null;
           form?: Json;
           id?: string;
@@ -471,6 +474,7 @@ export type Database = {
         | "optional_item_photo";
       commercial_status: "pending" | "won" | "lost";
       product_type: "terrestre" | "cruzeiro";
+      quote_error_cause: "user_input" | "system";
       quote_status: "draft" | "processing" | "done" | "error";
       user_role: "consultant" | "admin";
     };
@@ -607,6 +611,7 @@ export const Constants = {
       ],
       commercial_status: ["pending", "won", "lost"],
       product_type: ["terrestre", "cruzeiro"],
+      quote_error_cause: ["user_input", "system"],
       quote_status: ["draft", "processing", "done", "error"],
       user_role: ["consultant", "admin"],
     },

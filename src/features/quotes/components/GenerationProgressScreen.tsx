@@ -9,7 +9,7 @@ import { SectionCard } from "@/components/section-card";
 import { Button } from "@/components/ui/button";
 import { regenerateQuoteAction } from "@/features/quotes/actions/quote-actions";
 import { QuoteStatusBadge } from "@/features/quotes/components/QuoteStatusBadge";
-import type { QuoteStatus } from "@/features/quotes/schemas/quote.schema";
+import type { QuoteErrorCause, QuoteStatus } from "@/features/quotes/schemas/quote.schema";
 
 interface GenerationProgressScreenProps {
   quoteId: string;
@@ -25,21 +25,25 @@ interface GenerationProgressScreenProps {
 export function GenerationProgressScreen({ quoteId }: GenerationProgressScreenProps) {
   const [status, setStatus] = useState<QuoteStatus>("processing");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorCause, setErrorCause] = useState<QuoteErrorCause | null>(null);
   const [pptxStoragePath, setPptxStoragePath] = useState<string | null>(null);
 
   const startGeneration = useCallback(async () => {
     setStatus("processing");
     setErrorMessage(null);
+    setErrorCause(null);
     try {
       const result = await regenerateQuoteAction(quoteId);
       setStatus(result.status);
       setErrorMessage(result.errorMessage ?? null);
+      setErrorCause(result.errorCause ?? null);
       setPptxStoragePath(result.pptxStoragePath ?? null);
     } catch (error) {
       setStatus("error");
       setErrorMessage(
         error instanceof Error ? error.message : "Não foi possível iniciar a geração. Tente novamente.",
       );
+      setErrorCause(null);
     }
   }, [quoteId]);
 
@@ -105,9 +109,25 @@ export function GenerationProgressScreen({ quoteId }: GenerationProgressScreenPr
             {status === "error" ? (
               <div className="w-full max-w-md">
                 <ErrorState
-                  title="Não foi possível gerar o orçamento"
+                  title={
+                    errorCause === "user_input"
+                      ? "Não foi possível gerar o orçamento — revise os dados"
+                      : "Não foi possível gerar o orçamento"
+                  }
                   description={errorMessage ?? "Ocorreu um erro inesperado. Tente novamente."}
                   onRetry={() => void startGeneration()}
+                  extraAction={
+                    errorCause === "user_input" ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        nativeButton={false}
+                        render={<Link href={`/orcamentos/novo?duplicar=${quoteId}`} />}
+                      >
+                        Editar orçamento
+                      </Button>
+                    ) : undefined
+                  }
                 />
               </div>
             ) : null}

@@ -331,6 +331,7 @@ export class InMemoryQuoteRepository implements QuoteRepository {
       ...existing,
       status: "processing",
       errorMessage: undefined,
+      errorCause: undefined,
       updatedAt: new Date().toISOString(),
     };
     this.quotes = this.quotes.map((quote) => (quote.id === id ? processing : quote));
@@ -349,6 +350,7 @@ export class InMemoryQuoteRepository implements QuoteRepository {
             ...existing,
             status: "done",
             errorMessage: undefined,
+            errorCause: undefined,
             aiOutput: result.aiOutput,
             updatedAt: new Date().toISOString(),
           }
@@ -356,6 +358,7 @@ export class InMemoryQuoteRepository implements QuoteRepository {
             ...existing,
             status: "error",
             errorMessage: result.errorMessage,
+            errorCause: result.errorCause,
             updatedAt: new Date().toISOString(),
           };
 

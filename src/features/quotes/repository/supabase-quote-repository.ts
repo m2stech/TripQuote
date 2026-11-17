@@ -28,6 +28,7 @@ function rowToRecord(row: QuoteRow): QuoteRecord {
     updatedAt: row.updated_at,
     createdBy: row.created_by,
     errorMessage: row.error_message ?? undefined,
+    errorCause: row.error_cause ?? undefined,
     form: row.form,
     aiOutput: row.ai_output ?? null,
     pptxStoragePath: row.pptx_storage_path ?? null,
@@ -350,7 +351,7 @@ export class SupabaseQuoteRepository implements QuoteRepository {
   async markProcessing(id: string): Promise<void> {
     const { error } = await this.supabase
       .from("quotes")
-      .update({ status: "processing", error_message: null })
+      .update({ status: "processing", error_message: null, error_cause: null })
       .eq("id", id);
     if (error) throw new Error(`Não foi possível iniciar a geração: ${error.message}`);
   }
@@ -363,10 +364,15 @@ export class SupabaseQuoteRepository implements QuoteRepository {
           ? {
               status: "done",
               error_message: null,
+              error_cause: null,
               ai_output:
                 result.aiOutput as unknown as Database["public"]["Tables"]["quotes"]["Row"]["ai_output"],
             }
-          : { status: "error", error_message: result.errorMessage },
+          : {
+              status: "error",
+              error_message: result.errorMessage,
+              error_cause: result.errorCause,
+            },
       )
       .eq("id", id)
       .select("*")

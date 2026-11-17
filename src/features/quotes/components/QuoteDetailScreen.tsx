@@ -92,7 +92,9 @@ export function QuoteDetailScreen({ quoteId }: QuoteDetailScreenProps) {
     try {
       // Reflete o estado "processing" imediatamente na tela.
       setQuote((prev) =>
-        prev ? { ...prev, status: "processing", errorMessage: undefined } : prev,
+        prev
+          ? { ...prev, status: "processing", errorMessage: undefined, errorCause: undefined }
+          : prev,
       );
       const updated = await regenerateQuoteAction(quoteId);
       setQuote(updated);
@@ -149,10 +151,26 @@ export function QuoteDetailScreen({ quoteId }: QuoteDetailScreenProps) {
 
               {quote.status === "error" && quote.errorMessage ? (
                 <ErrorState
-                  title="A última geração falhou"
+                  title={
+                    quote.errorCause === "user_input"
+                      ? "A última geração falhou — revise os dados do orçamento"
+                      : "A última geração falhou"
+                  }
                   description={quote.errorMessage}
                   onRetry={handleRegenerate}
                   retryLabel="Tentar gerar novamente"
+                  extraAction={
+                    quote.errorCause === "user_input" ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        nativeButton={false}
+                        render={<Link href={`/orcamentos/novo?duplicar=${quote.id}`} />}
+                      >
+                        Editar orçamento
+                      </Button>
+                    ) : undefined
+                  }
                 />
               ) : null}
 

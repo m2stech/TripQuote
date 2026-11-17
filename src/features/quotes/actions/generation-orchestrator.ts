@@ -2,6 +2,10 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import {
+  classifyGenerationFailure,
+  GENERIC_ERROR_MESSAGE,
+} from "@/features/ai/orchestration/classify-generation-failure";
 import { AiGenerationError } from "@/features/ai/orchestration/errors";
 import { generateCruiseContent } from "@/features/ai/orchestration/generate-cruise-content";
 import { generateQuoteContent } from "@/features/ai/orchestration/generate-quote-content";
@@ -33,8 +37,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
 
-const GENERIC_ERROR_MESSAGE = "Não foi possível gerar o orçamento. Tente novamente.";
-
 /**
  * Orquestra uma geração via IA de ponta a ponta: lê o orçamento e o prompt
  * ativo, chama a OpenAI, grava auditoria/custo em `generations`/`audit_log`
@@ -63,7 +65,7 @@ export async function runQuoteGeneration(quoteId: string, userId: string): Promi
     await enforceGenerationRateLimit(adminSupabase, userId);
   } catch (error) {
     if (error instanceof GenerationRateLimitError) throw error;
-    throw await logPreflightFailureAndGetGenericError(adminSupabase, userId, quoteId, error);
+    throw await logPreflightFailureAndGetGenericError(adminSupabase, repository, userId, quoteId, error);
   }
 
   await repository.markProcessing(quoteId);
@@ -72,7 +74,7 @@ export async function runQuoteGeneration(quoteId: string, userId: string): Promi
   try {
     promptVersion = await getActivePromptVersion(adminSupabase, quote.form.productType);
   } catch (error) {
-    throw await logPreflightFailureAndGetGenericError(adminSupabase, userId, quoteId, error);
+    throw await logPreflightFailureAndGetGenericError(adminSupabase, repository, userId, quoteId, error);
   }
 
   const { data: generationRow, error: generationInsertError } = await supabase
@@ -97,9 +99,11 @@ export async function runQuoteGeneration(quoteId: string, userId: string): Promi
       metadata: { reason: technicalReason },
     });
 
+    const failure = await classifyGenerationFailure(technicalReason);
     return repository.updateGenerationResult(quoteId, {
       status: "error",
-      errorMessage: GENERIC_ERROR_MESSAGE,
+      errorMessage: failure.message,
+      errorCause: failure.cause,
     });
   }
   const generationId = generationRow.id;
@@ -179,9 +183,11 @@ export async function runQuoteGeneration(quoteId: string, userId: string): Promi
       metadata: { generationId, reason: technicalReason },
     });
 
+    const failure = await classifyGenerationFailure(technicalReason);
     return repository.updateGenerationResult(quoteId, {
       status: "error",
-      errorMessage: GENERIC_ERROR_MESSAGE,
+      errorMessage: failure.message,
+      errorCause: failure.cause,
     });
   }
 }
@@ -243,12 +249,18 @@ async function finishGeneration(
 
 /**
  * Loga em `audit_log` uma falha ocorrida antes de existir uma linha em
- * `generations` (rate limit, leitura do prompt ativo) e devolve um erro
- * genérico e seguro para o client — a mensagem técnica (ex.: detalhe do
- * Postgres) nunca deve escapar para o usuário final.
+ * `generations` (leitura do prompt ativo) e grava `status: error` no próprio
+ * orçamento — mesmo tratamento das demais falhas, para a tela de detalhe
+ * refletir o que houve em vez de ficar parada em `processing`. Sempre
+ * classificada como `system`: nada do que o usuário preencheu no formulário
+ * influencia essas duas etapas (nenhuma chamada à IA aconteceu ainda), então
+ * não há por que acionar o classificador por IA aqui. Devolve um erro
+ * genérico e seguro para o client lançar — a mensagem técnica (ex.: detalhe
+ * do Postgres) nunca deve escapar para o usuário final.
  */
 async function logPreflightFailureAndGetGenericError(
   adminSupabase: SupabaseClient<Database>,
+  repository: QuoteRepository,
   userId: string,
   quoteId: string,
   error: unknown,
@@ -261,6 +273,12 @@ async function logPreflightFailureAndGetGenericError(
     entity_type: "quote",
     entity_id: quoteId,
     metadata: { reason: technicalReason },
+  });
+
+  await repository.updateGenerationResult(quoteId, {
+    status: "error",
+    errorMessage: GENERIC_ERROR_MESSAGE,
+    errorCause: "system",
   });
 
   return new Error(GENERIC_ERROR_MESSAGE);

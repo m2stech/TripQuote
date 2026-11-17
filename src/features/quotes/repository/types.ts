@@ -7,6 +7,7 @@ import type {
   AnyQuoteDraftValues,
 } from "@/features/quotes/schemas/product.schema";
 import type {
+  QuoteErrorCause,
   QuoteRecord,
   QuoteStatus,
   QuoteSummary,
@@ -14,7 +15,8 @@ import type {
 
 /** Resultado final de uma geração via IA, gravado pelo orquestrador (M6). */
 export type GenerationResult =
-  { status: "done"; aiOutput: AnyGenerationOutput } | { status: "error"; errorMessage: string };
+  | { status: "done"; aiOutput: AnyGenerationOutput }
+  | { status: "error"; errorMessage: string; errorCause?: QuoteErrorCause };
 
 /**
  * Filtros de listagem de orçamentos. `period` filtra pela data de início da
@@ -90,8 +92,10 @@ export interface QuoteRepository {
   markProcessing(id: string): Promise<void>;
   /**
    * Grava o resultado final de uma geração via IA: `done` com a saída
-   * estruturada (`ai_output`), ou `error` com a mensagem genérica pt-BR
-   * exibida ao usuário (o detalhe técnico fica só em `generations`/`audit_log`).
+   * estruturada (`ai_output`), ou `error` com a mensagem amigável pt-BR e a
+   * causa classificada (`errorCause`) exibidas ao usuário — já traduzidas por
+   * `classify-generation-failure.ts` a partir do erro técnico, que fica
+   * registrado só em `generations`/`audit_log`.
    */
   updateGenerationResult(id: string, result: GenerationResult): Promise<QuoteRecord>;
   /**
